@@ -41,6 +41,9 @@ CLUSTERS = {b'0000': 'General: Basic',
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
 
+ZGT_LOG_LEVELS = ['Emergency', 'Alert', 'Critical', 'Error',
+                  'Warning', 'Notice', 'Information', 'Debug']
+
 # states & properties
 ZGT_TEMPERATURE = 'temperature'
 ZGT_PRESSURE = 'pressure'
@@ -50,42 +53,42 @@ ZGT_LAST_SEEN = 'last seen'
 ZGT_EVENT = 'event'
 ZGT_EVENT_PRESENCE = 'presence detected'
 ZGT_STATE = 'state'
-ZGT_STATE_OPEN = 'open'
-ZGT_STATE_CLOSED = 'closed'
+ZGT_STATE_ON = 'on-press'
+ZGT_STATE_OFF = 'off-release'
 
 
 # commands for external use
 ZGT_CMD_NEW_DEVICE = 'new device'
 
-class ZiGate():
 
-    def __init__(self,port='/dev/ttyUSB0',method='thread',path='~/.zigate.json'):
+class ZiGate:
+
+    def __init__(self, port='/dev/ttyUSB0', method='thread',
+                 path='~/.zigate.json', permit_join_onstart=True):
         self._buffer = b''
         self._devices = {}
         self._path = path
         if method == 'thread':
-            self.connection = Threaded_connection(self,port)
+            self.connection = Threaded_connection(self, port)
         elif method == 'async':
-            self.connection = Async_connection(self,port)
-        elif method == 'fake':
-            self.connection = Fake_connection(self,port)
+            self.connection = Async_connection(self, port)
         elif method == 'tcp':
-            self.connection = TCP_connection(self,port)
+            self.connection = TCP_connection(self, port)
         else:
             raise Exception('Unknown connection method')
         erase = self.load_state()
-        self.init(erase)
-      
+        self.init(erase, permit_join_onstart)
+
     def close(self):
         self.connection.close()
         self.save_state()
-        
+
     def save_state(self, path=None):
         path = path or self._path
         self._path = os.path.expanduser(path)
-        with open(self._path,'w') as fp:
-            json.dump(list(self._devices.values()),fp,cls=DeviceEncoder)
-    
+        with open(self._path, 'w') as fp:
+            json.dump(list(self._devices.values()), fp, cls=DeviceEncoder)
+
     def load_state(self, path=None):
         path = path or self._path
         self._path = os.path.expanduser(path)
@@ -97,26 +100,26 @@ class ZiGate():
                 self._devices[device.addr] = device
             return True
         return False
-                
+
     def __del__(self):
         self.close()
-        
-    def init(self, erase=False):
+
+    def init(self, erase=False, permit_join_onstart=False):
         if erase:
-            self.send_data('0012')
-            
-        # set channel 11
+            self.erase_persistent()
+
         self.send_data('0021', '00000800')
+        self.set_channel(11)
 
         # set Type COORDINATOR
-        self.send_data('0023','00')
-        
+        self.set_type('coordinator')
+
         # start network
-        self.send_data('0024')
-    
-        # start inclusion mode 30sec
-        self.permit_join()
-#         self.send_data('0049','FFFC1E00')
+        self.start_network()
+
+        if permit_join_onstart:
+            # start inclusion mode 30sec
+            self.permit_join()
 
     @staticmethod
     def zigate_encode(data):
@@ -190,6 +193,7 @@ class ZiGate():
     # Must be called from a thread loop or asyncio event loop
     def read_data(self, data):
         """Read ZiGate output and split messages"""
+        logging.debug('read_data')
         self._buffer += data
         endpos = self._buffer.find(b'\x03')
         while endpos != -1:
@@ -318,9 +322,9 @@ class ZiGate():
             struct = OrderedDict([('short_addr', 16), ('mac_addr', 64),
                                   ('mac_capability', 'rawend')])
             msg = self.decode_struct(struct, msg_data)
-
+            addr = msg['short_addr'].decode()
             self.set_external_command(ZGT_CMD_NEW_DEVICE,
-                                      addr=msg['short_addr'].decode())
+                                      addr=addr)
             self.set_device_property(msg['short_addr'], 'MAC',
                                      msg['mac_addr'].decode())
 
@@ -329,6 +333,7 @@ class ZiGate():
             _LOGGER.debug('  * MAC address    : {}'.format(msg['mac_addr']))
             _LOGGER.debug('  * MAC capability : {}'.
                           format(msg['mac_capability']))
+            self.active_endpoint_request(addr)
 
         # Status
         elif msg_type == b'8000':
@@ -354,8 +359,6 @@ class ZiGate():
 
         # Default Response
         elif msg_type == b'8001':
-            ZGT_LOG_LEVELS = ['Emergency', 'Alert', 'Critical', 'Error',
-                              'Warning', 'Notice', 'Information', 'Debug']
             struct = OrderedDict([('level', 'int'), ('info', 'rawend')])
             msg = self.decode_struct(struct, msg_data)
 
@@ -392,13 +395,13 @@ class ZiGate():
             bit_field_binary = format(int(msg['bit_field'], 16), '016b')
 
             # Length 16, 7-15 Reserved
-            server_mask_description = ['Primary trust center',
-                                       'Back up trust center',
-                                       'Primary binding cache',
-                                       'Backup binding cache',
-                                       'Primary discovery cache',
-                                       'Backup discovery cache',
-                                       'Network manager']
+            server_mask_desc = ['Primary trust center',
+                                'Back up trust center',
+                                'Primary binding cache',
+                                'Backup binding cache',
+                                'Primary discovery cache',
+                                'Backup discovery cache',
+                                'Network manager']
             # Length 8, 2-7 Reserved
             descriptor_capability_desc = ['Extended Active endpoint list',
                                           'Extended simple descriptor list']
@@ -448,7 +451,7 @@ class ZiGate():
             _LOGGER.debug('  - Mac flags         : {}'.
                           format(msg['mac_flags']))
             _LOGGER.debug('    - Binary          : {}'.
-                          format(mmac_flags_binary))
+                          format(mac_flags_binary))
             for i, description in enumerate(mac_capability_desc, 1):
                 _LOGGER.debug('    - %s : %s' %
                               (description,
@@ -717,16 +720,18 @@ class ZiGate():
             if attribute_id == b'0000':
                 if hexlify(attribute_data) == b'00':
                     self.set_device_property(device_addr, ZGT_STATE,
-                                             ZGT_STATE_CLOSED)
+                                             ZGT_STATE_ON)
                     _LOGGER.info('  * Closed/Taken off/Press')
                 else:
                     self.set_device_property(device_addr, ZGT_STATE,
-                                             ZGT_STATE_OPEN)
+                                             ZGT_STATE_OFF)
                     _LOGGER.info('  * Open/Release button')
             elif attribute_id == b'8000':
+                clicks = int(hexlify(attribute_data), 16)
+                self.set_device_property(device_addr, ZGT_STATE,
+                                             ZGT_STATE_MULTI.format(clicks))
                 _LOGGER.info('  * Multi click')
-                _LOGGER.info('  * Pressed: ',
-                             int(hexlify(attribute_data), 16), ' times')
+                _LOGGER.info('  * Pressed: {} times'.format(clicks))
         # Movement
         elif cluster_id == b'000c':  # Unknown cluster id
             _LOGGER.info('  * Rotation horizontal')
@@ -736,8 +741,8 @@ class ZiGate():
                     _LOGGER.info('  * Shaking')
                 elif hexlify(attribute_data) == b'0055':
                     _LOGGER.info('  * Rotating vertical')
-                    _LOGGER.info('  * Rotated: ',
-                                 int(hexlify(attribute_data), 16), '°')
+                    _LOGGER.info('  * Rotated: {}°'.
+                                 format(int(hexlify(attribute_data), 16)))
                 elif hexlify(attribute_data) == b'0103':
                     _LOGGER.info('  * Sliding')
         # Temperature
@@ -782,6 +787,49 @@ class ZiGate():
         _LOGGER.debug('  - Attribute data  : {}'.format(
                                                hexlify(msg['attribute_data'])))
 
+    def read_attribute(self, device_address, device_endpoint, cluster_id, attribute_id):
+        """
+        Sends read attribute command to device
+
+        :param str device_address: length 4. Example "AB01"
+        :param str device_endpoint: length 2. Example "01"
+        :param str cluster_id: length 4. Example "0000"
+        :param str attribute_id: length 4. Example "0005"
+
+        Examples:
+        ========
+        Replace device_address AB01 with your devices address.
+        All clusters and parameters are not available on every device.
+        - Get device manufacturer name: read_attribute('AB01', '01', '0000', '0004')
+        - Get device name: read_attribute('AB01', '01', '0000', '0005')
+        - Get device battery voltage: read_attribute('AB01', '01', '0001', '0006')
+        """
+        cmd = '02' + device_address + '01' + device_endpoint + cluster_id + '00 00 0000 01' + attribute_id
+        self.send_data('0100', cmd)
+
+    def read_multiple_attributes(self, device_address, device_endpoint, cluster_id, first_attribute_id, attributes):
+        """
+        Constructs read_attribute command with multiple attributes and sends it
+
+        :param str device_address: length 4. E
+        :param str device_endpoint: length 2.
+        :param str cluster_id: length 4.
+        :param str first_attribute_id: length 4
+        :param int attributes: How many attributes are requested. Max value 255
+
+        Examples:
+        ========
+        Replace device_address AB01 with your devices address.
+        All clusters and parameters are not available on every device.
+
+        - Get five first attributes from "General: Basic" cluster:
+          read_multiple_attributes('AB01', '01', '0000', '0000', 5)
+        """
+        cmd = '02' + device_address + '01' + device_endpoint + cluster_id + '00 00 0000' + '{:02x}'.format(attributes)
+        for i in range(attributes):
+            cmd += '{:04x}'.format(int(first_attribute_id, 16) + i)
+        self.send_data('0100', cmd)
+
     def list_devices(self):
         _LOGGER.debug('-- DEVICE REPORT -------------------------')
         for addr in self._devices.keys():
@@ -790,9 +838,47 @@ class ZiGate():
                 _LOGGER.info('    * {} : {}'.format(k, v))
         _LOGGER.debug('-- DEVICE REPORT - END -------------------')
 
-    def permit_join(self):
+    def get_version(self):
+        return self.send_data('0010')
+
+    def reset(self):
+        self.send_data('0011')
+
+    def erase_persistent(self):
+        self.send_data('0012')
+        # todo, erase local persitent
+
+    def is_permitting_join(self):
+        self.send_data('0014')
+
+    def permit_join(self, duration=30):
         """permit join for 30 secs (1E)"""
-        self.send_data("0049", "FFFC1E00")
+        self.send_data("0049", 'FFFC{:02X}00'.format(duration))
+
+    def set_channel(self, channel):
+        self.send_data('0021', '00000800')
+
+    def set_type(self, typ='coordinator'):
+        TYP = {'coordinator': '00',
+               'router': '01',
+               'legacy router': '02'}
+        self.send_data('0023', TYP[typ])
+
+    def start_network(self):
+        self.send_data('0024')
+
+    def start_network_scan(self):
+        self.send_data('0025')
+
+    def remove_device(self, addr):
+        self.send_data('0026', addr)
+
+    def simple_descriptor_request(self, addr, endpoint):
+        self.send_data('0043', addr+endpoint)
+
+    def active_endpoint_request(self, addr):
+        self.send_data('0045', addr)
+
 
 class DeviceEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -800,89 +886,98 @@ class DeviceEncoder(json.JSONEncoder):
             return obj.to_json()
         return json.JSONEncoder.default(self, obj)
 
+
 class Device(object):
     def __init__(self, addr):
         self.addr = addr
         self.properties = {}
-        
+
     @staticmethod
     def from_json(data):
         d = Device(data['addr'])
-        d.properties = data.get('properties',{})
+        d.properties = data.get('properties', {})
         return d
-        
+
     def to_json(self):
-        return {'addr':self.addr,'properties':self.properties}
-        
+        return {'addr': self.addr, 'properties': self.properties}
+
     def __str__(self, *args, **kwargs):
         return 'Device {}'.format(self.addr)
-    
+
     def __setitem__(self, key, value):
         self.properties[key] = value
-        
+
     def __getitem__(self, key):
         return self.properties[key]
-    
+
     def __delitem__(self, key):
         return self.properties.__delitem__(key)
-    
+
     def get(self, key, default):
         return self.properties.get(key, default)
-    
+
     def __contains__(self, key):
         return self.properties.__contains__(key)
-    
+
     def __len__(self):
         return len(self.properties)
-    
+
     def __iter__(self):
         return self.properties.__iter__()
-    
+
     def items(self):
         return self.properties.items()
-    
+
     def keys(self):
         return self.properties.keys()
 
-class Fake_connection(object):
+
+class Base_connection(object):
     def __init__(self, device, port=None):
         pass
-    
+
     def close(self):
         pass
-    
+
     def read(self):
         pass
-    
+
     def send(self, data):
-        print('Fake send :',data)
+        print('Fake send :', data)
+
 
 # Functions when used with serial & threads
-class Threaded_connection(Fake_connection):
+class Threaded_connection(Base_connection):
 
     def __init__(self, device, port='/dev/ttyUSB0'):
         import serial
         import threading
 
         self.device = device
-        self.cnx = serial.Serial(port, 115200, timeout=0)
-        self.thread = threading.Thread(target=self.read)
+        if '://' in port:
+            self.cnx = serial.serial_for_url(port)
+        else:
+            self.cnx = serial.Serial(port, 115200, timeout=1)
+        self.thread = threading.Thread(target=self.receive)
         self.thread.setDaemon(True)
         self.thread.start()
-        
-    def read(self):
+
+    def receive(self):
         while True:
-            bytesavailable = self.cnx.inWaiting()
-            if bytesavailable > 0:
-                self.device.read_data(self.cnx.read(bytesavailable))
+#             r = self.cnx.inWaiting()
+#             if r > 0:
+#                 self.device.read_data(self.cnx.read(r))
+            self.device.read_data(self.cnx.read(self.cnx.in_waiting))
 
     def send(self, data):
         self.cnx.write(data)
-        
-class Async_connection(Fake_connection):
+
+
+class Async_connection(Base_connection):
     pass
-        
-class TCP_connection(Fake_connection):
+
+
+class TCP_connection(Base_connection):
     pass
 
 # import asyncio
@@ -930,15 +1025,8 @@ class TCP_connection(Fake_connection):
 
 if __name__ == "__main__":
 
-    zigate = ZiGate()
-
-    # Thread base connection
-#     connection = Threaded_connection(zigate)
-
-    # Asyncio based connection
-    # (comment thread elements)
-    # (uncomment async imports & classes)
-    # connection = Async_connection(zigate)
-
-    zigate.send_data('0010')
-    zigate.list_devices()
+    #zigate = ZiGate('loop://?logging=debug',permit_join_onstart=False)
+    zigate =ZiGate()
+    print('Get Version')
+    zigate.get_version()
+#     zigate.list_devices()
