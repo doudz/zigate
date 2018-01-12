@@ -5,6 +5,7 @@ from collections import OrderedDict
 import logging
 import json
 import os
+import pyudev
 
 CLUSTERS = {b'0000': 'General: Basic',
             b'0001': 'General: Power Config',
@@ -38,6 +39,7 @@ CLUSTERS = {b'0000': 'General: Basic',
             b'1234': 'Xiaomi private'
             }
 
+logging.basicConfig() # to enable logging on thread
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
 
@@ -63,11 +65,12 @@ ZGT_CMD_NEW_DEVICE = 'new device'
 
 class ZiGate:
 
-    def __init__(self, port='/dev/ttyUSB0', method='thread',
+    def __init__(self, port='auto', method='thread',
                  path='~/.zigate.json', permit_join_onstart=True):
         self._buffer = b''
         self._devices = {}
         self._path = path
+        port = self._find_port(port)
         if method == 'thread':
             self.connection = Threaded_connection(self, port)
         elif method == 'async':
@@ -78,6 +81,22 @@ class ZiGate:
             raise Exception('Unknown connection method')
         erase = self.load_state()
         self.init(erase, permit_join_onstart)
+
+    def _find_port(self, port):
+        '''
+        automatically discover zigate port if needed
+        '''
+        port = port or 'auto'
+        if port == 'auto':
+            _LOGGER.debug('Searching ZiGate port')
+            context = pyudev.Context()
+            devices = list(context.list_devices(ID_USB_DRIVER='pl2303'))
+            if devices:
+                port = devices[0].device_node
+                _LOGGER.debug('ZiGate found at {}'.format(port))
+            else:
+                raise Exception('ZiGate not found')
+        return port
 
     def close(self):
         self.connection.close()
@@ -108,7 +127,6 @@ class ZiGate:
         if erase:
             self.erase_persistent()
 
-        self.send_data('0021', '00000800')
         self.set_channel(11)
 
         # set Type COORDINATOR
@@ -193,7 +211,6 @@ class ZiGate:
     # Must be called from a thread loop or asyncio event loop
     def read_data(self, data):
         """Read ZiGate output and split messages"""
-        logging.debug('read_data')
         self._buffer += data
         endpos = self._buffer.find(b'\x03')
         while endpos != -1:
@@ -207,7 +224,7 @@ class ZiGate:
             _LOGGER.debug('  # decoded : 01{}03'.
                           format(' '.join([format(x, '02x')
                                  for x in data_to_decode]).upper()))
-            _LOGGER.debug('  (@timestamp : {}'.format(strftime("%H:%M:%S")))
+            _LOGGER.debug('  @timestamp : {}'.format(strftime("%H:%M:%S")))
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
 
@@ -967,7 +984,7 @@ class Threaded_connection(Base_connection):
 #             r = self.cnx.inWaiting()
 #             if r > 0:
 #                 self.device.read_data(self.cnx.read(r))
-            self.device.read_data(self.cnx.read(self.cnx.in_waiting))
+            self.device.read_data(self.cnx.read(self.cnx.in_waiting or 1))
 
     def send(self, data):
         self.cnx.write(data)
@@ -1027,6 +1044,5 @@ if __name__ == "__main__":
 
     #zigate = ZiGate('loop://?logging=debug',permit_join_onstart=False)
     zigate =ZiGate()
-    print('Get Version')
     zigate.get_version()
-#     zigate.list_devices()
+    zigate.list_devices()
