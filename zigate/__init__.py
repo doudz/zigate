@@ -2,6 +2,6 @@
 
 from .core import ZiGate
 
-__version__ = '0.3.0dev'
+__version__ = '0.4.1'
 
 __all__ = ['__version__', 'ZiGate']
