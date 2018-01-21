@@ -62,20 +62,23 @@ ZGT_STATE_OFF = 'off-release'
 ZGT_STATE_MULTI = 'multi_{}'
 
 # commands for external use
-ZGT_CMD_NEW_DEVICE = 'new device'
-ZGT_CMD_LIST_ENDPOINTS = 'list endpoints'
+ZGT_CMD_NEW_DEVICE = 'new_device'
+ZGT_CMD_LIST_ENDPOINTS = 'list_endpoints'
 
 
 class ZiGate(object):
 
-    def __init__(self, port='auto', path='~/.zigate.json'):
+    def __init__(self, port='auto', path='~/.zigate.json',
+                 loglevel=logging.INFO):
         self._buffer = b''
         self._devices = {}
         self._path = path
         self._version = None
+        self._external_command = None
         self._last_response = {}  # response to last command type
         self._logger = logging.getLogger(self.__module__)
-        self.setLogLevel()
+        self.setLogLevel(loglevel)
+        
         self.connection = ThreadConnection(self, port)
         self.init()
 
@@ -173,7 +176,7 @@ class ZiGate(object):
         return tmp
 
     # register valuable (i.e. non technical properties) for futur use
-    def set_device_property(self, addr, property_id, property_data):
+    def set_device_property(self, addr, property_id, property_data, endpoint=None):
         """
         log property / attribute value in a device based dictionnary
         please note that short addr is not stable if device is reset
@@ -183,11 +186,20 @@ class ZiGate(object):
         str_addr = addr.decode()
         if str_addr not in self._devices:
             self._devices[str_addr] = Device(str_addr)
-        self._devices[str_addr][property_id] = property_data
+        self._devices[str_addr].set_property(property_id, property_data, endpoint)
+#         self._devices[str_addr][property_id] = property_data
 
-    # Must be overridden by external program
-    def set_external_command(self, command_type, **kwargs):
-        pass
+    def set_external_command(self, func):
+        '''
+        external func, must accept two args
+        command_type and option kwargs
+        func(command_type, **kwargs)
+        '''
+        self._external_command = func
+
+    def call_external_command(self, command_type, **kwargs):
+        if self._external_command:
+            self._external_command(command_type, **kwargs)
 
     # Must be overridden by connection
     def send_to_transport(self, data):
@@ -253,7 +265,7 @@ class ZiGate(object):
         status = self._wait_response(b'8000')
         if status:
             self._logger.debug('STATUS code to command {}:{}'.format(cmd, status.get('status')))
-        return status
+            return status.get('status')
 
     @staticmethod
     def decode_struct(struct, msg):
@@ -344,7 +356,7 @@ class ZiGate(object):
             self._logger.debug('  * MAC address    : {}'.format(msg['mac_addr']))
             self._logger.debug('  * MAC capability : {}'.
                           format(msg['mac_capability']))
-            
+
             self.active_endpoint_request(addr)
 
         # Status
@@ -582,7 +594,6 @@ class ZiGate(object):
             msg = self.decode_struct(struct, msg_data)
             endpoints = [elt.decode() for elt in msg['endpoint_list']]
             self.set_device_property(msg['addr'], 'endpoints', endpoints)
-            #self.set_device_property(msg['addr'], None, 'endpoints', endpoints)
             self.set_external_command(ZGT_CMD_LIST_ENDPOINTS, addr=msg['addr'].decode(), endpoints=endpoints)
 
             self._logger.debug('RESPONSE 8045 : Active Endpoints List')
@@ -714,6 +725,7 @@ class ZiGate(object):
                               ('end', 'rawend')])
         msg = self.decode_struct(struct, msg_data)
         device_addr = msg['short_addr']
+        endpoint = msg['endpoint']
         cluster_id = msg['cluster_id']
         attribute_id = msg['attribute_id']
         attribute_size = msg['attribute_size']
@@ -730,7 +742,7 @@ class ZiGate(object):
         if cluster_id == b'0000':
             if attribute_id == b'0005':
                 self.set_device_property(device_addr, 'type',
-                                         attribute_data.decode())
+                                         attribute_data.decode(), endpoint)
                 self._logger.info(' * type : {}'.format(attribute_data))
         # Button status
         elif cluster_id == b'0006':
@@ -738,16 +750,17 @@ class ZiGate(object):
             if attribute_id == b'0000':
                 if hexlify(attribute_data) == b'00':
                     self.set_device_property(device_addr, ZGT_STATE,
-                                             ZGT_STATE_ON)
+                                             ZGT_STATE_ON, endpoint)
                     self._logger.info('  * Closed/Taken off/Press')
                 else:
                     self.set_device_property(device_addr, ZGT_STATE,
-                                             ZGT_STATE_OFF)
+                                             ZGT_STATE_OFF, endpoint)
                     self._logger.info('  * Open/Release button')
             elif attribute_id == b'8000':
                 clicks = int(hexlify(attribute_data), 16)
                 self.set_device_property(device_addr, ZGT_STATE,
-                                             ZGT_STATE_MULTI.format(clicks))
+                                             ZGT_STATE_MULTI.format(clicks),
+                                             endpoint)
                 self._logger.info('  * Multi click')
                 self._logger.info('  * Pressed: {} times'.format(clicks))
         # Movement
@@ -766,7 +779,7 @@ class ZiGate(object):
         # Temperature
         elif cluster_id == b'0402':
             temperature = int(hexlify(attribute_data), 16) / 100
-            self.set_device_property(device_addr, ZGT_TEMPERATURE, temperature)
+            self.set_device_property(device_addr, ZGT_TEMPERATURE, temperature, endpoint)
             self._logger.info('  * Measurement: Temperature'),
             self._logger.info('  * Value: {}'.format(temperature, '°C'))
         # Atmospheric Pressure
@@ -774,18 +787,18 @@ class ZiGate(object):
             self._logger.info('  * Atmospheric pressure')
             pressure = int(hexlify(attribute_data), 16)
             if attribute_id == b'0000':
-                self.set_device_property(device_addr, ZGT_PRESSURE, pressure)
+                self.set_device_property(device_addr, ZGT_PRESSURE, pressure, endpoint)
                 self._logger.info('  * Value: {}'.format(pressure, 'mb'))
             elif attribute_id == b'0010':
                 self.set_device_property(device_addr,
-                                         ZGT_DETAILED_PRESSURE, pressure/10)
+                                         ZGT_DETAILED_PRESSURE, pressure/10, endpoint)
                 self._logger.info('  * Value: {}'.format(pressure/10, 'mb'))
             elif attribute_id == b'0014':
                 self._logger.info('  * Value unknown')
         # Humidity
         elif cluster_id == b'0405':
             humidity = int(hexlify(attribute_data), 16) / 100
-            self.set_device_property(device_addr, ZGT_HUMIDITY, humidity)
+            self.set_device_property(device_addr, ZGT_HUMIDITY, humidity, endpoint)
             self._logger.info('  * Measurement: Humidity')
             self._logger.info('  * Value: {}'.format(humidity, '%'))
         # Presence Detection
@@ -793,7 +806,7 @@ class ZiGate(object):
             # Only sent when movement is detected
             if hexlify(attribute_data) == b'01':
                 self.set_device_property(device_addr, ZGT_EVENT,
-                                         ZGT_EVENT_PRESENCE)
+                                         ZGT_EVENT_PRESENCE, endpoint)
                 self._logger.debug('   * Presence detection')
 
         self._logger.info('  FROM ADDRESS      : {}'.format(msg['short_addr']))
@@ -872,6 +885,7 @@ class ZiGate(object):
             for k, v in self._devices[addr].items():
                 self._logger.info('    * {} : {}'.format(k, v))
         self._logger.debug('-- DEVICE REPORT - END -------------------')
+        return self._devices
 
     def get_version(self):
         if not self._version:
@@ -925,6 +939,7 @@ class ZiGate(object):
     def active_endpoint_request(self, addr):
         return self.send_data('0045', addr)
 
+
 class DeviceEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Device):
@@ -935,16 +950,28 @@ class DeviceEncoder(json.JSONEncoder):
 class Device(object):
     def __init__(self, addr):
         self.addr = addr
+        self.endpoints = {}
         self.properties = {}
 
     @staticmethod
     def from_json(data):
         d = Device(data['addr'])
         d.properties = data.get('properties', {})
+        d.endpoints = data.get('endpoints', {})
         return d
 
     def to_json(self):
-        return {'addr': self.addr, 'properties': self.properties}
+        return {'addr': self.addr, 
+                'properties': self.properties,
+                'endpoints': self.endpoints}
+
+    def set_property(self, property_id, property_data, endpoint=None):
+        if endpoint is None:
+            self.properties[property_id] = property_data
+        else:
+            if endpoint not in self.endpoints:
+                self.endpoints[endpoint] = {}
+            self.endpoints[endpoint][property_id] = property_data
 
     def __str__(self, *args, **kwargs):
         return 'Device {}'.format(self.addr)
