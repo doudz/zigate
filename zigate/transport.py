@@ -14,7 +14,6 @@ import time
 
 class BaseConnection(object):
     def __init__(self, device):
-        self._bind = False
         loop = device.asyncio_loop
         start_inthread = False
         if not loop:
@@ -22,15 +21,12 @@ class BaseConnection(object):
             start_inthread = True
         self.device = device
         coro = self.init_coro(loop)
-        futur = asyncio.run_coroutine_threadsafe(coro, loop)
-        futur.add_done_callback(partial(self.bind_transport_to_device))
+        loop.run_until_complete(coro)
 
         if start_inthread:
             self.thread = threading.Thread(target=loop.run_forever)
             self.thread.setDaemon(True)
             self.thread.start()
-            while not self._bind:
-                time.sleep(0.1)
 
     def init_coro(self, loop):
         pass
@@ -55,24 +51,14 @@ class BaseConnection(object):
     def send(self, data):
         pass
 
-    def bind_transport_to_device(self, protocol_refs):
-        """
-        Bind device and protocol / transport once they are ready
-        Update the device status @ start
-        """
-        transport = protocol_refs.result()[0]
-        protocol = protocol_refs.result()[1]
-        protocol.device = self.device
-        self.send = transport.write
-        self._bind = True
-
-
 class SerialConnection(BaseConnection):
     def __init__(self, device, port=None):
         self._port = self._find_port(port)
         BaseConnection.__init__(self, device)
 
     def init_coro(self, loop):
+        ZiGateProtocol.connection = self
+        ZiGateProtocol.device = self.device
         coro = serial_asyncio.create_serial_connection(loop, ZiGateProtocol,
                                                        self._port,
                                                        baudrate=115200,
@@ -87,6 +73,8 @@ class WiFiConnection(BaseConnection):
         BaseConnection.__init__(self, device)
 
     def init_coro(self, loop):
+        ZiGateProtocol.connection = self
+        ZiGateProtocol.device = self.device
         coro = loop.create_connection(ZiGateProtocol, self._host, self._port)
         return coro
 
@@ -95,15 +83,16 @@ class ZiGateProtocol(asyncio.Protocol):
     def __init__(self):
         super().__init__()
         self.transport = None
-
+ 
     def connection_made(self, transport):
         self.transport = transport
-
+        self.connection.send = transport.write
+ 
     def data_received(self, data):
         try:
             self.device.read_data(data)
-        except:
-            logging.debug('ERROR')
-
+        except Exception as e:
+            logging.debug('ERROR {}'.format(e))
+ 
     def connection_lost(self, exc):
         pass
