@@ -5,9 +5,7 @@ from collections import OrderedDict
 import logging
 import json
 import os
-import pyudev
-import threading
-import serial
+from zigate.transport import (SerialConnection, WiFiConnection)
 
 CLUSTERS = {b'0000': 'General: Basic',
             b'0001': 'General: Power Config',
@@ -69,21 +67,22 @@ ZGT_CMD_LIST_ENDPOINTS = 'list_endpoints'
 class ZiGate(object):
 
     def __init__(self, port='auto', path='~/.zigate.json',
-                 loglevel=logging.INFO):
+                 asyncio_loop=None):
         self._buffer = b''
         self._devices = {}
         self._path = path
         self._version = None
         self._external_command = None
+        self._port = port
+        self.asyncio_loop = asyncio_loop
         self._last_response = {}  # response to last command type
         self._logger = logging.getLogger(self.__module__)
-        self.setLogLevel(loglevel)
-        
-        self.connection = ThreadConnection(self, port)
+
+        self.setup_connection()
         self.init()
 
-    def setLogLevel(self, level=logging.DEBUG):
-        self._logger.setLevel(level)
+    def setup_connection(self):
+        self.connection = SerialConnection(self, self._port)
 
     def close(self):
         try:
@@ -443,6 +442,13 @@ class ZiGate(object):
             self._logger.debug('RESPONSE 8014 : Permit join status')
             self._logger.debug('  - Status     : {}'.format(msg['status']))
 
+        # device list
+        elif msg_type == b'8015':
+            struct = OrderedDict([('status', 'bool')])
+            msg = self.decode_struct(struct, msg_data)
+            self._logger.debug('RESPONSE 8015 : Device list')
+            self._logger.debug('  - Status     : {}'.format(msg['status']))
+
         # Network joined / formed
         elif msg_type == b'8024':
             struct = OrderedDict([('status', 8), ('short_addr', 16), 
@@ -744,6 +750,14 @@ class ZiGate(object):
                 self.set_device_property(device_addr, 'type',
                                          attribute_data.decode(), endpoint)
                 self._logger.info(' * type : {}'.format(attribute_data))
+            ## proprietary Xiaomi info including battery
+            if attribute_id == b'ff01' and attribute_data != b'':
+                struct = OrderedDict([('start', 16), ('battery', 16), ('end', 'rawend')])
+                raw_info = unhexlify(self.decode_struct(struct, attribute_data)['battery'])
+                battery_info = int(hexlify(raw_info[::-1]), 16)/1000
+                self.set_device_property(device_addr, endpoint, 'battery', battery_info)
+                self._logger.info('  * Battery info')
+                self._logger.info('  * Value : {} V'.format(battery_info))
         # Button status
         elif cluster_id == b'0006':
             self._logger.info('  * General: On/Off')
@@ -781,18 +795,18 @@ class ZiGate(object):
             temperature = int(hexlify(attribute_data), 16) / 100
             self.set_device_property(device_addr, ZGT_TEMPERATURE, temperature, endpoint)
             self._logger.info('  * Measurement: Temperature'),
-            self._logger.info('  * Value: {}'.format(temperature, '°C'))
+            self._logger.info('  * Value: {} °C'.format(temperature))
         # Atmospheric Pressure
         elif cluster_id == b'0403':
             self._logger.info('  * Atmospheric pressure')
             pressure = int(hexlify(attribute_data), 16)
             if attribute_id == b'0000':
                 self.set_device_property(device_addr, ZGT_PRESSURE, pressure, endpoint)
-                self._logger.info('  * Value: {}'.format(pressure, 'mb'))
+                self._logger.info('  * Value: {} mb'.format(pressure))
             elif attribute_id == b'0010':
                 self.set_device_property(device_addr,
                                          ZGT_DETAILED_PRESSURE, pressure/10, endpoint)
-                self._logger.info('  * Value: {}'.format(pressure/10, 'mb'))
+                self._logger.info('  * Value: {} mb'.format(pressure/10))
             elif attribute_id == b'0014':
                 self._logger.info('  * Value unknown')
         # Humidity
@@ -800,7 +814,7 @@ class ZiGate(object):
             humidity = int(hexlify(attribute_data), 16) / 100
             self.set_device_property(device_addr, ZGT_HUMIDITY, humidity, endpoint)
             self._logger.info('  * Measurement: Humidity')
-            self._logger.info('  * Value: {}'.format(humidity, '%'))
+            self._logger.info('  * Value: {} %'.format(humidity))
         # Presence Detection
         elif cluster_id == b'0406':
             # Only sent when movement is detected
@@ -874,8 +888,8 @@ class ZiGate(object):
             sleep(0.1)
             t2 = time()
             if t2-t1 > 3: #no response timeout
-                self._logger.error('No response to command {}'.format(msg_type))
-                break
+                self._logger.error('No response waiting command {}'.format(msg_type))
+                raise Exception('No response waiting command {}'.format(msg_type))
         return self._last_response.get(msg_type) 
 
     def list_devices(self):
@@ -886,6 +900,10 @@ class ZiGate(object):
                 self._logger.info('    * {} : {}'.format(k, v))
         self._logger.debug('-- DEVICE REPORT - END -------------------')
         return self._devices
+
+    def get_devices_list(self):
+        self.send_data('0015')
+        self._wait_response(b'8015')
 
     def get_version(self):
         if not self._version:
@@ -938,6 +956,16 @@ class ZiGate(object):
 
     def active_endpoint_request(self, addr):
         return self.send_data('0045', addr)
+
+
+class ZiGateWiFi(ZiGate):
+    def __init__(self, host, port, path='~/.zigate.json', 
+                 asyncio_loop=None):
+        self._host = host
+        ZiGate.__init__(self, port=port, path=path, asyncio_loop=asyncio_loop)
+
+    def setup_connection(self):
+        self.connection = WiFiConnection(self, self._host, self._port)
 
 
 class DeviceEncoder(json.JSONEncoder):
@@ -1003,39 +1031,4 @@ class Device(object):
     def keys(self):
         return self.properties.keys()
 
-
-class ThreadConnection(object):
-    def __init__(self, device, port=None):
-        self.device = device
-        port = self._find_port(port)
-        self.cnx = serial.Serial(port, 115200, timeout=0.1)
-        self.thread = threading.Thread(target=self.receive)
-        self.thread.setDaemon(True)
-        self.thread.start()
-
-    def _find_port(self, port):
-        '''
-        automatically discover zigate port if needed
-        '''
-        port = port or 'auto'
-        if port == 'auto':
-            self.device._logger.debug('Searching ZiGate port')
-            context = pyudev.Context()
-            devices = list(context.list_devices(ID_USB_DRIVER='pl2303'))
-            if devices:
-                port = devices[0].device_node
-                self.device._logger.debug('ZiGate found at {}'.format(port))
-            else:
-                self.device._logger.debug('ZiGate not found')
-                raise Exception('ZiGate not found')
-        return port
-
-    def receive(self):
-        while True:
-            d = self.cnx.read(self.cnx.in_waiting or 1)
-            if d:
-                self.device.read_data(d)
-
-    def send(self, data):
-        self.cnx.write(data)
 
