@@ -9,10 +9,12 @@ import serial_asyncio
 import threading
 from functools import partial
 import logging
+import time
 
 
 class BaseConnection(object):
     def __init__(self, device):
+        self._bind = False
         loop = device.asyncio_loop
         start_inthread = False
         if not loop:
@@ -27,6 +29,8 @@ class BaseConnection(object):
             self.thread = threading.Thread(target=loop.run_forever)
             self.thread.setDaemon(True)
             self.thread.start()
+            while not self._bind:
+                time.sleep(0.1)
 
     def init_coro(self, loop):
         pass
@@ -60,6 +64,7 @@ class BaseConnection(object):
         protocol = protocol_refs.result()[1]
         protocol.device = self.device
         self.send = transport.write
+        self._bind = True
 
 
 class SerialConnection(BaseConnection):
@@ -70,7 +75,8 @@ class SerialConnection(BaseConnection):
     def init_coro(self, loop):
         coro = serial_asyncio.create_serial_connection(loop, ZiGateProtocol,
                                                        self._port,
-                                                       baudrate=115200)
+                                                       baudrate=115200,
+                                                       )
         return coro
 
 
