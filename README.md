@@ -31,12 +31,3 @@ z.list_devices()
 z.permit_join()
 ```
 
-Using asyncio loop :
-
-```
-import asyncio
-import zigate
-loop = asyncio.get_event_loop()
-z = zigate.ZiGate(asyncio_loop=loop)
-loop.run_forever()
-```
