@@ -1,9 +1,6 @@
 # zigate
 python library for zigate http://zigate.fr/
 
-inspired by https://github.com/elric91/ZiGate
-
-
 Usage :
 
 ```
