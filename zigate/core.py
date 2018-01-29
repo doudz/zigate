@@ -5,7 +5,11 @@ from collections import OrderedDict
 import logging
 import json
 import os
-from zigate.transport import (SerialConnection, WiFiConnection)
+from .transport import (ThreadSerialConnection, ThreadSocketConnection)
+from .response import (RESPONSES, Response)
+import functools
+import struct
+import threading
 
 LOGGER = logging.getLogger('zigate')
 
@@ -53,7 +57,7 @@ ZGT_TEMPERATURE = 'temperature'
 ZGT_PRESSURE = 'pressure'
 ZGT_DETAILED_PRESSURE = 'detailed pressure'
 ZGT_HUMIDITY = 'humidity'
-ZGT_LAST_SEEN = 'last seen'
+ZGT_LAST_SEEN = 'last_seen'
 ZGT_EVENT = 'event'
 ZGT_EVENT_PRESENCE = 'presence detected'
 ZGT_STATE = 'state'
@@ -65,72 +69,93 @@ ZGT_STATE_MULTI = 'multi_{}'
 ZGT_CMD_NEW_DEVICE = 'new_device'
 ZGT_CMD_DEVICE_UPDATE = 'device_update'
 ZGT_CMD_LIST_ENDPOINTS = 'list_endpoints'
+ZGT_CMD_REMOVE_DEVICE = 'remove_device'
+
+BATTERY = 0
+AC_POWER = 1
+
+TYPE_COORDINATOR = '00'
+TYPE_ROUTER = '01'
+TYPE_LEGACY_ROUTER = '02'
+
+AUTO_SAVE = 5*60  # 5 minutes
 
 
 class ZiGate(object):
 
     def __init__(self, port='auto', path='~/.zigate.json',
                  callback=None,
-                 asyncio_loop=None):
+                 auto_start=True,
+                 auto_save=True):
         self._buffer = b''
         self._devices = {}
         self._path = path
         self._version = None
         self._callback = callback
         self._port = port
-        self.asyncio_loop = asyncio_loop
         self._last_response = {}  # response to last command type
-        LOGGER = logging.getLogger(self.__module__)
-
+        self._last_status = {} # status to last command type
+        self._save_lock = threading.Lock()
         self.setup_connection()
-        self.init()
+        if auto_start:
+            self.init()
+            if auto_save:
+                self.start_auto_save()
 
     def setup_connection(self):
-        self.connection = SerialConnection(self, self._port)
+#         self.connection = SerialConnection(self, self._port)
+        self.connection = ThreadSerialConnection(self, self._port)
 
     def close(self):
         try:
+            self.save_state()
             self.connection.close()
-        except:
-            pass
-        self.save_state()
+        except Exception as e:
+            logging.error('Exception during closing {}'.format(e))
 
     def save_state(self, path=None):
+        self._save_lock.acquire()
         path = path or self._path
         self._path = os.path.expanduser(path)
         with open(self._path, 'w') as fp:
             json.dump(list(self._devices.values()), fp, cls=DeviceEncoder)
+        self._save_lock.release()
 
     def load_state(self, path=None):
         path = path or self._path
         self._path = os.path.expanduser(path)
         if os.path.exists(self._path):
             with open(self._path) as fp:
-                devices = json.load(fp)
+                devices = json.load(fp, object_pairs_hook=OrderedDict)
             for data in devices:
                 device = Device.from_json(data)
                 self._devices[device.addr] = device
             return True
         return False
 
+    def start_auto_save(self):
+        logging.debug('Auto saving {}'.format(self._path))
+        self.save_state()
+        threading.Timer(AUTO_SAVE, self.start_auto_save).start()
+
     def __del__(self):
         self.close()
 
     def init(self):
-        erase = not self.load_state()
-        if erase:
-            self.erase_persistent()
+        self.load_state()
+#         erase = not self.load_state()
+#         if erase:
+#             self.erase_persistent()
 
-        self.set_channel(11)
+        self.set_channel()
 
         # set Type COORDINATOR
-        self.set_type('coordinator')
+        self.set_type(TYPE_COORDINATOR)
 
         # start network
         self.start_network()
 
-    @staticmethod
-    def zigate_encode(data):
+    def zigate_encode(self, data):
         """encode all characters < 0x02 to avoid """
         encoded = []
         for x in data:
@@ -141,6 +166,19 @@ class ZiGate(object):
                 encoded.append(x)
 
         return encoded
+
+    def zigate_decode2(self, data):
+        flip = False
+        decoded = bytearray()
+        for b in data:
+            if flip:
+                flip = False
+                decoded.append(b ^ 0x10)
+            elif b == 0x02:
+                flip = True
+            else:
+                decoded.append(b)
+        return decoded
 
     @staticmethod
     def zigate_decode(data):
@@ -164,6 +202,16 @@ class ZiGate(object):
                 decoded_data += bytes([x])
 
         return decoded_data
+
+    def checksum2(self, *args):
+        chcksum = 0
+        for arg in args:
+            if isinstance(arg, int):
+                chcksum ^= arg
+                continue
+            for x in arg:
+                chcksum ^= x
+        return chcksum
 
     @staticmethod
     def checksum(cmd, length, data):
@@ -206,39 +254,46 @@ class ZiGate(object):
         self._callback = func
 
     def call_callback(self, command_type, **kwargs):
+        logging.debug('CALLBACK {} {}'.format(command_type,kwargs))
         if self._callback:
             self._callback(command_type, **kwargs)
 
-    # Must be overridden by connection
     def send_to_transport(self, data):
+        if not self.connection.is_connected():
+            raise Exception('Not connected to zigate')
         self.connection.send(data)
 
-    # Must be called from a thread loop or asyncio event loop
     def read_data(self, data):
-        """Read ZiGate output and split messages"""
+        '''
+        Read ZiGate output and split messages
+        '''
         self._buffer += data
         endpos = self._buffer.find(b'\x03')
         while endpos != -1:
             startpos = self._buffer.find(b'\x01')
             # stripping starting 0x01 & ending 0x03
-            data_to_decode = \
-                self.zigate_decode(self._buffer[startpos + 1:endpos])
-            self.decode_data(data_to_decode)
-            LOGGER.debug('  # encoded : {}'.
-                          format(hexlify(self._buffer[startpos:endpos + 1])))
-            LOGGER.debug('  # decoded : 01{}03'.
-                          format(' '.join([format(x, '02x')
-                                 for x in data_to_decode]).upper()))
-            LOGGER.debug('  @timestamp : {}'.format(strftime("%H:%M:%S")))
+            raw_message = self._buffer[startpos + 1:endpos]
+            self.decode_data2(raw_message)
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
 
-    # Calls "transport_write" which must be defined
-    # in a serial connection or pyserial_asyncio transport
     def send_data(self, cmd, data=""):
-        """send data through ZiGate"""
-        byte_cmd = bytes.fromhex(cmd)
-        byte_data = bytes.fromhex(data)
+        '''
+        send data through ZiGate
+        '''
+        self._last_status[cmd] = None
+        if isinstance(cmd, int):
+            byte_cmd = struct.pack('!H', cmd)
+        elif isinstance(data, str):
+            byte_cmd = bytes.fromhex(cmd)
+        else:
+            byte_cmd = cmd
+        if isinstance(data, str):
+            byte_data = bytes.fromhex(data)
+        else:
+            byte_data = data
+        assert type(byte_cmd) == bytes
+        assert type(byte_data) == bytes
         length = int(len(data)/2)
         byte_length = length.to_bytes(2, 'big')
 
@@ -263,23 +318,20 @@ class ZiGate(object):
         std_output = b''.join([bytes([x]) for x in std_msg])
         encoded_output = b''.join([bytes([x]) for x in enc_msg])
         LOGGER.debug('--------------------------------------')
-        LOGGER.debug('REQUEST      : {} {}'.format(cmd, data))
+        LOGGER.debug('REQUEST      : 0x{:04x} {}'.format(cmd, data))
         LOGGER.debug('  # standard : {}'.format(' '.join([format(x, '02x') for x in std_output]).upper()))
         LOGGER.debug('  # encoded  : {}'.format(hexlify(encoded_output)))
-        LOGGER.debug('(timestamp : {})'.format(strftime("%H:%M:%S")))
         LOGGER.debug('--------------------------------------')
 
         self.send_to_transport(encoded_output)
-        status = self._wait_response(b'8000')
-        if status:
-            LOGGER.debug('STATUS code to command {}:{}'.format(cmd, status.get('status')))
-            return status.get('status')
+        status = self._wait_status(cmd)
+        return status
 
     @staticmethod
-    def decode_struct(struct, msg):
+    def decode_struct(strct, msg):
         output = OrderedDict()
-        while struct:
-            key, elt_type = struct.popitem(last=False)
+        while strct:
+            key, elt_type = strct.popitem(last=False)
             # uint_8, 16, 32, 64 ... or predefined byte length
             if type(elt_type) == int:
                 length = int(elt_type / 8)
@@ -308,7 +360,7 @@ class ZiGate(object):
                 output[key] = length
                 msg = msg[index:]
                 # let's get the next element
-                key, elt_type = struct.popitem(last=False)
+                key, elt_type = strct.popitem(last=False)
                 if elt_type == 'raw':
                     output[key] = msg[:length]
                     msg = msg[length:]
@@ -323,7 +375,7 @@ class ZiGate(object):
                 msg = msg[1:]
                 # let's get the next element
                 # (list of elements referenced by the count)
-                key, elt_type = struct.popitem(last=False)
+                key, elt_type = strct.popitem(last=False)
                 output[key] = []
                 length = int(elt_type / 8)
                 for i in range(count):
@@ -338,6 +390,82 @@ class ZiGate(object):
 
         return output
 
+    def decode_data2(self, raw_message):
+        decoded = self.zigate_decode2(raw_message)
+        msg_type, length, checksum, value, rssi = \
+            struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
+        if length != len(value)+1:  # add rssi length
+            LOGGER.error('Bad length {} != {} : {}'.format(length,
+                                                           len(value),
+                                                           value))
+            return
+        computed_checksum = self.checksum2(decoded[:4], rssi, value)
+        if checksum != computed_checksum:
+            LOGGER.error('Bad checksum {} != {}'.format(checksum,
+                                                        computed_checksum))
+            return
+        response = RESPONSES.get(msg_type, Response)(value, rssi)
+        LOGGER.debug(response)
+        self._last_response[msg_type] = response
+        self.interpret_response(response)
+
+    def interpret_response(self, response):
+        if response.msg == 0x8000:
+            if response['status'] != 0:
+                logging.error('Command {} failed {} : {}'.format(response['packet_type'],
+                                                                 response.status_text(),
+                                                                 response['error']))
+            self._last_status[response['packet_type']] = response['status']
+        elif response.msg == 0x8015:
+            keys = set(self._devices.keys())
+            known_addr = set([d['addr'] for d in response['devices']])
+            to_delete = keys.difference(known_addr)
+            for addr in to_delete:
+                self._remove_device(addr)
+            for d in response['devices']:
+                device = Device(dict(d))
+                self._set_device(device)
+        elif response.msg == 0x8048:  # leave
+            d = self.get_device_from_ieee(response['ieee'])
+            if d:
+                self._remove_device(d.addr)
+        elif response.msg in (0x8100, 0x8102, 0x8110):
+            device = self._get_device(response['addr'])
+            data = response.cleaned_data()
+            device.update_endpoint(response['endpoint'], data)
+            self.call_callback(ZGT_CMD_DEVICE_UPDATE, device=device, change=data)
+
+    def _get_device(self, addr):
+        '''
+        get device from addr
+        create it if necessary
+        '''
+        d = self.get_device_from_addr(addr)
+        if not d:
+            d = Device(addr)
+            self._set_device(d)
+        return d
+
+    def _remove_device(self, addr):
+        '''
+        remove device from addr
+        '''
+        del self._devices[addr]
+        self.call_callback(ZGT_CMD_REMOVE_DEVICE, addr=addr)
+
+    def _set_device(self, device):
+        '''
+        add/update device to cache list
+        '''
+        assert type(device) == Device
+        if device.addr in self._devices:
+            self._devices[device.addr].update(device)
+            self.call_callback(ZGT_CMD_DEVICE_UPDATE,
+                               device=self._devices[device.addr])
+        else:
+            self._devices[device.addr] = device
+            self.call_callback(ZGT_CMD_NEW_DEVICE, device=device)
+            
     def decode_data(self, data):
         """Interpret responses attributes"""
         msg_data = data[5:]
@@ -350,9 +478,9 @@ class ZiGate(object):
         LOGGER.debug('--------------------------------------')
         # Device Announce
         if msg_type == b'004d':
-            struct = OrderedDict([('short_addr', 16), ('mac_addr', 64),
+            strct = OrderedDict([('short_addr', 16), ('mac_addr', 64),
                                   ('mac_capability', 'rawend')])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
             addr = msg['short_addr'].decode()
             self.call_callback(ZGT_CMD_NEW_DEVICE,
                                       addr=addr)
@@ -365,13 +493,14 @@ class ZiGate(object):
             LOGGER.debug('  * MAC capability : {}'.
                           format(msg['mac_capability']))
 
+            time.sleep(1)
             self.active_endpoint_request(addr)
 
         # Status
         elif msg_type == b'8000':
-            struct = OrderedDict([('status', 'int'), ('sequence', 8),
+            strct = OrderedDict([('status', 'int'), ('sequence', 8),
                                   ('packet_type', 16), ('info', 'rawend')])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             status_text = self.get_status_text(msg['status'])
 
@@ -381,11 +510,12 @@ class ZiGate(object):
             LOGGER.debug('  - Response to command : {}'.format(msg['packet_type']))
             if hexlify(msg['info']) != b'00':
                 LOGGER.debug('  - Additional msg: ', msg['info'])
+#             self._last_status[struct.unpack('!H',unhexlify(msg['packet_type']))[0]] = msg['status']
 
         # Default Response
         elif msg_type == b'8001':
-            struct = OrderedDict([('level', 'int'), ('info', 'rawend')])
-            msg = self.decode_struct(struct, msg_data)
+            strct = OrderedDict([('level', 'int'), ('info', 'rawend')])
+            msg = self.decode_struct(strct, msg_data)
 
             LOGGER.debug('RESPONSE 8001 : Log Message')
             LOGGER.debug('  - Log Level : {}'.format(ZGT_LOG_LEVELS[msg['level']]))
@@ -393,9 +523,9 @@ class ZiGate(object):
 
         # Object Clusters list
         elif msg_type == b'8003':
-            struct = OrderedDict([('endpoint', 8), ('profile_id', 16),
+            strct = OrderedDict([('endpoint', 8), ('profile_id', 16),
                                   ('cluster_list', 16)])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             LOGGER.debug('RESPONSE 8003 : Object Clusters list')
             LOGGER.debug('  - Endpoint  : {}'.format(msg['endpoint']))
@@ -404,9 +534,9 @@ class ZiGate(object):
 
         # Object attributes list
         elif msg_type == b'8004':
-            struct = OrderedDict([('endpoint', 8), ('profile_id', 16),
+            strct = OrderedDict([('endpoint', 8), ('profile_id', 16),
                                   ('cluster_id', 16), ('attribute',16)])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             LOGGER.debug('RESPONSE 8004 : Object attributes list')
             LOGGER.debug('  - Endpoint  : {}'.format(msg['endpoint']))
@@ -416,9 +546,9 @@ class ZiGate(object):
 
         # Object Commands list
         elif msg_type == b'8005':
-            struct = OrderedDict([('endpoint', 8), ('profile_id', 16),
+            strct = OrderedDict([('endpoint', 8), ('profile_id', 16),
                                   ('cluster_id', 16), ('command',8)])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             LOGGER.debug('RESPONSE 8005 : Object Commands list')
             LOGGER.debug('  - Endpoint  : {}'.format(msg['endpoint']))
@@ -428,8 +558,8 @@ class ZiGate(object):
 
         # “Factory New” Restart
         elif msg_type == b'8007':
-            struct = OrderedDict([('status', 'int')])
-            msg = self.decode_struct(struct, msg_data)
+            strct = OrderedDict([('status', 'int')])
+            msg = self.decode_struct(strct, msg_data)
             status_codes = {0:'STARTUP', 2:'NFN_START', 6:'RUNNING'}
             LOGGER.debug('RESPONSE 8007 : “Factory New” Restart')
             LOGGER.debug('  - Status  : {} - {}'.format(msg['status'],
@@ -438,31 +568,31 @@ class ZiGate(object):
 
         # Version List
         elif msg_type == b'8010':
-            struct = OrderedDict([('major', 'int16'), ('installer', 'int16')])
-            msg = self.decode_struct(struct, msg_data)
+            strct = OrderedDict([('major', 'int16'), ('installer', 'int16')])
+            msg = self.decode_struct(strct, msg_data)
             LOGGER.debug('RESPONSE 8010 : Version List')
             LOGGER.debug('  - Major version     : {}'.format(msg['major']))
             LOGGER.debug('  - Installer version : {}'.format(msg['installer']))
 
         # permt join status
         elif msg_type == b'8014':
-            struct = OrderedDict([('status', 'bool')])
-            msg = self.decode_struct(struct, msg_data)
+            strct = OrderedDict([('status', 'bool')])
+            msg = self.decode_struct(strct, msg_data)
             LOGGER.debug('RESPONSE 8014 : Permit join status')
             LOGGER.debug('  - Status     : {}'.format(msg['status']))
 
         # device list
         elif msg_type == b'8015':
-            struct = OrderedDict([('status', 'bool')])
-            msg = self.decode_struct(struct, msg_data)
+            strct = OrderedDict([('length', 'int8'),('device_list', 13),])
+            msg = self.decode_struct(strct, msg_data)
             LOGGER.debug('RESPONSE 8015 : Device list')
-            LOGGER.debug('  - Status     : {}'.format(msg['status']))
+            LOGGER.debug('  - Nb devices     : {}'.format(msg['length']))
 
         # Network joined / formed
         elif msg_type == b'8024':
-            struct = OrderedDict([('status', 8), ('short_addr', 16), 
+            strct = OrderedDict([('status', 8), ('short_addr', 16), 
                                   ('mac_addr', 64), ('channel', 'int')])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
             LOGGER.debug('RESPONSE 8024 : Network joined / formed')
             LOGGER.debug('  - Status     : {}'.format(msg['status']))
             LOGGER.debug('  - Short address   : {}'.format(msg['short_addr']))
@@ -471,14 +601,14 @@ class ZiGate(object):
 
         # Node Descriptor
         elif msg_type == b'8042':
-            struct = OrderedDict([('sequence', 8), ('status', 8), ('addr', 16),
+            strct = OrderedDict([('sequence', 8), ('status', 8), ('addr', 16),
                                   ('manufacturer_code', 16),
                                   ('max_rx', 16), ('max_tx', 16),
                                   ('server_mask', 16),
                                   ('descriptor_capability', 8),
                                   ('mac_flags', 8), ('max_buffer_size', 16),
                                   ('bit_field', 16)])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             server_mask_binary = format(int(msg['server_mask'], 16), '016b')
             descriptor_capability_binary = format(int(msg['descriptor_capability'], 16), '08b')
@@ -541,14 +671,14 @@ class ZiGate(object):
 
         # Cluster List
         elif msg_type == b'8043':
-            struct = OrderedDict([('sequence', 8), ('status', 8), ('addr', 16),
+            strct = OrderedDict([('sequence', 8), ('status', 8), ('addr', 16),
                                   ('length', 8), ('endpoint', 8),
                                   ('profile', 16), ('device_id', 16),
                                   ('bit', 8), ('in_cluster_count', 'count'),
                                   ('in_cluster_list', 16),
                                   ('out_cluster_count', 'count'),
                                   ('out_cluster_list', 16)])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             LOGGER.debug('RESPONSE 8043 : Cluster List')
             LOGGER.debug('  - Sequence          : {}'.format(msg['sequence']))
@@ -567,9 +697,9 @@ class ZiGate(object):
 
         # Power Descriptor
         elif msg_type == b'8044':
-            struct = OrderedDict([('sequence', 8), ('status', 8),
+            strct = OrderedDict([('sequence', 8), ('status', 8),
                                  ('bit_field', 16), ])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             bit_field_binary = format(int(msg['bit_field'], 16), '016b')
 
@@ -603,10 +733,10 @@ class ZiGate(object):
 
         # Endpoint List
         elif msg_type == b'8045':
-            struct = OrderedDict([('sequence', 8), ('status', 8), ('addr', 16),
+            strct = OrderedDict([('sequence', 8), ('status', 8), ('addr', 16),
                                   ('endpoint_count', 'count'),
                                   ('endpoint_list', 8)])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
             endpoints = [elt.decode() for elt in msg['endpoint_list']]
             self.set_device_property(msg['addr'], 'endpoints', endpoints)
             self.call_callback(ZGT_CMD_LIST_ENDPOINTS, addr=msg['addr'].decode(), endpoints=endpoints)
@@ -622,8 +752,8 @@ class ZiGate(object):
 
         # Leave indication
         elif msg_type == b'8048':
-            struct = OrderedDict([('extended_addr', 64), ('rejoin_status', 8)])
-            msg = self.decode_struct(struct, msg_data)
+            strct = OrderedDict([('extended_addr', 64), ('rejoin_status', 8)])
+            msg = self.decode_struct(strct, msg_data)
 
             LOGGER.debug('RESPONSE 8048 : Leave indication')
             LOGGER.debug('  - From address   : {}'.format(msg['extended_addr']))
@@ -631,10 +761,10 @@ class ZiGate(object):
 
         # Default Response
         elif msg_type == b'8101':
-            struct = OrderedDict([('sequence', 8), ('endpoint', 8),
+            strct = OrderedDict([('sequence', 8), ('endpoint', 8),
                                  ('cluster', 16), ('command_id', 8),
                                  ('status', 8)])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             LOGGER.debug('RESPONSE 8101 : Default Response')
             LOGGER.debug('  - Sequence       : {}'.format(msg['sequence']))
@@ -653,12 +783,12 @@ class ZiGate(object):
 
         # Zone status change
         elif msg_type == b'8401':
-            struct = OrderedDict([('sequence', 8), ('endpoint', 8),
+            strct = OrderedDict([('sequence', 8), ('endpoint', 8),
                                  ('cluster', 16), ('src_address_mode', 8),
                                  ('src_address', 16), ('zone_status', 16),
                                  ('extended_status', 16), ('zone_id', 8),
                                  ('delay_count', 'count'), ('delay_list', 16)])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             zone_status_binary = format(int(msg['zone_status'], 16), '016b')
 
@@ -702,10 +832,10 @@ class ZiGate(object):
 
         # APS Data Confirm Fail
         elif msg_type == b'8702':
-            struct = OrderedDict([('status', 8), ('src_endpoint', 8),
+            strct = OrderedDict([('status', 8), ('src_endpoint', 8),
                                  ('dst_endpoint', 8), ('dst_address_mode', 8),
                                   ('dst_address', 64), ('sequence', 8)])
-            msg = self.decode_struct(struct, msg_data)
+            msg = self.decode_struct(strct, msg_data)
 
             LOGGER.debug('RESPONSE 8702 : APS Data Confirm Fail')
             LOGGER.debug('  - Status         : {}'.format(msg['status']))
@@ -728,7 +858,7 @@ class ZiGate(object):
         self._last_response[msg_type] = msg
 
     def interpret_attributes(self, msg_data):
-        struct = OrderedDict([('sequence', 8),
+        strct = OrderedDict([('sequence', 8),
                               ('short_addr', 16),
                               ('endpoint', 8),
                               ('cluster_id', 16),
@@ -738,7 +868,7 @@ class ZiGate(object):
                               ('attribute_size', 'len16'),
                               ('attribute_data', 'raw'),
                               ('end', 'rawend')])
-        msg = self.decode_struct(struct, msg_data)
+        msg = self.decode_struct(strct, msg_data)
         device_addr = msg['short_addr']
         endpoint = msg['endpoint'].decode()
         cluster_id = msg['cluster_id']
@@ -761,8 +891,8 @@ class ZiGate(object):
                 LOGGER.info(' * type : {}'.format(attribute_data))
             ## proprietary Xiaomi info including battery
             if attribute_id == b'ff01' and attribute_data != b'':
-                struct = OrderedDict([('start', 16), ('battery', 16), ('end', 'rawend')])
-                raw_info = unhexlify(self.decode_struct(struct, attribute_data)['battery'])
+                strct = OrderedDict([('start', 16), ('battery', 16), ('end', 'rawend')])
+                raw_info = unhexlify(self.decode_struct(strct, attribute_data)['battery'])
                 battery_info = int(hexlify(raw_info[::-1]), 16)/1000
                 self.set_device_property(device_addr, endpoint, 'battery', battery_info)
                 LOGGER.info('  * Battery info')
@@ -859,11 +989,11 @@ class ZiGate(object):
         - Get device battery voltage: read_attribute('AB01', '01', '0001', '0006')
         """
         cmd = '02' + device_address + '01' + device_endpoint + cluster_id + '00 00 0000 01' + attribute_id
-        self.send_data('0100', cmd)
+        self.send_data(0x0100, cmd)
 
     def read_multiple_attributes(self, device_address, device_endpoint, cluster_id, first_attribute_id, attributes):
         """
-        Constructs read_attribute command with multiple attributes and sends it
+        Constrcts read_attribute command with multiple attributes and sends it
 
         :param str device_address: length 4. E
         :param str device_endpoint: length 2.
@@ -882,7 +1012,7 @@ class ZiGate(object):
         cmd = '02' + device_address + '01' + device_endpoint + cluster_id + '00 00 0000' + '{:02x}'.format(attributes)
         for i in range(attributes):
             cmd += '{:04x}'.format(int(first_attribute_id, 16) + i)
-        self.send_data('0100', cmd)
+        self.send_data(0x0100, cmd)
 
     def get_status_text(self, status_code):
         return STATUS_CODES.get(status_code,
@@ -892,79 +1022,115 @@ class ZiGate(object):
         '''
         wait for next msg_type response
         '''
+        LOGGER.debug('Waiting for message 0x{:04x}'.format(msg_type))
         t1 = time()
         while self._last_response.get(msg_type) is None:
-            sleep(0.1)
+            sleep(0.01)
             t2 = time()
             if t2-t1 > 3: #no response timeout
-                LOGGER.error('No response waiting command {}'.format(msg_type))
-                raise Exception('No response waiting command {}'.format(msg_type))
-        return self._last_response.get(msg_type) 
+                LOGGER.error('No response waiting command 0x{:04x}'.format(msg_type))
+                return
+        LOGGER.debug('Got message 0x{:04x}'.format(msg_type))
+        return self._last_response.get(msg_type)
+
+    def _wait_status(self, cmd):
+        '''
+        wait for status of cmd
+        '''
+        LOGGER.debug('Waiting for status message for command 0x{:04x}'.format(cmd))
+        t1 = time()
+        while self._last_status.get(cmd) is None:
+            sleep(0.01)
+            t2 = time()
+            if t2-t1 > 3: #no response timeout
+                LOGGER.error('No response after command 0x{:04x}'.format(cmd))
+                return
+        LOGGER.debug('STATUS code to command 0x{:04x}:{}'.format(cmd, self._last_status.get(cmd)))
+        return self._last_status.get(cmd)
 
     def list_devices(self):
         LOGGER.debug('-- DEVICE REPORT -------------------------')
         for addr in self._devices.keys():
             LOGGER.info('- addr : {}'.format(addr))
-            for k, v in self._devices[addr].items():
+            for k, v in self._devices[addr].properties.items():
                 LOGGER.info('    * {} : {}'.format(k, v))
         LOGGER.debug('-- DEVICE REPORT - END -------------------')
-        return self._devices
+        return list(self._devices.values())
+
+    @property
+    def devices(self):
+        return list(self._devices.values())
+
+    def get_device_from_addr(self, addr):
+        return self._devices.get(addr)
+
+    def get_device_from_ieee(self, ieee):
+        for d in self._devices.values():
+            if d['ieee'] == ieee:
+                return d
 
     def get_devices_list(self):
-        self.send_data('0015')
-        self._wait_response(b'8015')
+        self.send_data(0x0015)
+#         self._wait_response(b'8015')
 
-    def get_version(self):
-        if not self._version:
-            self.send_data('0010')
-            self._version = self._wait_response(b'8010')
+    def get_version(self, refresh=False):
+        if not self._version or refresh:
+            self.send_data(0x0010)
+            self._version = self._wait_response(0x8010).data
         return self._version
 
-    def get_version_text(self):
-        return '{0[major]}.{0[installer]}'.format(self.get_version())
+    def get_version_text(self, refresh=False):
+        v = '{0[major]}.{0[installer]}'.format(self.get_version(refresh))
+        if v == '1.778':
+            v = '{} (3.0a)'.format(v)
+        elif v == '1.779':
+            v = '{} (3.0b)'.format(v)
+        return v
 
     def reset(self):
-        return self.send_data('0011')
+        return self.send_data(0x0011)
 
     def erase_persistent(self):
-        return self.send_data('0012')
+        return self.send_data(0x0012)
         # todo, erase local persitent
 
     def is_permitting_join(self):
-        self.send_data('0014')
-        r = self._wait_response(b'8014')
+        self.send_data(0x0014)
+        r = self._wait_response(0x8014)
         if r:
             r = r.get('status', False)
         return r
 
     def permit_join(self, duration=30):
         """permit join for 30 secs (1E)"""
-        return self.send_data("0049", 'FFFC{:02X}00'.format(duration))
+        return self.send_data(0x0049, 'FFFC{:02X}00'.format(duration))
 
-    def set_channel(self, channel):
-        return self.send_data('0021', '00000800') #channel 11
+    def set_channel(self, channels=None):
+        channels = channels or [11, 14, 15, 19, 20, 24, 25]
+        if not isinstance(channels, list):
+            channels = [channels]
+        mask = functools.reduce(lambda acc, x: acc ^ 2 ** x, channels, 0)
+        mask = '{:08X}'.format(mask)
+        return self.send_data(0x0021, mask)
 
-    def set_type(self, typ='coordinator'):
-        TYP = {'coordinator': '00',
-               'router': '01',
-               'legacy router': '02'}
-        self.send_data('0023', TYP[typ])
+    def set_type(self, typ=TYPE_COORDINATOR):
+        self.send_data(0x0023, typ)
 
     def start_network(self):
-        return self.send_data('0024')
+        return self.send_data(0x0024)
 #         return self._wait_response(b'8024')
 
     def start_network_scan(self):
-        return self.send_data('0025')
+        return self.send_data(0x0025)
 
     def remove_device(self, addr):
-        return self.send_data('0026', addr)
+        return self.send_data(0x0026, addr)
 
     def simple_descriptor_request(self, addr, endpoint):
-        return self.send_data('0043', addr+endpoint)
+        return self.send_data(0x0043, addr+endpoint)
 
     def active_endpoint_request(self, addr):
-        return self.send_data('0045', addr)
+        return self.send_data(0x0045, addr)
 
 
 class ZiGateWiFi(ZiGate):
@@ -976,7 +1142,7 @@ class ZiGateWiFi(ZiGate):
                         asyncio_loop=asyncio_loop)
 
     def setup_connection(self):
-        self.connection = WiFiConnection(self, self._host, self._port)
+        self.connection = ThreadSocketConnection(self, self._host, self._port)
 
 
 class DeviceEncoder(json.JSONEncoder):
@@ -989,10 +1155,30 @@ class DeviceEncoder(json.JSONEncoder):
 
 
 class Device(object):
-    def __init__(self, addr):
-        self.addr = addr
-        self.endpoints = {}
-        self.properties = {}
+    def __init__(self, properties, endpoints={}):
+        self.properties = properties
+        self.endpoints = endpoints
+
+    def update(self, device):
+        '''
+        update from other device
+        '''
+        self.properties.update(device.properties)
+        self.endpoints.update(device.endpoints)
+        self.properties['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
+
+    def update_endpoint(self, endpoint, data):
+        '''
+        update endpoint from dict
+        '''
+        if endpoint not in self.endpoints:
+            self.endpoints[endpoint] = {}
+        self.endpoints[endpoint].update(data)
+        self.properties['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
+
+    @property
+    def addr(self):
+        return self.properties['addr']
 
     @staticmethod
     def from_json(data):
@@ -1002,7 +1188,7 @@ class Device(object):
         return d
 
     def to_json(self):
-        return {'addr': self.addr, 
+        return {'addr': self.addr,
                 'properties': self.properties,
                 'endpoints': self.endpoints}
 
@@ -1014,8 +1200,11 @@ class Device(object):
                 self.endpoints[endpoint] = {}
             self.endpoints[endpoint][property_id] = property_data
 
-    def __str__(self, *args, **kwargs):
+    def __str__(self):
         return 'Device {}'.format(self.addr)
+
+    def __repr__(self):
+        return self.__str__()
 
     def __setitem__(self, key, value):
         self.properties[key] = value
@@ -1044,4 +1233,5 @@ class Device(object):
     def keys(self):
         return self.properties.keys()
 
-
+    def __getattr__(self, attr):
+        return self.properties[attr]
