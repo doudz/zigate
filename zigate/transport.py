@@ -15,20 +15,25 @@ LOGGER = logging.getLogger('zigate')
 
 class ThreadSerialConnection(object):
     def __init__(self, device, port=None):
-        self._port = self._find_port(port)
+        self._port = port
         self.device = device
         self.queue = queue.Queue()
         self._running = True
-        self.serial = serial.Serial(self._port, 115200)
+        self.serial = self.initSerial()
         self.thread = threading.Thread(target=self.listen)
         self.thread.setDaemon(True)
         self.thread.start()
+
+    def initSerial(self):
+        self._port = self._find_port(self._port)
+        return serial.Serial(self._port, 115200)
 
     def listen(self):
         while self._running:
             data = self.serial.read(self.serial.in_waiting)
             if data:
-                self.device.read_data(data)
+                threading.Thread(target=self.device.read_data,args=(data,)).start()
+#                 self.device.read_data(data)
             while not self.queue.empty():
                 data = self.queue.get()
                 self.serial.write(data)
@@ -67,12 +72,8 @@ class ThreadSerialConnection(object):
 class ThreadSocketConnection(ThreadSerialConnection):
     def __init__(self, device, host, port=9999):
         self._host = host
-        self._port = port
-        self.device = device
-        self.queue = queue.Queue()
-        self._running = True
-        self.serial = serial.Serial('socket://{}:{}'.format(self._host, self._port))
-        self.thread = threading.Thread(target=self.listen)
-        self.thread.setDaemon(True)
-        self.thread.start()
+        ThreadSerialConnection.__init__(self, device, port)
+
+    def initSerial(self):
+        return serial.Serial('socket://{}:{}'.format(self._host, self._port))
 
