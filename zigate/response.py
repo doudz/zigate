@@ -210,12 +210,13 @@ class R8100(Response):
         return cleaned data
         '''
         fmt = '!'
-        fmt += DATA_TYPE.get(self.data['data_type'], 's')
+        fmt += '{}{}'.format(self.data['size'],DATA_TYPE.get(self.data['data_type'], 's'))
+        print(fmt,self.data)
         d = {'endpoint': self.data['endpoint'],
              'cluster': self.data['cluster'],
              'attribute': self.data['attribute'],
              'status': self.data['status'],
-             'data': struct.unpack(fmt, self.data['data'])
+             'data': struct.unpack(fmt, self.data['data'])[0]
              }
         return d
 
@@ -277,7 +278,7 @@ class R8048(Response):
 class R004D(Response):
     msg = 0x004D
     type = 'Device announce'
-    s = OrderedDict([('short', 'H'),
+    s = OrderedDict([('addr', 'H'),
                      ('ieee', 'Q'),
                      ('mac_capability', 'rawend')
                      ])

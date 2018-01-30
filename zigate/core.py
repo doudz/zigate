@@ -94,19 +94,23 @@ class ZiGate(object):
         self._callback = callback
         self._port = port
         self._last_response = {}  # response to last command type
-        self._last_status = {} # status to last command type
+        self._last_status = {}  # status to last command type
         self._save_lock = threading.Lock()
         self.setup_connection()
+        self._autosavetimer = None
+        self._closing = False
         if auto_start:
             self.init()
             if auto_save:
                 self.start_auto_save()
 
     def setup_connection(self):
-#         self.connection = SerialConnection(self, self._port)
         self.connection = ThreadSerialConnection(self, self._port)
 
     def close(self):
+        self._closing = True
+        if self._autosavetimer:
+            self._autosavetimer.cancel()
         try:
             self.save_state()
             self.connection.close()
@@ -136,7 +140,9 @@ class ZiGate(object):
     def start_auto_save(self):
         logging.debug('Auto saving {}'.format(self._path))
         self.save_state()
-        threading.Timer(AUTO_SAVE, self.start_auto_save).start()
+        self._autosavetimer = threading.Timer(AUTO_SAVE, self.start_auto_save)
+        self._autosavetimer.setDaemon(True)
+        self._autosavetimer.start()
 
     def __del__(self):
         self.close()
@@ -146,14 +152,10 @@ class ZiGate(object):
 #         erase = not self.load_state()
 #         if erase:
 #             self.erase_persistent()
-
         self.set_channel()
-
-        # set Type COORDINATOR
         self.set_type(TYPE_COORDINATOR)
-
-        # start network
         self.start_network()
+        self.get_devices_list()
 
     def zigate_encode(self, data):
         """encode all characters < 0x02 to avoid """
@@ -442,8 +444,10 @@ class ZiGate(object):
         '''
         d = self.get_device_from_addr(addr)
         if not d:
-            d = Device(addr)
+            logging.debug('not found,create')
+            d = Device({'addr': addr})
             self._set_device(d)
+            self.get_devices_list()  # since device is missing, request info
         return d
 
     def _remove_device(self, addr):
@@ -1134,12 +1138,15 @@ class ZiGate(object):
 
 
 class ZiGateWiFi(ZiGate):
-    def __init__(self, host, port, path='~/.zigate.json',
+    def __init__(self, host, port=9999, path='~/.zigate.json',
                  callback=None,
-                 asyncio_loop=None):
+                 auto_start=True,
+                 auto_save=True):
         self._host = host
         ZiGate.__init__(self, port=port, path=path, callback=callback,
-                        asyncio_loop=asyncio_loop)
+                        auto_start=auto_start,
+                        auto_save=auto_save
+                        )
 
     def setup_connection(self):
         self.connection = ThreadSocketConnection(self, self._host, self._port)
@@ -1155,7 +1162,7 @@ class DeviceEncoder(json.JSONEncoder):
 
 
 class Device(object):
-    def __init__(self, properties, endpoints={}):
+    def __init__(self, properties={}, endpoints={}):
         self.properties = properties
         self.endpoints = endpoints
 
@@ -1182,15 +1189,16 @@ class Device(object):
 
     @staticmethod
     def from_json(data):
-        d = Device(data['addr'])
+        d = Device()
         d.properties = data.get('properties', {})
-        d.endpoints = data.get('endpoints', {})
+        for endpoint in data.get('endpoints', []):
+            d.endpoints[endpoint['endpoint']] = endpoint
         return d
 
     def to_json(self):
         return {'addr': self.addr,
                 'properties': self.properties,
-                'endpoints': self.endpoints}
+                'endpoints': list(self.endpoints.values())}
 
     def set_property(self, property_id, property_data, endpoint=None):
         if endpoint is None:
