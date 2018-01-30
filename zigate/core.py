@@ -96,9 +96,10 @@ class ZiGate(object):
         self._last_response = {}  # response to last command type
         self._last_status = {}  # status to last command type
         self._save_lock = threading.Lock()
-        self.setup_connection()
         self._autosavetimer = None
         self._closing = False
+        self.connection = None
+        self.setup_connection()
         if auto_start:
             self.init()
             if auto_save:
@@ -113,7 +114,8 @@ class ZiGate(object):
             self._autosavetimer.cancel()
         try:
             self.save_state()
-            self.connection.close()
+            if self.connection:
+                self.connection.close()
         except Exception as e:
             logging.error('Exception during closing {}'.format(e))
 
@@ -412,13 +414,13 @@ class ZiGate(object):
         self.interpret_response(response)
 
     def interpret_response(self, response):
-        if response.msg == 0x8000:
+        if response.msg == 0x8000:  # status
             if response['status'] != 0:
                 logging.error('Command {} failed {} : {}'.format(response['packet_type'],
                                                                  response.status_text(),
                                                                  response['error']))
             self._last_status[response['packet_type']] = response['status']
-        elif response.msg == 0x8015:
+        elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
             to_delete = keys.difference(known_addr)
@@ -431,11 +433,15 @@ class ZiGate(object):
             d = self.get_device_from_ieee(response['ieee'])
             if d:
                 self._remove_device(d.addr)
-        elif response.msg in (0x8100, 0x8102, 0x8110):
+        elif response.msg in (0x8100, 0x8102, 0x8110):  # attribute report
             device = self._get_device(response['addr'])
             data = response.cleaned_data()
             device.update_endpoint(response['endpoint'], data)
             self.call_callback(ZGT_CMD_DEVICE_UPDATE, device=device, change=data)
+        elif response.msg == 0x004D:  # device announce
+            device = Device(response.data)
+            self._set_device(device)
+            
 
     def _get_device(self, addr):
         '''
@@ -469,7 +475,8 @@ class ZiGate(object):
         else:
             self._devices[device.addr] = device
             self.call_callback(ZGT_CMD_NEW_DEVICE, device=device)
-            
+            self.active_endpoint_request(device.addr)
+
     def decode_data(self, data):
         """Interpret responses attributes"""
         msg_data = data[5:]
@@ -1084,11 +1091,7 @@ class ZiGate(object):
         return self._version
 
     def get_version_text(self, refresh=False):
-        v = '{0[major]}.{0[installer]}'.format(self.get_version(refresh))
-        if v == '1.778':
-            v = '{} (3.0a)'.format(v)
-        elif v == '1.779':
-            v = '{} (3.0b)'.format(v)
+        v = self.get_version(refresh)['version']
         return v
 
     def reset(self):

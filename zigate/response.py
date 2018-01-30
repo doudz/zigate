@@ -118,6 +118,9 @@ class Response(object):
             if k in self.format:
                 data[k] = self.format[k].format(data[k])
 
+    def cleaned_data(self):
+        return self.data
+
 
 @register_response
 class R8000(Response):
@@ -188,6 +191,13 @@ class R8010(Response):
     type = 'Version list'
     s = OrderedDict([('major', 'H'),
                      ('installer', 'H')])
+    format = {'installer': '{:x}',
+              }
+
+    def decode(self):
+        Response.decode(self)
+        self.data['version'] = '{}.{}'.format(self.data['installer'][0],
+                                              self.data['installer'][1:])
 
 
 @register_response
