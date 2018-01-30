@@ -117,7 +117,7 @@ class ZiGate(object):
             if self.connection:
                 self.connection.close()
         except Exception as e:
-            logging.error('Exception during closing {}'.format(e))
+            LOGGER.error('Exception during closing {}'.format(e))
 
     def save_state(self, path=None):
         self._save_lock.acquire()
@@ -140,7 +140,7 @@ class ZiGate(object):
         return False
 
     def start_auto_save(self):
-        logging.debug('Auto saving {}'.format(self._path))
+        LOGGER.debug('Auto saving {}'.format(self._path))
         self.save_state()
         self._autosavetimer = threading.Timer(AUTO_SAVE, self.start_auto_save)
         self._autosavetimer.setDaemon(True)
@@ -157,20 +157,9 @@ class ZiGate(object):
         self.set_channel()
         self.set_type(TYPE_COORDINATOR)
         self.start_network()
-        self.get_devices_list()
+        self.get_devices_list(True)
 
     def zigate_encode(self, data):
-        """encode all characters < 0x02 to avoid """
-        encoded = []
-        for x in data:
-            if x < 0x10:
-                encoded.append(0x02)
-                encoded.append(x ^ 0x10)
-            else:
-                encoded.append(x)
-        return encoded
-
-    def zigate_encode2(self, data):
         encoded = bytearray()
         for b in data:
             if b < 0x10:
@@ -179,7 +168,7 @@ class ZiGate(object):
                 encoded.append(b)
         return encoded
 
-    def zigate_decode2(self, data):
+    def zigate_decode(self, data):
         flip = False
         decoded = bytearray()
         for b in data:
@@ -191,29 +180,6 @@ class ZiGate(object):
             else:
                 decoded.append(b)
         return decoded
-
-    @staticmethod
-    def zigate_decode(data):
-        """reverse of zigate_encode to get back the real message"""
-        encoded = False
-        decoded_data = b''
-
-        def bxor_join(b1, b2):  # use xor for bytes
-            parts = []
-            for b1, b2 in zip(b1, b2):
-                parts.append(bytes([b1 ^ b2]))
-            return b''.join(parts)
-
-        for x in data:
-            if bytes([x]) == b'\x02':
-                encoded = True
-            elif encoded is True:
-                encoded = False
-                decoded_data += bxor_join(bytes([x]), b'\x10')
-            else:
-                decoded_data += bytes([x])
-
-        return decoded_data
 
     def checksum(self, *args):
         chcksum = 0
@@ -253,7 +219,7 @@ class ZiGate(object):
         self._callback = func
 
     def call_callback(self, command_type, **kwargs):
-        logging.debug('CALLBACK {} {}'.format(command_type,kwargs))
+        LOGGER.debug('CALLBACK {} {}'.format(command_type,kwargs))
         if self._callback:
             self._callback(command_type, **kwargs)
 
@@ -299,7 +265,7 @@ class ZiGate(object):
 
         msg = struct.pack('!HHB%ds' % length, cmd, length, checksum, byte_data)
 
-        enc_msg = self.zigate_encode2(msg)
+        enc_msg = self.zigate_encode(msg)
         enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
         encoded_output = bytes(enc_msg)
@@ -373,7 +339,7 @@ class ZiGate(object):
         return output
 
     def decode_data(self, raw_message):
-        decoded = self.zigate_decode2(raw_message)
+        decoded = self.zigate_decode(raw_message)
         msg_type, length, checksum, value, rssi = \
             struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
         if length != len(value)+1:  # add rssi length
@@ -394,7 +360,7 @@ class ZiGate(object):
     def interpret_response(self, response):
         if response.msg == 0x8000:  # status
             if response['status'] != 0:
-                logging.error('Command {} failed {} : {}'.format(response['packet_type'],
+                LOGGER.error('Command {} failed {} : {}'.format(response['packet_type'],
                                                                  response.status_text(),
                                                                  response['error']))
             self._last_status[response['packet_type']] = response['status']
@@ -419,7 +385,9 @@ class ZiGate(object):
         elif response.msg == 0x004D:  # device announce
             device = Device(response.data)
             self._set_device(device)
-            
+        else:
+            LOGGER.debug('Do nothing special for response {}'.format(response))
+
 
     def _get_device(self, addr):
         '''
@@ -428,7 +396,7 @@ class ZiGate(object):
         '''
         d = self.get_device_from_addr(addr)
         if not d:
-            logging.debug('not found,create')
+            LOGGER.warning('Device not found, create it (this isn\'t normal)')
             d = Device({'addr': addr})
             self._set_device(d)
             self.get_devices_list()  # since device is missing, request info
@@ -1019,7 +987,7 @@ class ZiGate(object):
             if t2-t1 > 3:  # no response timeout
                 LOGGER.error('No response waiting command 0x{:04x}'.format(msg_type))
                 return
-        LOGGER.debug('Got message 0x{:04x}'.format(msg_type))
+        LOGGER.debug('Stop waiting, got message 0x{:04x}'.format(msg_type))
         return self._last_response.get(msg_type)
 
     def _wait_status(self, cmd):
@@ -1058,9 +1026,10 @@ class ZiGate(object):
             if d['ieee'] == ieee:
                 return d
 
-    def get_devices_list(self):
+    def get_devices_list(self, wait=False):
         self.send_data(0x0015)
-#         self._wait_response(b'8015')
+        if wait:
+            self._wait_response(0x8015)
 
     def get_version(self, refresh=False):
         if not self._version or refresh:
