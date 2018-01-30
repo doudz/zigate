@@ -168,7 +168,15 @@ class ZiGate(object):
                 encoded.append(x ^ 0x10)
             else:
                 encoded.append(x)
+        return encoded
 
+    def zigate_encode2(self, data):
+        encoded = bytearray()
+        for b in data:
+            if b < 0x10:
+                encoded.extend([0x02, 0x10 ^ b])
+            else:
+                encoded.append(b)
         return encoded
 
     def zigate_decode2(self, data):
@@ -207,7 +215,7 @@ class ZiGate(object):
 
         return decoded_data
 
-    def checksum2(self, *args):
+    def checksum(self, *args):
         chcksum = 0
         for arg in args:
             if isinstance(arg, int):
@@ -216,19 +224,6 @@ class ZiGate(object):
             for x in arg:
                 chcksum ^= x
         return chcksum
-
-    @staticmethod
-    def checksum(cmd, length, data):
-        tmp = 0
-        tmp ^= cmd[0]
-        tmp ^= cmd[1]
-        tmp ^= length[0]
-        tmp ^= length[1]
-        if data:
-            for x in data:
-                tmp ^= x
-
-        return tmp
 
     # register valuable (i.e. non technical properties) for futur use
     def set_device_property(self, addr, property_id, property_data, endpoint=None):
@@ -277,7 +272,7 @@ class ZiGate(object):
             startpos = self._buffer.find(b'\x01')
             # stripping starting 0x01 & ending 0x03
             raw_message = self._buffer[startpos + 1:endpos]
-            self.decode_data2(raw_message)
+            self.decode_data(raw_message)
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
 
@@ -300,32 +295,15 @@ class ZiGate(object):
         assert type(byte_data) == bytes
         length = int(len(data)/2)
         byte_length = length.to_bytes(2, 'big')
+        checksum = self.checksum(byte_cmd, byte_length, byte_data)
 
-        # --- non encoded version ---
-        std_msg = [0x01]
-        std_msg.extend(byte_cmd)
-        std_msg.extend(byte_length)
-        std_msg.append(self.checksum(byte_cmd, byte_length, byte_data))
-        if data != "":
-            std_msg.extend(byte_data)
-        std_msg.append(0x03)
+        msg = struct.pack('!HHB%ds' % length, cmd, length, checksum, byte_data)
 
-        # --- encoded version ---
-        enc_msg = [0x01]
-        enc_msg.extend(self.zigate_encode(byte_cmd))
-        enc_msg.extend(self.zigate_encode(byte_length))
-        enc_msg.append(self.checksum(byte_cmd, byte_length, byte_data))
-        if data != "":
-            enc_msg.extend(self.zigate_encode(byte_data))
+        enc_msg = self.zigate_encode2(msg)
+        enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
-
-        std_output = b''.join([bytes([x]) for x in std_msg])
-        encoded_output = b''.join([bytes([x]) for x in enc_msg])
-        LOGGER.debug('--------------------------------------')
-        LOGGER.debug('REQUEST      : 0x{:04x} {}'.format(cmd, data))
-        LOGGER.debug('  # standard : {}'.format(' '.join([format(x, '02x') for x in std_output]).upper()))
-        LOGGER.debug('  # encoded  : {}'.format(hexlify(encoded_output)))
-        LOGGER.debug('--------------------------------------')
+        encoded_output = bytes(enc_msg)
+        LOGGER.debug('REQUEST : 0x{:04x} {}'.format(cmd, data))
 
         self.send_to_transport(encoded_output)
         status = self._wait_status(cmd)
@@ -394,7 +372,7 @@ class ZiGate(object):
 
         return output
 
-    def decode_data2(self, raw_message):
+    def decode_data(self, raw_message):
         decoded = self.zigate_decode2(raw_message)
         msg_type, length, checksum, value, rssi = \
             struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
@@ -403,7 +381,7 @@ class ZiGate(object):
                                                            len(value),
                                                            value))
             return
-        computed_checksum = self.checksum2(decoded[:4], rssi, value)
+        computed_checksum = self.checksum(decoded[:4], rssi, value)
         if checksum != computed_checksum:
             LOGGER.error('Bad checksum {} != {}'.format(checksum,
                                                         computed_checksum))
@@ -477,7 +455,7 @@ class ZiGate(object):
             self.call_callback(ZGT_CMD_NEW_DEVICE, device=device)
             self.active_endpoint_request(device.addr)
 
-    def decode_data(self, data):
+    def decode_data_old(self, data):
         """Interpret responses attributes"""
         msg_data = data[5:]
         msg_type = hexlify(data[0:2])
@@ -1038,7 +1016,7 @@ class ZiGate(object):
         while self._last_response.get(msg_type) is None:
             sleep(0.01)
             t2 = time()
-            if t2-t1 > 3: #no response timeout
+            if t2-t1 > 3:  # no response timeout
                 LOGGER.error('No response waiting command 0x{:04x}'.format(msg_type))
                 return
         LOGGER.debug('Got message 0x{:04x}'.format(msg_type))
@@ -1053,7 +1031,7 @@ class ZiGate(object):
         while self._last_status.get(cmd) is None:
             sleep(0.01)
             t2 = time()
-            if t2-t1 > 3: #no response timeout
+            if t2-t1 > 3:  # no response timeout
                 LOGGER.error('No response after command 0x{:04x}'.format(cmd))
                 return
         LOGGER.debug('STATUS code to command 0x{:04x}:{}'.format(cmd, self._last_status.get(cmd)))
