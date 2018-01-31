@@ -124,19 +124,27 @@ class ZiGate(object):
         path = path or self._path
         self._path = os.path.expanduser(path)
         with open(self._path, 'w') as fp:
-            json.dump(list(self._devices.values()), fp, cls=DeviceEncoder)
+            json.dump(list(self._devices.values()), fp, cls=DeviceEncoder,
+                      sort_keys=True, indent=4, separators=(',', ': '))
         self._save_lock.release()
 
     def load_state(self, path=None):
+        LOGGER.debug('Try loading persistent file')
         path = path or self._path
         self._path = os.path.expanduser(path)
         if os.path.exists(self._path):
-            with open(self._path) as fp:
-                devices = json.load(fp, object_pairs_hook=OrderedDict)
-            for data in devices:
-                device = Device.from_json(data)
-                self._devices[device.addr] = device
-            return True
+            try:
+                with open(self._path) as fp:
+                    devices = json.load(fp)
+                for data in devices:
+                    device = Device.from_json(data)
+                    self._devices[device.addr] = device
+                LOGGER.debug('Load success')
+                return True
+            except Exception as e:
+                LOGGER.error('Failed to load persistent file {}'.format(self._path))
+                LOGGER.error('{}'.format(e))
+        LOGGER.debug('No file to load')
         return False
 
     def start_auto_save(self):
@@ -238,7 +246,8 @@ class ZiGate(object):
             startpos = self._buffer.find(b'\x01')
             # stripping starting 0x01 & ending 0x03
             raw_message = self._buffer[startpos + 1:endpos]
-            self.decode_data(raw_message)
+            threading.Thread(target=self.decode_data,args=(raw_message,)).start()
+#             self.decode_data(raw_message)
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
 
@@ -264,12 +273,14 @@ class ZiGate(object):
         checksum = self.checksum(byte_cmd, byte_length, byte_data)
 
         msg = struct.pack('!HHB%ds' % length, cmd, length, checksum, byte_data)
+        LOGGER.debug('Msg to send {}'.format(msg))
 
         enc_msg = self.zigate_encode(msg)
         enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
         encoded_output = bytes(enc_msg)
         LOGGER.debug('REQUEST : 0x{:04x} {}'.format(cmd, data))
+        LOGGER.debug('Encoded Msg to send {}'.format(encoded_output))
 
         self.send_to_transport(encoded_output)
         status = self._wait_status(cmd)
@@ -339,7 +350,7 @@ class ZiGate(object):
         return output
 
     def decode_data(self, raw_message):
-        decoded = self.zigate_decode(raw_message)
+        decoded = self.zigate_decode(raw_message[1:-1])
         msg_type, length, checksum, value, rssi = \
             struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
         if length != len(value)+1:  # add rssi length
@@ -353,9 +364,11 @@ class ZiGate(object):
                                                         computed_checksum))
             return
         response = RESPONSES.get(msg_type, Response)(value, rssi)
+        if msg_type != response.msg:
+            LOGGER.warning('Unknown response 0x{:04x}'.format(msg_type))
         LOGGER.debug(response)
-        self._last_response[msg_type] = response
         self.interpret_response(response)
+        self._last_response[msg_type] = response
 
     def interpret_response(self, response):
         if response.msg == 0x8000:  # status
@@ -1071,19 +1084,23 @@ class ZiGate(object):
         self.send_data(0x0023, typ)
 
     def start_network(self):
+        ''' start network '''
         return self.send_data(0x0024)
 #         return self._wait_response(b'8024')
 
     def start_network_scan(self):
+        ''' start network scan '''
         return self.send_data(0x0025)
 
     def remove_device(self, addr):
+        ''' remove device '''
         return self.send_data(0x0026, addr)
 
     def simple_descriptor_request(self, addr, endpoint):
         return self.send_data(0x0043, addr+endpoint)
 
     def active_endpoint_request(self, addr):
+        ''' active endpoint request '''
         return self.send_data(0x0045, addr)
 
 
@@ -1107,22 +1124,24 @@ class DeviceEncoder(json.JSONEncoder):
         if isinstance(obj, Device):
             return obj.to_json()
         elif isinstance(obj, bytes):
-            return obj.decode()
+            return hexlify(obj).decode()
         return json.JSONEncoder.default(self, obj)
 
 
 class Device(object):
-    def __init__(self, properties={}, endpoints={}):
-        self.properties = properties
-        self.endpoints = endpoints
+    def __init__(self, info=None):
+        self.info = info or {}
+        self.endpoints = {}
+        self.properties = {}
 
     def update(self, device):
         '''
         update from other device
         '''
-        self.properties.update(device.properties)
+        self.info.update(device.info)
         self.endpoints.update(device.endpoints)
-        self.properties['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
+        self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
+        self._analyse()
 
     def update_endpoint(self, endpoint, data):
         '''
@@ -1130,29 +1149,37 @@ class Device(object):
         '''
         if endpoint not in self.endpoints:
             self.endpoints[endpoint] = {}
-        self.endpoints[endpoint].update(data)
-        self.properties['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
+        cluster = data['cluster']
+        attribute = data['attribute']
+        key = '{:04x}_{:04x}'.format(cluster, attribute)
+        if key not in self.endpoints[endpoint]:
+            self.endpoints[endpoint][key] = {}
+        self.endpoints[endpoint][key].update(data)
+        self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
+        self._analyse()
 
     @property
     def addr(self):
-        return self.properties['addr']
+        return self.info['addr']
 
     @staticmethod
     def from_json(data):
         d = Device()
-        d.properties = data.get('properties', {})
+        d.info = data.get('info', {})
         for endpoint in data.get('endpoints', []):
-            d.endpoints[endpoint['endpoint']] = endpoint
+            d.endpoints[endpoint['endpoint']] = endpoint['attributes']
         return d
 
     def to_json(self):
         return {'addr': self.addr,
-                'properties': self.properties,
-                'endpoints': list(self.endpoints.values())}
+                'info': self.info,
+                'endpoints': [{'endpoint': k, 'attributes': v}
+                              for k, v in self.endpoints.items()],
+                }
 
     def set_property(self, property_id, property_data, endpoint=None):
         if endpoint is None:
-            self.properties[property_id] = property_data
+            self.info[property_id] = property_data
         else:
             if endpoint not in self.endpoints:
                 self.endpoints[endpoint] = {}
@@ -1165,31 +1192,70 @@ class Device(object):
         return self.__str__()
 
     def __setitem__(self, key, value):
-        self.properties[key] = value
+        self.info[key] = value
 
     def __getitem__(self, key):
-        return self.properties[key]
+        return self.info[key]
 
     def __delitem__(self, key):
-        return self.properties.__delitem__(key)
+        return self.info.__delitem__(key)
 
     def get(self, key, default):
-        return self.properties.get(key, default)
+        return self.info.get(key, default)
 
     def __contains__(self, key):
-        return self.properties.__contains__(key)
+        return self.info.__contains__(key)
 
     def __len__(self):
-        return len(self.properties)
+        return len(self.info)
 
     def __iter__(self):
-        return self.properties.__iter__()
+        return self.info.__iter__()
 
     def items(self):
-        return self.properties.items()
+        return self.info.items()
 
     def keys(self):
-        return self.properties.keys()
+        return self.info.keys()
 
     def __getattr__(self, attr):
-        return self.properties[attr]
+        return self.info[attr]
+
+    def _analyse(self, attributes_list=None):
+        '''
+        analyse endpoint to create friendly attribute name
+        and better value decoding
+        '''
+        if not attributes_list:
+            attributes_list = self.endpoints.values()
+        self.properties = {}
+        for attributes in attributes_list:
+            for attribute in attributes.values():
+                if attribute.get('cluster') == 0x0402 and attribute.get('attribute') == 0x0000:
+                    attribute['friendly_name'] = 'temperature'
+                    attribute['value'] = attribute['data']/100
+                    attribute['unit'] = '°C'
+                if attribute.get('cluster') == 0x0403:
+                    if attribute.get('attribute') == 0x0000:
+                        attribute['friendly_name'] = 'pressure'
+                        attribute['value'] = attribute['data']
+                        attribute['unit'] = 'mb'
+                    if attribute.get('attribute') == 0x0010:
+                        attribute['friendly_name'] = 'detailled pressure'
+                        attribute['value'] = attribute['data']/10
+                        attribute['unit'] = 'mb'
+                if attribute.get('cluster') == 0x0405 and attribute.get('attribute') == 0x0000:
+                    attribute['friendly_name'] = 'humidity'
+                    attribute['value'] = attribute['data']/100
+                    attribute['unit'] = '%'
+#                 if attribute.get('cluster') == 0x0000 and attribute.get('attribute') == 0xff01:
+#                     attribute['friendly_name'] = 'battery'
+#                     attribute['value'] = attribute['data']/100
+#                     attribute['unit'] = 'V'
+                if 'friendly_name' in attribute:
+                    self.properties[attribute['friendly_name']] = {'name': attribute['friendly_name'],
+                                                                   'value': attribute['value'],
+                                                                   'unit': attribute['unit']
+                                                                   }
+
+

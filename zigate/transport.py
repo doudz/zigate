@@ -15,6 +15,7 @@ LOGGER = logging.getLogger('zigate')
 
 class ThreadSerialConnection(object):
     def __init__(self, device, port=None):
+        self._buffer = b''
         self._port = port
         self.device = device
         self.queue = queue.Queue()
@@ -28,12 +29,24 @@ class ThreadSerialConnection(object):
         self._port = self._find_port(self._port)
         return serial.Serial(self._port, 115200)
 
+    def read_data(self, data):
+        '''
+        Read ZiGate output and split messages
+        '''
+        self._buffer += data
+        endpos = self._buffer.find(b'\x03')
+        while endpos != -1:
+            startpos = self._buffer.find(b'\x01')
+            raw_message = self._buffer[startpos:endpos+1]
+            threading.Thread(target=self.device.decode_data,args=(raw_message,)).start()
+            self._buffer = self._buffer[endpos + 1:]
+            endpos = self._buffer.find(b'\x03')
+
     def listen(self):
         while self._running:
             data = self.serial.read(self.serial.in_waiting)
             if data:
-                threading.Thread(target=self.device.read_data,args=(data,)).start()
-#                 self.device.read_data(data)
+                self.read_data(data)
             while not self.queue.empty():
                 data = self.queue.get()
                 self.serial.write(data)
@@ -75,5 +88,5 @@ class ThreadSocketConnection(ThreadSerialConnection):
         ThreadSerialConnection.__init__(self, device, port)
 
     def initSerial(self):
-        return serial.Serial('socket://{}:{}'.format(self._host, self._port))
+        return serial.serial_for_url('socket://{}:{}?logging=debug'.format(self._host, self._port))
 

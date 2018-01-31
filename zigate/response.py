@@ -16,13 +16,13 @@ DATA_TYPE = {0x00: None,
              0x21: 'H',
              0x22: 'I',
              0x25: 'L',
-            0x28: 'b',
-            0x29: 'h',
-            0x2a: 'i',
-            0x30: 'b',
-            0x42: 's'
-            }
-
+             0x28: 'b',
+             0x29: 'h',
+             0x2a: 'i',
+             0x30: 'b',
+             0x41: 'e',
+             0x42: 's',
+             }
 
 
 def register_response(o):
@@ -45,7 +45,9 @@ class Response(object):
 
     def __str__(self):
         d = ['{}:{}'.format(k, v) for k, v in self.data.items()]
-        return 'RESPONSE 0x{:04X} - {} : {}'.format(self.msg, self.type, ', '.join(d))
+        return 'RESPONSE 0x{:04X} - {} : {}'.format(self.msg,
+                                                    self.type,
+                                                    ', '.join(d))
 
     def __setitem__(self, key, value):
         self.data[key] = value
@@ -91,7 +93,9 @@ class Response(object):
                 msg_data = msg_data[:-rest]
                 self.data[k] = []
                 for i in range(count):
-                    sdata, submsg_data = self.__decode(subfmt, v.keys(), submsg_data)
+                    sdata, submsg_data = self.__decode(subfmt,
+                                                       v.keys(),
+                                                       submsg_data)
                     self.__format(sdata)
                     self.data[k].append(sdata)
             elif v == 'rawend':
@@ -171,8 +175,13 @@ class R8002(Response):
                      ('destination_address_mode', 'B'),
                      ('destination_address', 'H'),
                      ('payload_size', 'B'),
-#                      ('payload', '')
+                     ('payload', 'rawend')
                      ])
+
+    def decode(self):
+        Response.decode(self)
+        self.data['payload'] = struct.unpack('!{}B'.format(self.data['payload_size']),
+                                             self.data['payload'])[0]
 
 
 @register_response
@@ -182,6 +191,44 @@ class R8003(Response):
     s = OrderedDict([('endpoint', 'B'),
                      ('profile_id', 'H'),
                      ('clusters', OrderedDict([('cluster', 'H')]))
+                     ])
+
+
+@register_response
+class R8004(Response):
+    msg = 0x8004
+    type = 'Attribute list'
+    s = OrderedDict([('endpoint', 'B'),
+                     ('profile_id', 'H'),
+                     ('cluster', 'H'),
+                     ('attributes', OrderedDict([('attribute', 'H')]))
+                     ])
+
+
+@register_response
+class R8005(Response):
+    msg = 0x8005
+    type = 'Command list'
+    s = OrderedDict([('endpoint', 'B'),
+                     ('profile_id', 'H'),
+                     ('cluster', 'H'),
+                     ('commands', OrderedDict([('command', 'B')]))
+                     ])
+
+
+@register_response
+class R8006(Response):
+    msg = 0x8006
+    type = 'Non “Factory new” Restart'
+    s = OrderedDict([('status', 'B'),
+                     ])
+
+
+@register_response
+class R8007(Response):
+    msg = 0x8007
+    type = '“Factory New” Restart'
+    s = OrderedDict([('status', 'B'),
                      ])
 
 
@@ -219,15 +266,16 @@ class R8100(Response):
         '''
         return cleaned data
         '''
-        fmt = '!'
-        fmt += '{}{}'.format(self.data['size'],DATA_TYPE.get(self.data['data_type'], 's'))
-        print(fmt,self.data)
+        fmt = DATA_TYPE.get(self.data['data_type'], 's')
+        fmt = '!{}{}'.format(self.data['size']//struct.calcsize(fmt), fmt)
         d = {'endpoint': self.data['endpoint'],
              'cluster': self.data['cluster'],
              'attribute': self.data['attribute'],
              'status': self.data['status'],
              'data': struct.unpack(fmt, self.data['data'])[0]
              }
+        if isinstance(d['data'], bytes):
+            d['data'] = hexlify(d['data']).decode()
         return d
 
 
@@ -276,6 +324,17 @@ class R8015(Response):
 
 
 @register_response
+class R8024(Response):
+    msg = 0x8024
+    type = 'Network joined / formed'
+    s = OrderedDict([('status', 'B'),
+                     ('addr', 'H'),
+                     ('ieee', 'Q'),
+                     ('channel', 'B')
+                     ])
+
+
+@register_response
 class R8048(Response):
     msg = 0x8048
     type = 'Leave indication'
@@ -308,4 +367,17 @@ class R8701(Response):
     type = 'Route Discovery Confirmation'
     s = OrderedDict([('status', 'B'),
                      ('network_status', 'B'),
+                     ])
+
+
+@register_response
+class R8702(Response):
+    msg = 0x8702
+    type = 'APS Data Confirm Fail'
+    s = OrderedDict([('status', 'B'),
+                     ('source_endpoint', 'B'),
+                     ('dst_endpoint', 'B'),
+                     ('dst_address_mode', 'B'),
+                     ('dst_address', 'Q'),
+                     ('sequence', 'B')
                      ])
