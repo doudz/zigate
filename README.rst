@@ -161,9 +161,15 @@ for zigate.ZGT_CMD_REMOVE_DEVICE
 kwargs contains addr (the device short address) 
 
 
-
 Wifi ZiGate
 -----------
+
+WiFi ZiGate is also supported :
+
+.. code-block:: python
+   import zigate
+   z = zigate.ZiGateWiFi(host='192.168.0.10', port=9999)
+
 
 .. code-block:: python
    import zigate
