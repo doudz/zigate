@@ -122,9 +122,6 @@ class Response(object):
             if k in self.format:
                 data[k] = self.format[k].format(data[k])
 
-    def cleaned_data(self):
-        return self.data
-
 
 @register_response
 class R8000(Response):
@@ -150,8 +147,8 @@ class R8000(Response):
                         5: ('Stack already started'
                             ' (no new configuration accepted)'),
                         }
-        return status_codes.get(self.data.get('status',
-                                              'Failed (ZigBee event codes)'))
+        return status_codes.get(self.data.get('status'),
+                                'Failed (ZigBee event codes) {}'.format(self.data.get('status')))
 
 
 @register_response
@@ -262,21 +259,17 @@ class R8100(Response):
                      ('data', 'rawend')
                      ])
 
-    def cleaned_data(self):
-        '''
-        return cleaned data
-        '''
+    def decode(self):
+        Response.decode(self)
         fmt = DATA_TYPE.get(self.data['data_type'], 's')
         fmt = '!{}{}'.format(self.data['size']//struct.calcsize(fmt), fmt)
-        d = {'endpoint': self.data['endpoint'],
-             'cluster': self.data['cluster'],
-             'attribute': self.data['attribute'],
-             'status': self.data['status'],
-             'data': struct.unpack(fmt, self.data['data'])[0]
-             }
-        if isinstance(d['data'], bytes):
-            d['data'] = hexlify(d['data']).decode()
-        return d
+        data = struct.unpack(fmt, self.data['data'])[0]
+        if isinstance(data, bytes):
+            try:
+                data = data.decode()
+            except UnicodeDecodeError:
+                data = hexlify(data).decode()
+        self.data['data'] = data
 
 
 @register_response
@@ -331,6 +324,61 @@ class R8024(Response):
                      ('addr', 'H'),
                      ('ieee', 'Q'),
                      ('channel', 'B')
+                     ])
+
+
+@register_response
+class R8043(Response):
+    msg = 0x8043
+    type = 'Simple descriptor'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H'),
+                     ('length', 'B'),
+                     ('endpoint', 'B'),
+                     ('profile', 'H'),
+                     ('device', 'H'),
+                     ('bit_field', 'B'),
+                     ('inout_clusters', 'rawend')
+#                      ('in_cluster_count', 'B')
+#                      ('in_clusters', OrderedDict([('cluster', 'H')]))
+#                      ('out_cluster_count', 'B')
+#                      ('out_clusters', OrderedDict([('cluster', 'H')]))
+                     ])
+    format = {'bit_field': '{:08b}'}
+
+    def decode(self):
+        Response.decode(self)
+        data = self.data['inout_clusters']
+        in_cluster_count = struct.unpack('!B', data[0])[0]
+        in_clusters = struct.unpack('!{}H'.format(in_cluster_count),data[1:in_cluster_count])
+        data = data[in_cluster_count+1:]
+        out_cluster_count = struct.unpack('!B', data[0])[0]
+        out_clusters = struct.unpack('!{}H'.format(out_cluster_count),data[1:out_cluster_count])
+        self.data['in_clusters'] = in_clusters
+        self.data['out_clusters'] = out_clusters
+
+
+@register_response
+class R8044(Response):
+    msg = 0x8044
+    type = 'Power descriptor'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('bit_field', 'H'),
+                     ])
+    format = {'bit_field': '{:016b}'}
+
+
+@register_response
+class R8045(Response):
+    msg = 0x8045
+    type = 'Active endpoints'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H'),
+                     ('endpoint_count', 'B'),
+                     ('endpoints', OrderedDict([('endpoint', 'B')]))
                      ])
 
 

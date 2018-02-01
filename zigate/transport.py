@@ -9,6 +9,7 @@ import logging
 import time
 import serial
 import queue
+import socket
 
 LOGGER = logging.getLogger('zigate')
 
@@ -82,11 +83,36 @@ class ThreadSerialConnection(object):
         self.serial.close()
 
 
+class ThreadSocketConnection_old(ThreadSerialConnection):
+    def __init__(self, device, host, port=9999):
+        self._host = host
+        ThreadSerialConnection.__init__(self, device, port)
+
+    def initSerial(self):
+        return serial.serial_for_url('socket://{}:{}'.format(self._host, self._port))
+
+
 class ThreadSocketConnection(ThreadSerialConnection):
     def __init__(self, device, host, port=9999):
         self._host = host
         ThreadSerialConnection.__init__(self, device, port)
 
     def initSerial(self):
-        return serial.serial_for_url('socket://{}:{}?logging=debug'.format(self._host, self._port))
+        return socket.create_connection((self._host, self._port), timeout=0.05)
+
+    def listen(self):
+        while self._running:
+            try:
+                data = self.serial.recv(1024)
+            except socket.timeout:
+                data = None
+            if data:
+                self.read_data(data)
+            while not self.queue.empty():
+                data = self.queue.get()
+                self.serial.sendall(data)
+#             time.sleep(0.05)
+
+    def is_connected(self):  # TODO: check if socket is alive
+        return True
 
