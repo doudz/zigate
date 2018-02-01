@@ -129,9 +129,12 @@ z = ZiGate(callback=my_callback)
 ```
 
 event can be :
+
+```
 zigate.ZGT_CMD_NEW_DEVICE = 'new_device'
 zigate.ZGT_CMD_DEVICE_UPDATE = 'device_update'
 zigate.ZGT_CMD_REMOVE_DEVICE = 'remove_device'
+```
 
 kwargs depends of the event type
 for zigate.ZGT_CMD_NEW_DEVICE:
