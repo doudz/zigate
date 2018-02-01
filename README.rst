@@ -34,7 +34,7 @@ Usage
    OrderedDict([('major', 1), ('installer', '30b'), ('rssi', 0), ('version', '3.0b')])
 
    print(z.get_version_text())
-   3.0b
+   '3.0b'
 
    # refresh devices list
    z.get_devices_list()
@@ -46,7 +46,7 @@ Usage
 
    # list devices
    >>> z.devices
-   [Device 677c , Device b8ce , Device 92a7 , Device 59ef ]
+   '[Device 677c , Device b8ce , Device 92a7 , Device 59ef ]'
    >>> z.devices[0].addr
    '677c'
 
@@ -169,4 +169,4 @@ Wifi ZiGate
    import zigate
    z = zigate.ZiGateWiFi(host='192.168.0.10', port=9999)
 
-
+-
