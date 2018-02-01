@@ -167,12 +167,9 @@ Wifi ZiGate
 WiFi ZiGate is also supported :
 
 .. code-block:: python
+
    import zigate
    z = zigate.ZiGateWiFi(host='192.168.0.10', port=9999)
 
 
-.. code-block:: python
-   import zigate
-   z = zigate.ZiGateWiFi(host='192.168.0.10', port=9999)
 
--
