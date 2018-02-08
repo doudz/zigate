@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
 from .core import (ZiGate, ZiGateWiFi,
-                   ZGT_CMD_NEW_DEVICE,
-                   ZGT_CMD_REMOVE_DEVICE,
-                   ZGT_CMD_DEVICE_UPDATE)
+                   ZIGATE_DEVICE_ADDED,
+                   ZIGATE_DEVICE_UPDATED,
+                   ZIGATE_DEVICE_REMOVED,
+                   ZIGATE_ATTRIBUTE_ADDED,
+                   ZIGATE_ATTRIBUTE_UPDATED)
 
-__version__ = '0.6.0'
+__version__ = '0.7.0'
 
 __all__ = ['__version__', 'ZiGate', 'ZiGateWiFi',
-           'ZGT_CMD_NEW_DEVICE', 'ZGT_CMD_REMOVE_DEVICE',
-           'ZGT_CMD_DEVICE_UPDATE'
+           'ZIGATE_DEVICE_ADDED', 'ZIGATE_DEVICE_UPDATED',
+           'ZIGATE_DEVICE_REMOVED', "ZIGATE_ATTRIBUTE_ADDED",
+           "ZIGATE_ATTRIBUTE_UPDATED"
            ]

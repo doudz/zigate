@@ -5,44 +5,46 @@ from collections import OrderedDict
 import logging
 import json
 import os
+from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection, ThreadSocketConnection)
-from .response import (RESPONSES, Response)
+from .responses import (RESPONSES, Response)
+from .attributes import ATTRIBUTES
 import functools
 import struct
 import threading
 
 LOGGER = logging.getLogger('zigate')
 
-CLUSTERS = {b'0000': 'General: Basic',
-            b'0001': 'General: Power Config',
-            b'0002': 'General: Temperature Config',
-            b'0003': 'General: Identify',
-            b'0004': 'General: Groups',
-            b'0005': 'General: Scenes',
-            b'0006': 'General: On/Off',
-            b'0007': 'General: On/Off Config',
-            b'0008': 'General: Level Control',
-            b'0009': 'General: Alarms',
-            b'000A': 'General: Time',
-            b'000F': 'General: Binary Input Basic',
-            b'0020': 'General: Poll Control',
-            b'0019': 'General: OTA',
-            b'0101': 'General: Door Lock',
-            b'0201': 'HVAC: Thermostat',
-            b'0202': 'HVAC: Fan Control',
-            b'0300': 'Lighting: Color Control',
-            b'0400': 'Measurement: Illuminance',
-            b'0402': 'Measurement: Temperature',
-            b'0403': 'Measurement: Atmospheric Pressure',
-            b'0405': 'Measurement: Humidity',
-            b'0406': 'Measurement: Occupancy Sensing',
-            b'0500': 'Security & Safety: IAS Zone',
-            b'0702': 'Smart Energy: Metering',
-            b'0B05': 'Misc: Diagnostics',
-            b'1000': 'ZLL: Commissioning',
-            b'FF01': 'Xiaomi private',
-            b'FF02': 'Xiaomi private',
-            b'1234': 'Xiaomi private'
+CLUSTERS = {0x0000: 'General: Basic',
+            0x0001: 'General: Power Config',
+            0x0002: 'General: Temperature Config',
+            0x0003: 'General: Identify',
+            0x0004: 'General: Groups',
+            0x0005: 'General: Scenes',
+            0x0006: 'General: On/Off',
+            0x0007: 'General: On/Off Config',
+            0x0008: 'General: Level Control',
+            0x0009: 'General: Alarms',
+            0x000A: 'General: Time',
+            0x000F: 'General: Binary Input Basic',
+            0x0020: 'General: Poll Control',
+            0x0019: 'General: OTA',
+            0x0101: 'General: Door Lock',
+            0x0201: 'HVAC: Thermostat',
+            0x0202: 'HVAC: Fan Control',
+            0x0300: 'Lighting: Color Control',
+            0x0400: 'Measurement: Illuminance',
+            0x0402: 'Measurement: Temperature',
+            0x0403: 'Measurement: Atmospheric Pressure',
+            0x0405: 'Measurement: Humidity',
+            0x0406: 'Measurement: Occupancy Sensing',
+            0x0500: 'Security & Safety: IAS Zone',
+            0x0702: 'Smart Energy: Metering',
+            0x0B05: 'Misc: Diagnostics',
+            0x1000: 'ZLL: Commissioning',
+            0xFF01: 'Xiaomi private',
+            0xFF02: 'Xiaomi private',
+            0x1234: 'Xiaomi private'
             }
 
 ZGT_LOG_LEVELS = ['Emergency', 'Alert', 'Critical', 'Error',
@@ -52,24 +54,12 @@ STATUS_CODES = {0: 'Success', 1: 'Invalid parameters',
                 2: 'Unhandled command', 3: 'Command failed',
                 4: 'Busy', 5: 'Stack already started'}
 
-# states & properties
-ZGT_TEMPERATURE = 'temperature'
-ZGT_PRESSURE = 'pressure'
-ZGT_DETAILED_PRESSURE = 'detailed pressure'
-ZGT_HUMIDITY = 'humidity'
-ZGT_LAST_SEEN = 'last_seen'
-ZGT_EVENT = 'event'
-ZGT_EVENT_PRESENCE = 'presence detected'
-ZGT_STATE = 'state'
-ZGT_STATE_ON = 'on-press'
-ZGT_STATE_OFF = 'off-release'
-ZGT_STATE_MULTI = 'multi_{}'
-
-# commands for external use
-ZGT_CMD_NEW_DEVICE = 'new_device'
-ZGT_CMD_DEVICE_UPDATE = 'device_update'
-ZGT_CMD_LIST_ENDPOINTS = 'list_endpoints'
-ZGT_CMD_REMOVE_DEVICE = 'remove_device'
+# event signal
+ZIGATE_DEVICE_ADDED = 'ZIGATE_DEVICE_ADDED'
+ZIGATE_DEVICE_UPDATED = 'ZIGATE_DEVICE_UPDATED'
+ZIGATE_DEVICE_REMOVED = 'ZIGATE_DEVICE_REMOVED'
+ZIGATE_ATTRIBUTE_ADDED = 'ZIGATE_ATTRIBUTE_ADDED'
+ZIGATE_ATTRIBUTE_UPDATED = 'ZIGATE_ATTRIBUTE_UPDATED'
 
 BATTERY = 0
 AC_POWER = 1
@@ -84,14 +74,12 @@ AUTO_SAVE = 5*60  # 5 minutes
 class ZiGate(object):
 
     def __init__(self, port='auto', path='~/.zigate.json',
-                 callback=None,
                  auto_start=True,
                  auto_save=True):
         self._buffer = b''
         self._devices = {}
         self._path = path
         self._version = None
-        self._callback = callback
         self._port = port
         self._last_response = {}  # response to last command type
         self._last_status = {}  # status to last command type
@@ -198,38 +186,6 @@ class ZiGate(object):
             for x in arg:
                 chcksum ^= x
         return chcksum
-
-    # register valuable (i.e. non technical properties) for futur use
-    def set_device_property(self, addr, property_id, property_data, endpoint=None):
-        """
-        log property / attribute value in a device based dictionnary
-        please note that short addr is not stable if device is reset
-        (still have to find the unique ID)
-        all data stored must be directly usable (i.e no bytes)
-        """
-        str_addr = addr.decode()
-        if str_addr not in self._devices:
-            self._devices[str_addr] = Device(str_addr)
-        self._devices[str_addr].set_property(property_id, property_data, endpoint)
-        self.call_callback(ZGT_CMD_DEVICE_UPDATE,
-                           device=self._devices[str_addr],
-                           change={'property_id': property_id,
-                                   'property_data': property_data,
-                                   'endpoint': endpoint})
-#         self._devices[str_addr][property_id] = property_data
-
-    def set_callback(self, func):
-        '''
-        external func, must accept two args
-        command_type and option kwargs
-        func(command_type, **kwargs)
-        '''
-        self._callback = func
-
-    def call_callback(self, command_type, **kwargs):
-        LOGGER.debug('CALLBACK {} {}'.format(command_type,kwargs))
-        if self._callback:
-            self._callback(command_type, **kwargs)
 
     def send_to_transport(self, data):
         if not self.connection.is_connected():
@@ -394,15 +350,22 @@ class ZiGate(object):
         elif response.msg == 0x8045:  # endpoint list
             addr = response['addr']
             for endpoint in response['endpoints']: 
-                self.simple_descriptor_request(addr, endpoint)
+                self.simple_descriptor_request(addr, endpoint['endpoint'])
         elif response.msg == 0x8048:  # leave
             d = self.get_device_from_ieee(response['ieee'])
             if d:
                 self._remove_device(d.addr)
         elif response.msg in (0x8100, 0x8102, 0x8110):  # attribute report
             device = self._get_device(response['addr'])
-            device.update_endpoint(response['endpoint'], response.data)
-            self.call_callback(ZGT_CMD_DEVICE_UPDATE, device=device, change=response.data)
+            added = device.update_endpoint(response['endpoint'], response.cleaned_data())
+            changed = device.get_attribute(response['endpoint'], response['cluster'], response['attribute'])
+            if added:
+                dispatcher.send(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
+                                                         'device': device,
+                                                         'attribute': changed})
+            dispatcher.send(ZIGATE_ATTRIBUTE_UPDATED, self, **{'zigate': self,
+                                                         'device': device,
+                                                         'attribute': changed})
         elif response.msg == 0x004D:  # device announce
             device = Device(response.data)
             self._set_device(device)
@@ -427,7 +390,8 @@ class ZiGate(object):
         remove device from addr
         '''
         del self._devices[addr]
-        self.call_callback(ZGT_CMD_REMOVE_DEVICE, addr=addr)
+        dispatcher.send(ZIGATE_DEVICE_REMOVED, **{'zigate': self,
+                                                  'addr': addr})
 
     def _set_device(self, device):
         '''
@@ -436,11 +400,12 @@ class ZiGate(object):
         assert type(device) == Device
         if device.addr in self._devices:
             self._devices[device.addr].update(device)
-            self.call_callback(ZGT_CMD_DEVICE_UPDATE,
-                               device=self._devices[device.addr])
+            dispatcher.send(ZIGATE_DEVICE_UPDATED, self, **{'zigate': self,
+                                                      'device':self._devices[device.addr]})
         else:
             self._devices[device.addr] = device
-            self.call_callback(ZGT_CMD_NEW_DEVICE, device=device)
+            dispatcher.send(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
+                                                    'device': device})
             self.active_endpoint_request(device.addr)
 
     def read_attribute(self, addr, endpoint, cluster_id, attribute_id):
@@ -630,6 +595,12 @@ class ZiGate(object):
             endpoint = '{:04x}'.format(endpoint)
         return self.send_data(0x0043, addr+endpoint)
 
+    def power_descriptor_request(self, addr):
+        '''
+        power descriptor request
+        '''
+        return self.send_data(0x0044, addr)
+
     def active_endpoint_request(self, addr):
         '''
         active endpoint request
@@ -639,11 +610,10 @@ class ZiGate(object):
 
 class ZiGateWiFi(ZiGate):
     def __init__(self, host, port=9999, path='~/.zigate.json',
-                 callback=None,
                  auto_start=True,
                  auto_save=True):
         self._host = host
-        ZiGate.__init__(self, port=port, path=path, callback=callback,
+        ZiGate.__init__(self, port=port, path=path,
                         auto_start=auto_start,
                         auto_save=auto_save
                         )
@@ -679,16 +649,22 @@ class Device(object):
         '''
         update endpoint from dict
         '''
+        added = False
         if endpoint not in self.endpoints:
             self.endpoints[endpoint] = {}
         cluster = data['cluster']
         attribute = data['attribute']
+        rssi = data.pop('rssi', 0)
+        if rssi > 0:
+            self.info['link_quality'] = rssi
         key = '{:04x}_{:04x}'.format(cluster, attribute)
         if key not in self.endpoints[endpoint]:
+            added = True
             self.endpoints[endpoint][key] = {}
         self.endpoints[endpoint][key].update(data)
         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
         self._analyse()
+        return added
 
     @property
     def addr(self):
@@ -777,6 +753,10 @@ class Device(object):
                 if attribute.get('friendly_name') == friendly_name:
                     return attribute
 
+    def get_attribute(self, endpoint, cluster, attribute):
+        key = '{:04x}_{:04x}'.format(cluster, attribute)
+        return self.endpoints[endpoint][key]
+
     def _analyse(self, attributes_list=None):
         '''
         analyse endpoint to create friendly attribute name
@@ -786,31 +766,9 @@ class Device(object):
             attributes_list = self.endpoints.values()
         for attributes in attributes_list:
             for attribute in attributes.values():
-                if attribute.get('cluster') == 0x0000 and attribute.get('attribute') == 0x0005:
-                    attribute['friendly_name'] = 'type'
-                    attribute['value'] = unhexlify(attribute['data']).decode()
-#                     attribute['unit'] = ''
-                elif attribute.get('cluster') == 0x0402 and attribute.get('attribute') == 0x0000:
-                    attribute['friendly_name'] = 'temperature'
-                    attribute['value'] = attribute['data']/100
-                    attribute['unit'] = '°C'
-                elif attribute.get('cluster') == 0x0403:
-                    if attribute.get('attribute') == 0x0000:
-                        attribute['friendly_name'] = 'pressure'
-                        attribute['value'] = attribute['data']
-                        attribute['unit'] = 'mb'
-                    elif attribute.get('attribute') == 0x0010:
-                        attribute['friendly_name'] = 'detailled pressure'
-                        attribute['value'] = attribute['data']/10
-                        attribute['unit'] = 'mb'
-                elif attribute.get('cluster') == 0x0405 and attribute.get('attribute') == 0x0000:
-                    attribute['friendly_name'] = 'humidity'
-                    attribute['value'] = attribute['data']/100
-                    attribute['unit'] = '%'
-                elif attribute.get('cluster') == 0x0006 and attribute.get('attribute') == 0x0000:
-                    attribute['friendly_name'] = 'onoff'
-                    attribute['value'] = attribute['data']
-#                     attribute['unit'] = ''
-                elif attribute.get('cluster') == 0x0406 and attribute.get('attribute') == 0x0000:
-                    attribute['friendly_name'] = 'presence'
-                    attribute['value'] = attribute['data']
+                key = (attribute.get('cluster'), attribute.get('attribute'))
+                if key in ATTRIBUTES:
+                    v = ATTRIBUTES[key]
+                    attribute.update(v)
+                    value = attribute['data']
+                    attribute['value'] = eval(attribute['value'])
