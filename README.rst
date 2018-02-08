@@ -34,7 +34,7 @@ Usage
    OrderedDict([('major', 1), ('installer', '30b'), ('rssi', 0), ('version', '3.0b')])
 
    print(z.get_version_text())
-   '3.0b'
+   3.0b
 
    # refresh devices list
    z.get_devices_list()
@@ -46,7 +46,7 @@ Usage
 
    # list devices
    >>> z.devices
-   '[Device 677c , Device b8ce , Device 92a7 , Device 59ef ]'
+   [Device 677c , Device b8ce , Device 92a7 , Device 59ef ]
    >>> z.devices[0].addr
    '677c'
 
@@ -131,34 +131,49 @@ Usage
 
 Callback
 --------
-You can use callback to catch some events
+We use pydispatch to catch some events
 
 .. code-block:: python
 
-   def my_callback(event, **kwargs):
-	  print(event)
-	  print(kwargs)
+   from pydispatch import dispatcher
+   
+   def my_callback(**kwargs):
+	    print(kwargs)
+     
+   dispatcher.connect(my_callback, zigate.ZIGATE_ATTRIBUTE_UPDATED)
 
-   z = ZiGate(callback=my_callback)
+   z = zigate.ZiGate()
+   
+   # to catch any events
+   dispatcher.connect(my_callback, dispatcher.Any)
+      
 
 event can be :
 
 .. code-block:: python
 
-   zigate.ZGT_CMD_NEW_DEVICE = 'new_device'
-   zigate.ZGT_CMD_DEVICE_UPDATE = 'device_update'
-   zigate.ZGT_CMD_REMOVE_DEVICE = 'remove_device'
+   zigate.ZIGATE_DEVICE_ADDED
+   zigate.ZIGATE_DEVICE_UPDATED
+   zigate.ZIGATE_DEVICE_REMOVED
+   zigate.ZIGATE_ATTRIBUTE_ADDED
+   zigate.ZIGATE_ATTRIBUTE_UPDATED
 
 kwargs depends of the event type
-for zigate.ZGT_CMD_NEW_DEVICE:
+for zigate.ZIGATE_DEVICE_ADDED:
 kwargs contains device
 
-for zigate.ZGT_CMD_DEVICE_UPDATE
+for zigate.ZIGATE_DEVICE_UPDATED
 kwargs contains device
-and attribute updated (if applicable)
 
-for zigate.ZGT_CMD_REMOVE_DEVICE
-kwargs contains addr (the device short address) 
+for zigate.ZIGATE_DEVICE_REMOVED
+kwargs contains addr (the device short address)
+
+for zigate.ZIGATE_ATTRIBUTE_ADDED:
+kwargs contains device and discovered attribute 
+
+for zigate.ZIGATE_ATTRIBUTE_UPDATED
+kwargs contains device and updated attribute
+
 
 
 Wifi ZiGate
@@ -170,6 +185,8 @@ WiFi ZiGate is also supported :
 
    import zigate
    z = zigate.ZiGateWiFi(host='192.168.0.10', port=9999)
+
+
 
 
 
