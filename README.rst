@@ -131,14 +131,14 @@ Usage
 
 Callback
 --------
-We use pydispatch to catch some events
+We use pydispatcher for callback
 
 .. code-block:: python
 
    from pydispatch import dispatcher
    
    def my_callback(**kwargs):
-	    print(kwargs)
+	  print(kwargs)
      
    dispatcher.connect(my_callback, zigate.ZIGATE_ATTRIBUTE_UPDATED)
 
