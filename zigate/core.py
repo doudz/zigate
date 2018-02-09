@@ -678,12 +678,15 @@ class Device(object):
             d.endpoints[endpoint['endpoint']] = endpoint['attributes']
         return d
 
-    def to_json(self):
-        return {'addr': self.addr,
+    def to_json(self, properties=False):
+        r = {'addr': self.addr,
                 'info': self.info,
                 'endpoints': [{'endpoint': k, 'attributes': v}
                               for k, v in self.endpoints.items()],
                 }
+        if properties:
+            r['properties'] = list(self.properties)
+        return r
 
     def set_property(self, property_id, property_data, endpoint=None):
         if endpoint is None:
