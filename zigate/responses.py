@@ -272,12 +272,13 @@ class R8100(Response):
         self.data['data'] = data
 
     def cleaned_data(self):
-        d = {'addr': self.data['addr'],
-             'endpoint': self.data['endpoint'],
-             'cluster': self.data['cluster'],
+        d = {#'addr': self.data['addr'],
+             #'endpoint': self.data['endpoint'],
+#              'cluster': self.data['cluster'],
              'attribute': self.data['attribute'],
-             'status': self.data['status'],
+#              'status': self.data['status'],
              'data': self.data['data'],
+#              'rssi': self.data['rssi']
              }
         return d
 
@@ -322,7 +323,7 @@ class R8015(Response):
                                             ('addr', 'H'),
                                             ('ieee', 'Q'),
                                             ('power_source', 'B'),
-                                            ('link_quality', 'B'),
+                                            ('rssi', 'B'),
                                             ]))])
 
 
@@ -338,6 +339,70 @@ class R8024(Response):
 
 
 @register_response
+class R8042(Response):
+    msg = 0x8042
+    type = 'Node descriptor'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H'),
+                     ('manufacturer', 'H'),
+                     ('max_rx', 'H'),
+                     ('max_tx', 'H'),
+                     ('server_mask', 'H'),
+                     ('descriptor_capability', 'B'),
+                     ('mac_flags', 'B'),
+                     ('max_buffer', 'B'),
+                     ('bit_field', 'H')
+                     ])
+    format = {'addr': '{:04x}',
+              'manufacturer': '{:04x}',
+              'descriptor_capability': '{:08b}',
+              'mac_flags': '{:08b}',
+              'bit_field': '{:016b}'}
+#     Bitfields:    
+#     Logical type (bits 0-2    
+#     0 – Coordinator    
+#     1 – Router    
+#     2 – End Device)    
+#     Complex descriptor available (bit 3)    
+#     User descriptor available (bit 4)    
+#     Reserved (bit 5-7)    
+#     APS flags (bit 8-10 – currently 0)    
+#     Frequency band(11-15 set to 3 (2.4Ghz))
+
+#     Server mask bits:    
+#     0 – Primary trust center    
+#     1 – Back up trust center    
+#     2 – Primary binding cache    
+#     3 – Backup binding cache    
+#     4 – Primary discovery cache    
+#     5 – Backup discovery cache    
+#     6 – Network manager    
+#     7 to15 – Reserved
+
+#     MAC capability    
+#     Bit 0 – Alternate PAN Coordinator    
+#     Bit 1 – Device Type    
+#     Bit 2 – Power source    
+#     Bit 3 – Receiver On when Idle    
+#     Bit 4-5 – Reserved    
+#     Bit 6 – Security capability    
+#     Bit 7 – Allocate Address
+
+#     Descriptor capability:    
+#     0 – extended Active endpoint list available    
+#     1 – Extended simple descriptor list available    
+#     2 to 7 – Reserved
+
+    @property
+    def active_endpoint_list(self):
+        return self.data['descriptor_capability'][0] == '1'
+
+    @property
+    def simple_descriptor_list(self):
+        return self.data['descriptor_capability'][1] == '1'
+
+@register_response
 class R8043(Response):
     msg = 0x8043
     type = 'Simple descriptor'
@@ -350,21 +415,19 @@ class R8043(Response):
                      ('device', 'H'),
                      ('bit_field', 'B'),
                      ('inout_clusters', 'rawend')
-#                      ('in_cluster_count', 'B')
-#                      ('in_clusters', OrderedDict([('cluster', 'H')]))
-#                      ('out_cluster_count', 'B')
-#                      ('out_clusters', OrderedDict([('cluster', 'H')]))
                      ])
-    format = {'bit_field': '{:08b}'}
+    format = {'addr': '{:04x}',
+              'bit_field': '{:08b}'}
 
     def decode(self):
         Response.decode(self)
         data = self.data['inout_clusters']
-        in_cluster_count = struct.unpack('!B', data[0])[0]
-        in_clusters = struct.unpack('!{}H'.format(in_cluster_count),data[1:in_cluster_count])
-        data = data[in_cluster_count+1:]
-        out_cluster_count = struct.unpack('!B', data[0])[0]
-        out_clusters = struct.unpack('!{}H'.format(out_cluster_count),data[1:out_cluster_count])
+        in_cluster_count = struct.unpack('!B', data[:1])[0]
+        cluster_size = struct.calcsize('!H')
+        in_clusters = struct.unpack('!{}H'.format(in_cluster_count),data[1:in_cluster_count*cluster_size+1])
+        data = data[in_cluster_count*2+1:]
+        out_cluster_count = struct.unpack('!B', data[:1])[0]
+        out_clusters = struct.unpack('!{}H'.format(out_cluster_count),data[1:out_cluster_count*cluster_size+1])
         self.data['in_clusters'] = in_clusters
         self.data['out_clusters'] = out_clusters
 
@@ -378,6 +441,11 @@ class R8044(Response):
                      ('bit_field', 'H'),
                      ])
     format = {'bit_field': '{:016b}'}
+    #     Bit fields
+    # 0 to 3: current power mode
+    # 4 to 7: available power source
+    # 8 to 11: current power source
+    # 12 to15: current power source level
 
 
 @register_response
@@ -407,8 +475,11 @@ class R004D(Response):
     type = 'Device announce'
     s = OrderedDict([('addr', 'H'),
                      ('ieee', 'Q'),
-                     ('mac_capability', 'rawend')
+                     ('mac_capability', 'B')
                      ])
+    format = {'addr': '{:04x}',
+              'ieee': '{:08x}',
+              'mac_capability': '{:08b}'}
 #     MAC capability
 #     Bit 0 – Alternate PAN Coordinator
 #     Bit 1 – Device Type

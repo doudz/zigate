@@ -10,8 +10,10 @@ import time
 import serial
 import queue
 import socket
+from pydispatch import dispatcher
 
 LOGGER = logging.getLogger('zigate')
+ZIGATE_PACKET_RECEIVED = 'ZIGATE_PACKET_RECEIVED'
 
 
 class ThreadSerialConnection(object):
@@ -30,6 +32,9 @@ class ThreadSerialConnection(object):
         self._port = self._find_port(self._port)
         return serial.Serial(self._port, 115200)
 
+    def packet_received(self, raw_message):
+        dispatcher.send(ZIGATE_PACKET_RECEIVED, packet=raw_message)
+
     def read_data(self, data):
         '''
         Read ZiGate output and split messages
@@ -39,7 +44,7 @@ class ThreadSerialConnection(object):
         while endpos != -1:
             startpos = self._buffer.find(b'\x01')
             raw_message = self._buffer[startpos:endpos+1]
-            threading.Thread(target=self.device.decode_data,args=(raw_message,)).start()
+            threading.Thread(target=self.packet_received, args=(raw_message,)).start()
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
 
