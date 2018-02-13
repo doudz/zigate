@@ -31,10 +31,10 @@ Usage
    z = zigate.ZiGate(port=None) # Leave None to auto-discover the port
 
    print(z.get_version())
-   OrderedDict([('major', 1), ('installer', '30b'), ('rssi', 0), ('version', '3.0b')])
+   OrderedDict([('major', 1), ('installer', '30c'), ('rssi', 0), ('version', '3.0c')])
 
    print(z.get_version_text())
-   3.0b
+   3.0c
 
    # refresh devices list
    z.get_devices_list()
@@ -52,83 +52,33 @@ Usage
 
    # get all discovered endpoints
    >>> z.devices[0].endpoints
-   {1: {'0405_0000': {'endpoint': 1,
-      'data': 3997,
-      'cluster': 1029,
-      'attribute': 0,
-      'status': 0,
-      'friendly_name': 'humidity',
-      'value': 39.97,
-      'unit': '%'},
-     '0000_0005': {'endpoint': 1,
-      'data': '6c756d692e77656174686572',
-      'cluster': 0,
-      'attribute': 5,
-      'status': 0,
-      'friendly_name': 'type',
-      'value': 'lumi.weather',
-      'unit': ''},
-     '0000_0001': {'cluster': 0,
-      'endpoint': 1,
-      'status': 0,
-      'attribute': 1,
-      'data': 3},
-     '0403_0000': {'endpoint': 1,
-      'data': 976,
-      'cluster': 1027,
-      'attribute': 0,
-      'status': 0,
-      'friendly_name': 'pressure',
-      'value': 976,
-      'unit': 'mb'},
-     '0000_ff01': {'cluster': 0,
-      'endpoint': 1,
-      'status': 0,
-      'attribute': 65281,
-      'data': '0121ef0b0421a81305210800062401000000006429a6096521a30f662b737d01000a210000'},
-     '0403_0010': {'endpoint': 1,
-      'data': 9762,
-      'cluster': 1027,
-      'attribute': 16,
-      'status': 0,
-      'friendly_name': 'detailled pressure',
-      'value': 976.2,
-      'unit': 'mb'},
-     '0403_0014': {'cluster': 1027,
-      'endpoint': 1,
-      'status': 0,
-      'attribute': 20,
-      'data': -1},
-     '0402_0000': {'endpoint': 1,
-      'data': 2447,
-      'cluster': 1026,
-      'attribute': 0,
-      'status': 0,
-      'friendly_name': 'temperature',
-      'value': 24.47,
-      'unit': '°C'}}}
+   {1: {
+     'clusters': {0: Cluster 0 General: Basic,
+      1026: Cluster 1026 Measurement: Temperature,
+      1027: Cluster 1027 Measurement: Atmospheric Pressure,
+      1029: Cluster 1029 Measurement: Humidity},
+     }}
    
    
    # get well known attributes
    >>> for attribute in z.devices[0].properties:
        	print(attribute)
-   {'endpoint': 1, 'data': 3997, 'cluster': 1029, 'attribute': 0, 'status': 0, 'friendly_name': 'humidity', 'value': 39.97, 'unit': '%'}
-   {'endpoint': 1, 'data': '6c756d692e77656174686572', 'cluster': 0, 'attribute': 5, 'status': 0, 'friendly_name': 'type', 'value': 'lumi.weather', 'unit': ''}
-   {'endpoint': 1, 'data': 976, 'cluster': 1027, 'attribute': 0, 'status': 0, 'friendly_name': 'pressure', 'value': 976, 'unit': 'mb'}
-   {'endpoint': 1, 'data': 9762, 'cluster': 1027, 'attribute': 16, 'status': 0, 'friendly_name': 'detailled pressure', 'value': 976.2, 'unit': 'mb'}
-   {'endpoint': 1, 'data': 2447, 'cluster': 1026, 'attribute': 0, 'status': 0, 'friendly_name': 'temperature', 'value': 24.47, 'unit': '°C'}
-   
+   {'data': 'lumi.weather', 'name': 'type', 'attribute': 5, 'value': 'lumi.weather'}
+   {'data': '0121c70b0421a8010521090006240100000000642932096521851c662bd87c01000a210000', 'name': 'battery', 'value': 3.015, 'unit': 'V', 'attribute': 65281}
+   {'data': -1983, 'name': 'temperature', 'value': -19.83, 'unit': '°C', 'attribute': 0}
+   {'data': 9779, 'name': 'pressure2', 'value': 977.9, 'unit': 'mb', 'attribute': 16}
+   {'data': 977, 'name': 'pressure', 'value': 977, 'unit': 'mb', 'attribute': 0}
+   {'data': 4484, 'name': 'humidity', 'value': 44.84, 'unit': '%', 'attribute': 0}
+
    # get specific property
    >>> z.devices[0].get_property('temperature')
-   {'endpoint': 1,
-    'data': 2447,
-    'cluster': 1026,
-    'attribute': 0,
-    'status': 0,
-    'friendly_name': 'temperature',
-    'value': 24.47,
-    'unit': '°C'}
-
+   {'data': -1983,
+    'name': 'temperature',
+    'value': -19.83,
+    'unit': '°C',
+    'attribute': 0}
+    
+    
 Callback
 --------
 We use pydispatcher for callback
@@ -137,8 +87,10 @@ We use pydispatcher for callback
 
    from pydispatch import dispatcher
    
-   def my_callback(**kwargs):
-	  print(kwargs)
+   def my_callback(sender, signal, **kwargs):
+      print(sender)  # zigate instance
+      print(signal)  # one of EVENT
+	   print(kwargs)  # contains device and/or attribute changes, etc
      
    dispatcher.connect(my_callback, zigate.ZIGATE_ATTRIBUTE_UPDATED)
 
