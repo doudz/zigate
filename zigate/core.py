@@ -716,7 +716,7 @@ class Device(object):
             actions[ep_id] = []
             endpoint = self.endpoints.get(ep_id)
             if endpoint:
-                if endpoint['device'] in [0, 0x0002, 0x0100, 0x0051, 0x0210]:  # known device id that support onoff
+                if endpoint['device'] in [0x0002, 0x0100, 0x0051, 0x0210]:  # known device id that support onoff
                     if 0x0006 in endpoint['in_clusters']:
                         actions[ep_id].append('onoff')
                     if 0x0008 in endpoint['in_clusters']:
