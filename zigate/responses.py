@@ -122,6 +122,18 @@ class Response(object):
             if k in self.format:
                 data[k] = self.format[k].format(data[k])
 
+    def _filter_data(self, include=[], exclude=[]):
+        if include:
+            return {k: v for k, v in self.data.items() if k in include}
+        elif exclude:
+            return {k: v for k, v in self.data.items() if k not in exclude}
+
+    def cleaned_data(self):
+        ''' return cleaned data
+        need to be override in subclass
+        '''
+        return self.data
+
 
 @register_response
 class R8000(Response):
@@ -272,15 +284,7 @@ class R8100(Response):
         self.data['data'] = data
 
     def cleaned_data(self):
-        d = {#'addr': self.data['addr'],
-             #'endpoint': self.data['endpoint'],
-#              'cluster': self.data['cluster'],
-             'attribute': self.data['attribute'],
-#              'status': self.data['status'],
-             'data': self.data['data'],
-#              'rssi': self.data['rssi']
-             }
-        return d
+        return self._filter_data(['attribute', 'data'])
 
 
 @register_response
@@ -394,13 +398,17 @@ class R8042(Response):
 #     1 – Extended simple descriptor list available    
 #     2 to 7 – Reserved
 
+    def cleaned_data(self):
+        return self._filter_data(exclude=['sequence', 'status'])
+
     @property
-    def active_endpoint_list(self):
+    def extended_active_endpoint_list(self):
         return self.data['descriptor_capability'][0] == '1'
 
     @property
-    def simple_descriptor_list(self):
+    def extended_simple_descriptor_list(self):
         return self.data['descriptor_capability'][1] == '1'
+
 
 @register_response
 class R8043(Response):
@@ -424,12 +432,17 @@ class R8043(Response):
         data = self.data['inout_clusters']
         in_cluster_count = struct.unpack('!B', data[:1])[0]
         cluster_size = struct.calcsize('!H')
-        in_clusters = struct.unpack('!{}H'.format(in_cluster_count),data[1:in_cluster_count*cluster_size+1])
+        in_clusters = struct.unpack('!{}H'.format(in_cluster_count),
+                                    data[1:in_cluster_count*cluster_size+1])
         data = data[in_cluster_count*2+1:]
         out_cluster_count = struct.unpack('!B', data[:1])[0]
-        out_clusters = struct.unpack('!{}H'.format(out_cluster_count),data[1:out_cluster_count*cluster_size+1])
+        out_clusters = struct.unpack('!{}H'.format(out_cluster_count),
+                                     data[1:out_cluster_count*cluster_size+1])
         self.data['in_clusters'] = in_clusters
         self.data['out_clusters'] = out_clusters
+
+    def cleaned_data(self):
+        return self._filter_data(['profile', 'device', 'in_clusters', 'out_clusters'])
 
 
 @register_response

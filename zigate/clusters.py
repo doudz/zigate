@@ -95,7 +95,8 @@ class Cluster(object):
 class C0000(Cluster):
     cluster_id = 0x0000
     type = 'General: Basic'
-    attributes_def = {0x0005: {'name': 'type', 'value': 'value'},
+    attributes_def = {0x0004: {'name': 'manufacturer', 'value': 'value'},
+                      0x0005: {'name': 'type', 'value': 'value'},
                       0xff01: {'name': 'battery', 'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.", 'unit': 'V'},
                       }
 

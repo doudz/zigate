@@ -81,6 +81,7 @@ class ZiGate(object):
                     devices = json.load(fp)
                 for data in devices:
                     device = Device.from_json(data)
+                    device._zigate = self
                     self._devices[device.addr] = device
                 LOGGER.debug('Load success')
                 return True
@@ -209,6 +210,7 @@ class ZiGate(object):
             LOGGER.warning('Unknown response 0x{:04x}'.format(msg_type))
         LOGGER.debug(response)
         self._last_response[msg_type] = response
+        LOGGER.debug('Dispatch ZIGATE_RESPONSE_RECEIVED')
         dispatcher.send(ZIGATE_RESPONSE_RECEIVED, self, response=response)
 
     def interpret_response(self, response):
@@ -221,23 +223,25 @@ class ZiGate(object):
         elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
+            LOGGER.debug('Known devices in zigate : {}'.format(known_addr))
             to_delete = keys.difference(known_addr)
+            LOGGER.debug('Previous devices to delete : {}'.format(to_delete))
             for addr in to_delete:
                 self._remove_device(addr)
             for d in response['devices']:
                 device = Device(dict(d))
+                device._zigate = self
                 self._set_device(device)
         elif response.msg == 0x8042:  # node descriptor
             addr = response['addr']
             d = self.get_device_from_addr(addr)
-            d.update_info(response.data)
-#             if response.active_endpoint_list:
-#                 self.active_endpoint_request(addr)
+            d.update_info(response.cleaned_data())
         elif response.msg == 0x8043:  # simple descriptor
             addr = response['addr']
             endpoint = response['endpoint']
             d = self.get_device_from_addr(addr)
             ep = d.get_endpoint(endpoint)
+            ep.update(response.cleaned_data())
             ep['in_clusters'] = response['in_clusters']
             ep['out_clusters'] = response['out_clusters']
         elif response.msg == 0x8045:  # endpoint list
@@ -254,14 +258,18 @@ class ZiGate(object):
             added = device.set_attribute(response['endpoint'], response['cluster'], response.cleaned_data())
             changed = device.get_attribute(response['endpoint'], response['cluster'], response['attribute'], True)
             if added:
+                LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_ADDED')
                 dispatcher.send(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
                                                                  'device': device,
                                                                  'attribute': changed})
-            dispatcher.send(ZIGATE_ATTRIBUTE_UPDATED, self, **{'zigate': self,
-                                                               'device': device,
-                                                               'attribute': changed})
+            else:
+                LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_UPDATED')
+                dispatcher.send(ZIGATE_ATTRIBUTE_UPDATED, self, **{'zigate': self,
+                                                                   'device': device,
+                                                                   'attribute': changed})
         elif response.msg == 0x004D:  # device announce
             device = Device(response.data)
+            device._zigate = self
             self._set_device(device)
         else:
             LOGGER.debug('Do nothing special for response {}'.format(response))
@@ -275,6 +283,7 @@ class ZiGate(object):
         if not d:
             LOGGER.warning('Device not found, create it (this isn\'t normal)')
             d = Device({'addr': addr})
+            d._zigate = self
             self._set_device(d)
             self.get_devices_list()  # since device is missing, request info
         return d
@@ -284,6 +293,7 @@ class ZiGate(object):
         remove device from addr
         '''
         del self._devices[addr]
+        LOGGER.debug('Dispatch ZIGATE_DEVICE_REMOVED')
         dispatcher.send(ZIGATE_DEVICE_REMOVED, **{'zigate': self,
                                                   'addr': addr})
 
@@ -294,10 +304,12 @@ class ZiGate(object):
         assert type(device) == Device
         if device.addr in self._devices:
             self._devices[device.addr].update(device)
+            LOGGER.debug('Dispatch ZIGATE_DEVICE_UPDATED')
             dispatcher.send(ZIGATE_DEVICE_UPDATED, self, **{'zigate': self,
                                                       'device':self._devices[device.addr]})
         else:
             self._devices[device.addr] = device
+            LOGGER.debug('Dispatch ZIGATE_DEVICE_ADDED')
             dispatcher.send(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
                                                     'device': device})
             self.node_descriptor_request(device.addr)
@@ -549,6 +561,18 @@ class ZiGate(object):
                            manufacturer_id, 255)
         self.send_data(0x0140, data)
 
+    def available_actions(self, addr, endpoint=None):
+        '''
+        Analyse specified endpoint to found available actions
+        actions are:
+        - onoff
+        - move
+        - lock
+        - ...
+        '''
+        device = self.get_device_from_addr(addr)
+        return device.available_actions(endpoint)
+
     def action_onoff(self, addr, endpoint, onoff, on_time=0, off_time=0, effect=0, gradient=0):
         '''
         On/Off action
@@ -648,9 +672,37 @@ class DeviceEncoder(json.JSONEncoder):
 
 class Device(object):
     def __init__(self, info=None):
+        self._zigate = None
         self._lock = threading.Lock()
         self.info = info or {}
         self.endpoints = {}
+
+    def available_actions(self, endpoint_id=None):
+        '''
+        Analyse specified endpoint to found available actions
+        actions are:
+        - onoff
+        - move
+        - lock
+        - ...
+        '''
+        actions = {}
+        if not endpoint_id:
+            endpoint_id = list(self.endpoints.keys())
+        if not isinstance(endpoint_id, list):
+            endpoint_id = [endpoint_id]
+        for ep_id in endpoint_id:
+            actions[ep_id] = []
+            endpoint = self.endpoints.get(ep_id)
+            if endpoint:
+                if endpoint['device'] in [0x0002, 0x0100, 0x0051, 0x0210]:  # known device id that support onoff
+                    if 0x0006 in endpoint['in_clusters']:
+                        actions[ep_id].append('onoff')
+                    if 0x0008 in endpoint['in_clusters']:
+                        actions[ep_id].append('move')
+                    if 0x0101 in endpoint['in_clusters']:
+                        actions[ep_id].append('lock')
+        return actions
 
     @staticmethod
     def from_json(data):
@@ -668,8 +720,10 @@ class Device(object):
                     d.set_attribute(endpoint_id, cluster_id, data)
             else:
                 endpoint = d.get_endpoint(ep['endpoint'])
-                endpoint['in_clusters'] = ep['in_clusters']
-                endpoint['out_clusters'] = ep['out_clusters']
+                endpoint['profile'] = ep.get('profile', 0)
+                endpoint['device'] = ep.get('device', 0)
+                endpoint['in_clusters'] = ep.get('in_clusters', [])
+                endpoint['out_clusters'] = ep.get('out_clusters', [])
                 for cl in ep['clusters']:
                     cluster = Cluster.from_json(cl)
                     endpoint['clusters'][cluster.cluster_id] = cluster
@@ -680,6 +734,8 @@ class Device(object):
              'info': self.info,
              'endpoints': [{'endpoint': k,
                             'clusters': list(v['clusters'].values()),
+                            'profile': v['profile'],
+                            'device': v['device'],
                             'in_clusters': v['in_clusters'],
                             'out_clusters': v['out_clusters']
                             } for k, v in self.endpoints.items()],
@@ -763,6 +819,8 @@ class Device(object):
         self._lock.acquire()
         if endpoint_id not in self.endpoints:
             self.endpoints[endpoint_id] = {'clusters': {},
+                                           'profile': 0,
+                                           'device': 0,
                                            'in_clusters': [],
                                            'out_clusters': [],
                                            }
