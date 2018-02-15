@@ -1,5 +1,6 @@
 #! /usr/bin/python3
 from binascii import (hexlify, unhexlify)
+import traceback
 from time import (sleep, strftime, time)
 from collections import OrderedDict
 import logging
@@ -18,6 +19,16 @@ LOGGER = logging.getLogger('zigate')
 
 
 AUTO_SAVE = 5*60  # 5 minutes
+ACTIONS = {}
+
+
+def register_actions(action):
+    def decorator(func):
+        if action not in ACTIONS:
+            ACTIONS[action] = []
+        ACTIONS[action].append(func.__name__)
+        return func
+    return decorator
 
 
 class ZiGate(object):
@@ -56,7 +67,8 @@ class ZiGate(object):
             if self.connection:
                 self.connection.close()
         except Exception as e:
-            LOGGER.error('Exception during closing {}'.format(e))
+            LOGGER.error('Exception during closing')
+            LOGGER.error(traceback.format_exc())
 
     def save_state(self, path=None):
         self._save_lock.acquire()
@@ -68,7 +80,7 @@ class ZiGate(object):
                           sort_keys=True, indent=4, separators=(',', ': '))
         except Exception as e:
             LOGGER.error('Failed to save persistent file {}'.format(self._path))
-            LOGGER.error('{}'.format(e))
+            LOGGER.error(traceback.format_exc())
         self._save_lock.release()
 
     def load_state(self, path=None):
@@ -83,11 +95,12 @@ class ZiGate(object):
                     device = Device.from_json(data)
                     device._zigate = self
                     self._devices[device.addr] = device
+                    device._create_actions()
                 LOGGER.debug('Load success')
                 return True
             except Exception as e:
                 LOGGER.error('Failed to load persistent file {}'.format(self._path))
-                LOGGER.error('{}'.format(e))
+                LOGGER.error(traceback.format_exc())
         LOGGER.debug('No file to load')
         return False
 
@@ -244,6 +257,7 @@ class ZiGate(object):
             ep.update(response.cleaned_data())
             ep['in_clusters'] = response['in_clusters']
             ep['out_clusters'] = response['out_clusters']
+            d._create_actions()
         elif response.msg == 0x8045:  # endpoint list
             addr = response['addr']
             for endpoint in response['endpoints']:
@@ -573,6 +587,7 @@ class ZiGate(object):
         device = self.get_device_from_addr(addr)
         return device.available_actions(endpoint)
 
+    @register_actions('onoff')
     def action_onoff(self, addr, endpoint, onoff, on_time=0, off_time=0, effect=0, gradient=0):
         '''
         On/Off action
@@ -596,6 +611,7 @@ class ZiGate(object):
             data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effect, gradient)
         self.send_data(cmd, data)
 
+    @register_actions('move')
     def action_move_level(self, addr, endpoint, onoff=OFF, mode=0, rate=0):
         '''
         move to level
@@ -604,6 +620,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBBBB', 2, addr, 1, endpoint, onoff, mode, rate)
         self.send_data(0x0080, data)
 
+    @register_actions('move')
     def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition_time=0):
         '''
         move to level with on off
@@ -612,6 +629,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint, onoff, level, transition_time)
         self.send_data(0x0081, data)
 
+    @register_actions('move')
     def action_move_step(self, addr, endpoint, onoff=OFF, step_mode=0, step_size=0, transition_time=0):
         '''
         move step
@@ -620,6 +638,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBBBBH', 2, addr, 1, endpoint, onoff, step_mode, step_size, transition_time)
         self.send_data(0x0082, data)
 
+    @register_actions('move')
     def action_move_stop(self, addr, endpoint):
         '''
         move stop
@@ -628,6 +647,7 @@ class ZiGate(object):
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
         self.send_data(0x0083, data)
 
+    @register_actions('move')
     def action_move_stop_onoff(self, addr, endpoint):
         '''
         move stop on off
@@ -636,6 +656,7 @@ class ZiGate(object):
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
         self.send_data(0x0084, data)
 
+    @register_actions('lock')
     def action_lock(self, addr, endpoint, lock):
         '''
         Lock / unlock
@@ -695,7 +716,7 @@ class Device(object):
             actions[ep_id] = []
             endpoint = self.endpoints.get(ep_id)
             if endpoint:
-                if endpoint['device'] in [0x0002, 0x0100, 0x0051, 0x0210]:  # known device id that support onoff
+                if endpoint['device'] in [0, 0x0002, 0x0100, 0x0051, 0x0210]:  # known device id that support onoff
                     if 0x0006 in endpoint['in_clusters']:
                         actions[ep_id].append('onoff')
                     if 0x0008 in endpoint['in_clusters']:
@@ -703,6 +724,19 @@ class Device(object):
                     if 0x0101 in endpoint['in_clusters']:
                         actions[ep_id].append('lock')
         return actions
+
+    def _create_actions(self):
+        '''
+        create convenient functions for actions
+        '''
+        a_actions = self.available_actions()
+        for endpoint_id, actions in a_actions.items():
+            for action in actions:
+                for func_name in ACTIONS.get(action, []):
+                    func = getattr(self._zigate, func_name)
+                    wfunc = functools.partial(func, self.addr, endpoint_id)
+                    functools.update_wrapper(wfunc, func)
+                    setattr(self, func_name, wfunc)
 
     @staticmethod
     def from_json(data):
