@@ -63,7 +63,7 @@ class ZiGate(object):
         if self._autosavetimer:
             self._autosavetimer.cancel()
         try:
-            self.save_state()
+#             self.save_state()
             if self.connection:
                 self.connection.close()
         except Exception as e:
@@ -92,8 +92,7 @@ class ZiGate(object):
                 with open(self._path) as fp:
                     devices = json.load(fp)
                 for data in devices:
-                    device = Device.from_json(data)
-                    device._zigate = self
+                    device = Device.from_json(data, self)
                     self._devices[device.addr] = device
                     device._create_actions()
                 LOGGER.debug('Load success')
@@ -242,8 +241,7 @@ class ZiGate(object):
             for addr in to_delete:
                 self._remove_device(addr)
             for d in response['devices']:
-                device = Device(dict(d))
-                device._zigate = self
+                device = Device(dict(d), self)
                 self._set_device(device)
         elif response.msg == 0x8042:  # node descriptor
             addr = response['addr']
@@ -288,8 +286,7 @@ class ZiGate(object):
                                                                    'device': device,
                                                                    'attribute': changed})
         elif response.msg == 0x004D:  # device announce
-            device = Device(response.data)
-            device._zigate = self
+            device = Device(response.data, self)
             self._set_device(device)
         else:
             LOGGER.debug('Do nothing special for response {}'.format(response))
@@ -302,8 +299,7 @@ class ZiGate(object):
         d = self.get_device_from_addr(addr)
         if not d:
             LOGGER.warning('Device not found, create it (this isn\'t normal)')
-            d = Device({'addr': addr})
-            d._zigate = self
+            d = Device({'addr': addr}, self)
             self._set_device(d)
             self.get_devices_list()  # since device is missing, request info
         return d
@@ -702,8 +698,8 @@ class DeviceEncoder(json.JSONEncoder):
 
 
 class Device(object):
-    def __init__(self, info=None):
-        self._zigate = None
+    def __init__(self, info=None, zigate_instance=None):
+        self._zigate = zigate_instance
         self._lock = threading.Lock()
         self.info = info or {}
         self.endpoints = {}
@@ -749,8 +745,8 @@ class Device(object):
                     setattr(self, func_name, wfunc)
 
     @staticmethod
-    def from_json(data):
-        d = Device()
+    def from_json(data, zigate_instance=None):
+        d = Device(zigate_instance=zigate_instance)
         d.info = data.get('info', {})
         for ep in data.get('endpoints'):
             if 'attributes' in ep:  # old version
