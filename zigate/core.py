@@ -258,6 +258,12 @@ class ZiGate(object):
             ep['in_clusters'] = response['in_clusters']
             ep['out_clusters'] = response['out_clusters']
             d._create_actions()
+            # ask for various general information
+            for c in response['in_clusters']:
+                cluster = CLUSTERS.get(c)
+                if cluster:
+                    self.read_attribute_request(addr, endpoint, c,
+                                                list(cluster.attributes_def.keys()))
         elif response.msg == 0x8045:  # endpoint list
             addr = response['addr']
             for endpoint in response['endpoints']:
@@ -455,6 +461,10 @@ class ZiGate(object):
         '''
         data = struct.pack('!B', typ)
         self.send_data(0x0023, data)
+
+    def get_network_state(self):
+        ''' get network state '''
+        return self.send_data(0x0009)
 
     def start_network(self):
         ''' start network '''
@@ -717,11 +727,11 @@ class Device(object):
             endpoint = self.endpoints.get(ep_id)
             if endpoint:
                 if endpoint['device'] in [0x0002, 0x0100, 0x0051, 0x0210]:  # known device id that support onoff
-                    if 0x0006 in endpoint['in_clusters']:
+                    if 0x0006 in endpoint['out_clusters']:
                         actions[ep_id].append('onoff')
-                    if 0x0008 in endpoint['in_clusters']:
+                    if 0x0008 in endpoint['out_clusters']:
                         actions[ep_id].append('move')
-                    if 0x0101 in endpoint['in_clusters']:
+                    if 0x0101 in endpoint['out_clusters']:
                         actions[ep_id].append('lock')
         return actions
 

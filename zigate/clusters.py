@@ -97,6 +97,8 @@ class C0000(Cluster):
     type = 'General: Basic'
     attributes_def = {0x0004: {'name': 'manufacturer', 'value': 'value'},
                       0x0005: {'name': 'type', 'value': 'value'},
+                      0x0006: {'name': 'datecode', 'value': 'value'},
+                      0x0007: {'name': 'power_source', 'value': 'value'},
                       0xff01: {'name': 'battery', 'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.", 'unit': 'V'},
                       }
 
@@ -107,6 +109,14 @@ class C0006(Cluster):
     type = 'General: On/Off'
     attributes_def = {0x0000: {'name': 'onoff', 'value': 'value'},
                       0x8000: {'name': 'multiclick', 'value': 'value'},
+                      }
+
+
+@register_cluster
+class C0008(Cluster):
+    cluster_id = 0x0008
+    type = 'General: Level control'
+    attributes_def = {0x0000: {'name': 'current_level', 'value': 'value'},
                       }
 
 
@@ -157,4 +167,3 @@ class C0406(Cluster):
     type = 'Measurement: Occupancy Sensing'
     attributes_def = {0x0000: {'name': 'presence', 'value': 'value'},
                       }
-

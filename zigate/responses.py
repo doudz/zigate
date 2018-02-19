@@ -242,6 +242,18 @@ class R8007(Response):
 
 
 @register_response
+class R8009(Response):
+    msg = 0x8009
+    type = 'Network state response'
+    s = OrderedDict([('addr', 'H'),
+                     ('ieee', 'Q'),
+                     ('pan', 'H'),
+                     ('extend_pan', 'Q'),
+                     ('channel', 'B'),
+                     ])
+
+
+@register_response
 class R8010(Response):
     msg = 0x8010
     type = 'Version list'
