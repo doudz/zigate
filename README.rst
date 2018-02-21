@@ -173,7 +173,7 @@ Payload example :
 
 .. code-block:: python
 
-   {"addr": "522a"}
+   {"value": 2.975, "attribute": 65281, "cluster": 0, "data": "01219f0b0421a84305210e000624010000000064292c0865216e0c662b187e01000a210000", "unit": "V", "name": "battery", "endpoint": 1, "addr": "522a"}
 
 you can send command to zigate using the topic zigate/command
 payload should be :
@@ -196,11 +196,11 @@ Payload example :
 All the zigate functions can be call
 .. code-block:: python
 
-   #  turn on endpoint 1
+   # turn on endpoint 1
    payload = '{"function": "action_onoff", "args": ["522a", 1, 1]}'
    client.publish('zigate/command', payload)
    
-   #  turn off endpoint 1
+   # turn off endpoint 1
    payload = '{"function": "action_onoff", "args": ["522a", 1, 0]}'
    client.publish('zigate/command', payload)
    
