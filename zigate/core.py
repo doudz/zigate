@@ -763,7 +763,7 @@ class Device(object):
     def from_json(data, zigate_instance=None):
         d = Device(zigate_instance=zigate_instance)
         d.info = data.get('info', {})
-        for ep in data.get('endpoints'):
+        for ep in data.get('endpoints', []):
             if 'attributes' in ep:  # old version
                 LOGGER.debug('Old version found, convert it')
                 for attribute in ep['attributes'].values():
