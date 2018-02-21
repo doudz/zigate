@@ -175,7 +175,7 @@ Payload example :
 .. code-block:: python
 
    'zigate/attribute_changed/522a/01/0403/0010'
-   {"value": 2.975, "attribute": 65281, "cluster": 0, "data": "01219f0b0421a84305210e000624010000000064292c0865216e0c662b187e01000a210000", "unit": "V", "name": "battery", "endpoint": 1, "addr": "522a"}
+   {"cluster": 1027, "value": 978.5, "data": 9785, "attribute": 16, "unit": "mb", "endpoint": 1, "addr": "522a", "name": "pressure2"}
 
 you can send command to zigate using the topic zigate/command
 payload should be :
