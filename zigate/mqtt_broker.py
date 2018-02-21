@@ -41,7 +41,7 @@ class MQTT_Broker(object):
 
     def device_changed(self, device):
         logging.debug('device_changed {}'.format(device))
-        self._publish('zigate/device_changed', device)
+        self._publish('zigate/device_changed/{}'.format(device.addr), device)
 
     def device_removed(self, addr):
         logging.debug('device_removed {}'.format(addr))
@@ -49,7 +49,9 @@ class MQTT_Broker(object):
 
     def attribute_changed(self, attribute):
         logging.debug('attribute_changed {}'.format(attribute))
-        self._publish('zigate/attribute_changed', attribute)
+        self._publish('zigate/attribute_changed/{0[addr]}/'
+                      '{0[endpoint]:02x}/{0[cluster]:04x}/'
+                      '{0[attribute]:04x}'.format(attribute), attribute)
 
     def on_connect(self, client, userdata, flags, rc):
         logging.info("MQTT connected with result code {}".format(rc))
