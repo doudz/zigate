@@ -194,6 +194,7 @@ Payload example :
    {"function": "permit_join", "result": 0}
 
 All the zigate functions can be call
+
 .. code-block:: python
 
    # turn on endpoint 1
