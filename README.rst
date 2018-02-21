@@ -153,26 +153,26 @@ MQTT Broker
 python3 -m zigate.mqtt_broker --device auto --mqtt_host localhost:1883
 
 the broker publish the following topics:
-zigate/device_changed payload is device
+zigate/device_changed/[addr]
 Payload example :
 
 .. code-block:: python
-
+   'zigate/device_changed/522a'
    {"addr": "522a", "endpoints": [{"device": 0, "clusters": [{"cluster": 1026, "attributes": [{"value": 22.27, "data": 2227, "unit": "\u00b0C", "name": "temperature", "attribute": 0}]}, {"cluster": 1027, "attributes": [{"value": 977, "data": 977, "unit": "mb", "name": "pressure", "attribute": 0}, {"value": 977.7, "data": 9777, "unit": "mb", "name": "pressure2", "attribute": 16}, {"data": -1, "attribute": 20}]}, {"cluster": 1029, "attributes": [{"value": 35.03, "data": 3503, "unit": "%", "name": "humidity", "attribute": 0}]}], "profile": 0, "out_clusters": [], "in_clusters": [], "endpoint": 1}], "info": {"power_source": 0, "ieee": "158d0002271c25", "addr": "522a", "id": 2, "rssi": 255, "last_seen": "2018-02-21 09:41:27"}}
 
-zigate/device_removed payload is addr
+zigate/device_removed 
 Payload example :
 
 .. code-block:: python
 
    {"addr": "522a"}
    
-zigate/attribute_changed 
+zigate/attribute_changed/[addr]/[endpoint]/[cluster]/[attribute]
 payload is changed attribute
 Payload example :
 
 .. code-block:: python
-
+   'zigate/attribute_changed/522a/01/0403/0010'
    {"value": 2.975, "attribute": 65281, "cluster": 0, "data": "01219f0b0421a84305210e000624010000000064292c0865216e0c662b187e01000a210000", "unit": "V", "name": "battery", "endpoint": 1, "addr": "522a"}
 
 you can send command to zigate using the topic zigate/command
