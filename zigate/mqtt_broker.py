@@ -30,6 +30,7 @@ class MQTT_Broker(object):
         port = int(port)
         self.client.connect(host, port)
         self.zigate.autoStart()
+        self.zigate.start_auto_save()
         self.client.loop_forever()
 
     def _publish(self, topic, payload=None):
