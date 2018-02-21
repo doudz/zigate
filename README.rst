@@ -78,6 +78,12 @@ Usage
     'unit': '°C',
     'attribute': 0}
     
+    # call action on devices
+    z.action_onoff('b8ce', 1, zigate.ON)
+    
+    or from devices
+    z.devices[1].action_onoff(zigate.ON)
+    
     
 Callback
 --------
@@ -140,5 +146,63 @@ WiFi ZiGate is also supported :
 
 
 
+MQTT Broker
+-----------
 
 
+python3 -m zigate.mqtt_broker --device auto --mqtt_host localhost:1883
+
+the broker publish the following topics:
+zigate/device_changed payload is device
+Payload example :
+
+.. code-block:: python
+
+   {"addr": "522a", "endpoints": [{"device": 0, "clusters": [{"cluster": 1026, "attributes": [{"value": 22.27, "data": 2227, "unit": "\u00b0C", "name": "temperature", "attribute": 0}]}, {"cluster": 1027, "attributes": [{"value": 977, "data": 977, "unit": "mb", "name": "pressure", "attribute": 0}, {"value": 977.7, "data": 9777, "unit": "mb", "name": "pressure2", "attribute": 16}, {"data": -1, "attribute": 20}]}, {"cluster": 1029, "attributes": [{"value": 35.03, "data": 3503, "unit": "%", "name": "humidity", "attribute": 0}]}], "profile": 0, "out_clusters": [], "in_clusters": [], "endpoint": 1}], "info": {"power_source": 0, "ieee": "158d0002271c25", "addr": "522a", "id": 2, "rssi": 255, "last_seen": "2018-02-21 09:41:27"}}
+
+zigate/device_removed payload is addr
+Payload example :
+
+.. code-block:: python
+
+   {"addr": "522a"}
+   
+zigate/attribute_changed 
+payload is changed attribute
+Payload example :
+
+.. code-block:: python
+
+   {"addr": "522a"}
+
+you can send command to zigate using the topic zigate/command
+payload should be :
+
+.. code-block:: python
+
+   {"function": "function_name", "args": ["optional","args","list"]}
+
+   # example to start permit join
+   payload = '{"function": "permit_join"}'
+   client.publish('zigate/command', payload)
+   
+The broker will publish the result using the topic "zigate/command/result"
+Payload example :
+
+.. code-block:: python
+
+   {"function": "permit_join", "result": 0}
+
+All the zigate functions can be call
+.. code-block:: python
+
+   #  turn on endpoint 1
+   payload = '{"function": "action_onoff", "args": ["522a", 1, 1]}'
+   client.publish('zigate/command', payload)
+   
+   #  turn off endpoint 1
+   payload = '{"function": "action_onoff", "args": ["522a", 1, 0]}'
+   client.publish('zigate/command', payload)
+   
+   
+   
