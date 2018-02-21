@@ -36,7 +36,6 @@ class ZiGate(object):
     def __init__(self, port='auto', path='~/.zigate.json',
                  auto_start=True,
                  auto_save=True):
-        self._buffer = b''
         self._devices = {}
         self._path = path
         self._version = None
@@ -51,7 +50,7 @@ class ZiGate(object):
         dispatcher.connect(self.decode_data, ZIGATE_PACKET_RECEIVED)
         self.setup_connection()
         if auto_start:
-            self.init()
+            self.autoStart()
             if auto_save:
                 self.start_auto_save()
 
@@ -63,7 +62,6 @@ class ZiGate(object):
         if self._autosavetimer:
             self._autosavetimer.cancel()
         try:
-#             self.save_state()
             if self.connection:
                 self.connection.close()
         except Exception as e:
@@ -113,14 +111,26 @@ class ZiGate(object):
     def __del__(self):
         self.close()
 
-    def init(self):
+    def autoStart(self):
+        '''
+        Auto Start sequence:
+            - Load persistent file
+            - Set Channel mask
+            - Set Type Coordinator
+            - Start Network
+            - Refresh devices list
+        '''
         self.load_state()
 #         erase = not self.load_state()
 #         if erase:
 #             self.erase_persistent()
         self.set_channel()
         self.set_type(TYPE_COORDINATOR)
-        self.start_network()
+        LOGGER.debug('Check network state')
+        network_state = self.get_network_state()
+        if network_state.get('pan') == 0:
+            LOGGER.debug('Network is down, start it')
+            self.start_network(True)
         self.get_devices_list(True)
 
     def zigate_encode(self, data):
@@ -164,6 +174,7 @@ class ZiGate(object):
         '''
         send data through ZiGate
         '''
+        LOGGER.debug('REQUEST : 0x{:04x} {}'.format(cmd, data))
         self._last_status[cmd] = None
         if wait_response:
             self._clear_response(wait_response)
@@ -190,7 +201,6 @@ class ZiGate(object):
         enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
         encoded_output = bytes(enc_msg)
-        LOGGER.debug('REQUEST : 0x{:04x} {}'.format(cmd, data))
         LOGGER.debug('Encoded Msg to send {}'.format(encoded_output))
 
         self.send_to_transport(encoded_output)
@@ -460,12 +470,16 @@ class ZiGate(object):
 
     def get_network_state(self):
         ''' get network state '''
-        return self.send_data(0x0009)
+        r = self.send_data(0x0009, wait_response=0x8009)
+        if r:
+            return r.cleaned_data()
 
-    def start_network(self):
+    def start_network(self, wait=False):
         ''' start network '''
-        return self.send_data(0x0024)
-#         return self._wait_response(b'8024')
+        wait_response = None
+        if wait:
+            wait_response = 0x8024
+        return self.send_data(0x0024, wait_response=wait_response)
 
     def start_network_scan(self):
         ''' start network scan '''
@@ -591,7 +605,8 @@ class ZiGate(object):
         - ...
         '''
         device = self.get_device_from_addr(addr)
-        return device.available_actions(endpoint)
+        if device:
+            return device.available_actions(endpoint)
 
     @register_actions('onoff')
     def action_onoff(self, addr, endpoint, onoff, on_time=0, off_time=0, effect=0, gradient=0):
@@ -897,7 +912,9 @@ class Device(object):
                 cluster = endpoint['clusters'][cluster_id]
                 attribute = cluster.attributes.get(attribute_id)
                 if extended_info:
-                    attr = {'endpoint': endpoint_id, 'cluster': cluster_id}
+                    attr = {'endpoint': endpoint_id,
+                            'cluster': cluster_id,
+                            'addr': self.addr}
                     attr.update(attribute)
                     return attr
                 return attribute

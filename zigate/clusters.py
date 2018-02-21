@@ -69,7 +69,7 @@ class Cluster(object):
         return added
 
     def __str__(self):
-        return 'Cluster {} {}'.format(self.cluster_id, self.type)
+        return 'Cluster 0x{:04x} {}'.format(self.cluster_id, self.type)
 
     def __repr__(self):
         return self.__str__()
