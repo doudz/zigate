@@ -519,6 +519,17 @@ class ZiGate(object):
         '''
         return self.send_data(0x0045, addr)
 
+    def refresh_device(self, addr):
+        '''
+        convenient function to refresh device info by calling
+        node descriptor
+        power descriptor
+        active endpoint request
+        '''
+        self.node_descriptor_request(addr)
+#         self.power_descriptor_request(addr)
+        self.active_endpoint_request(addr)
+
     def identify_send(self, addr, endpoint, time_sec):
         '''
         identify query
@@ -827,6 +838,18 @@ class Device(object):
         self.info['rssi'] = value
 
     @property
+    def battery_percent(self):
+        percent = 100
+        if self.info.get('power_source') == 0:
+            power_source = self.get_property_value('power_source')
+            battery = self.get_property_value('battery')
+            if power_source and battery:
+                percent = battery*100/power_source
+            if percent > 100:
+                percent = 100
+        return percent
+
+    @property
     def rssi_percent(self):
         return round(100*self.rssi/255)
 
@@ -958,6 +981,14 @@ class Device(object):
                             attr.update(attribute)
                             return attr
                         return attribute
+
+    def get_property_value(self, name):
+        '''
+        return attribute value matching name
+        '''
+        prop = self.get_property(name)
+        if prop:
+            return prop['value']
 
     @property
     def properties(self):
