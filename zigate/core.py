@@ -281,9 +281,14 @@ class ZiGate(object):
             if device:
                 self._remove_device(device.addr)
         elif response.msg in (0x8100, 0x8102, 0x8110):  # attribute report
+            if response['status'] != 0:
+                LOGGER.debug('Receive Bad status')
+                return
             device = self._get_device(response['addr'])
             device.rssi = response['rssi']
             added = device.set_attribute(response['endpoint'], response['cluster'], response.cleaned_data())
+            if added is None:
+                return
             changed = device.get_attribute(response['endpoint'], response['cluster'], response['attribute'], True)
             if added:
                 LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_ADDED')

@@ -5,6 +5,12 @@ Created on 12 févr. 2018
 '''
 import struct
 from binascii import unhexlify, hexlify
+import logging
+
+
+LOGGER = logging.getLogger('zigate')
+
+
 # CLUSTERS = {0x0000: 'General: Basic',
 #             0x0001: 'General: Power Config',
 #             0x0002: 'General: Temperature Config',
@@ -64,8 +70,15 @@ class Cluster(object):
         attr_def = self.attributes_def.get(attribute_id)
         if attr_def:
             attribute.update(attr_def)
-            value = attribute['data']
-            attribute['value'] = eval(attribute['value'])
+            try:
+                attribute['value'] = eval(attribute['value'],
+                                      globals(),
+                                      {'value': attribute['data']})
+            except:
+                LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
+                                                                     attribute['data']
+                                                                     ))
+                attribute['value'] = None
         return added
 
     def __str__(self):
@@ -101,6 +114,11 @@ class C0000(Cluster):
                       0x0007: {'name': 'power_source', 'value': 'value'},
                       0xff01: {'name': 'battery', 'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.", 'unit': 'V'},
                       }
+
+    def update(self, data):
+        if data['attribute'] == 0xff01 and not data['data'].startswith('0121'):
+            return
+        return Cluster.update(self, data)
 
 
 @register_cluster
