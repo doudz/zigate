@@ -256,22 +256,24 @@ class ZiGate(object):
         elif response.msg == 0x8042:  # node descriptor
             addr = response['addr']
             d = self.get_device_from_addr(addr)
-            d.update_info(response.cleaned_data())
+            if d:
+                d.update_info(response.cleaned_data())
         elif response.msg == 0x8043:  # simple descriptor
             addr = response['addr']
             endpoint = response['endpoint']
             d = self.get_device_from_addr(addr)
-            ep = d.get_endpoint(endpoint)
-            ep.update(response.cleaned_data())
-            ep['in_clusters'] = response['in_clusters']
-            ep['out_clusters'] = response['out_clusters']
-            d._create_actions()
-            # ask for various general information
-            for c in response['in_clusters']:
-                cluster = CLUSTERS.get(c)
-                if cluster:
-                    self.read_attribute_request(addr, endpoint, c,
-                                                list(cluster.attributes_def.keys()))
+            if d:
+                ep = d.get_endpoint(endpoint)
+                ep.update(response.cleaned_data())
+                ep['in_clusters'] = response['in_clusters']
+                ep['out_clusters'] = response['out_clusters']
+                d._create_actions()
+                # ask for various general information
+                for c in response['in_clusters']:
+                    cluster = CLUSTERS.get(c)
+                    if cluster:
+                        self.read_attribute_request(addr, endpoint, c,
+                                                    list(cluster.attributes_def.keys()))
         elif response.msg == 0x8045:  # endpoint list
             addr = response['addr']
             for endpoint in response['endpoints']:
@@ -343,9 +345,7 @@ class ZiGate(object):
             LOGGER.debug('Dispatch ZIGATE_DEVICE_ADDED')
             dispatcher.send(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
                                                     'device': device})
-            self.node_descriptor_request(device.addr)
-#             self.power_descriptor_request(device.addr)
-            self.active_endpoint_request(device.addr)
+            self.refresh_device(device.addr)
 
     def get_status_text(self, status_code):
         return STATUS_CODES.get(status_code,
@@ -492,8 +492,12 @@ class ZiGate(object):
 
     def remove_device(self, addr):
         ''' remove device '''
-        ieee = self._devices[addr].get_property('ieee')
-        return self.send_data(0x0026, addr+ieee)
+        if addr in self._devices:
+            ieee = self._devices[addr]['ieee']
+            addr = self.__addr(addr)
+            ieee = self.__addr(ieee)
+            data = struct.pack('!HQ',addr, ieee)
+            return self.send_data(0x0026, data)
 
     def node_descriptor_request(self, addr):
         ''' node descriptor request '''
@@ -545,6 +549,18 @@ class ZiGate(object):
         addr = self.__addr(addr)
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
         return self.send_data(0x0041, data)
+
+    def initiate_touchlink(self):
+        '''
+        Initiate Touchlink
+        '''
+        return self.send_data(0x00D0)
+
+    def touchlink_factory_reset(self):
+        '''
+        Touchlink factory reset
+        '''
+        return self.send_data(0x00D2)
 
     def read_attribute_request(self, addr, endpoint, cluster, attribute):
         """
@@ -754,11 +770,11 @@ class Device(object):
             endpoint = self.endpoints.get(ep_id)
             if endpoint:
                 if endpoint['device'] in [0x0002, 0x0100, 0x0051, 0x0210]:  # known device id that support onoff
-                    if 0x0006 in endpoint['out_clusters']:
+                    if 0x0006 in endpoint['in_clusters']:
                         actions[ep_id].append('onoff')
-                    if 0x0008 in endpoint['out_clusters']:
+                    if 0x0008 in endpoint['in_clusters']:
                         actions[ep_id].append('move')
-                    if 0x0101 in endpoint['out_clusters']:
+                    if 0x0101 in endpoint['in_clusters']:
                         actions[ep_id].append('lock')
         return actions
 
@@ -852,6 +868,9 @@ class Device(object):
     @property
     def rssi_percent(self):
         return round(100*self.rssi/255)
+
+    def refresh_device(self):
+        self._zigate.refresh_device(self.addr)
 
     def __setitem__(self, key, value):
         self.info[key] = value
