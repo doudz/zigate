@@ -438,7 +438,7 @@ class ZiGate(object):
         erase persistent data in zigate
         '''
         return self.send_data(0x0012)
-        # todo, erase local persitent
+        # todo, erase local persistent
 
     def is_permitting_join(self):
         '''
@@ -499,6 +499,62 @@ class ZiGate(object):
             data = struct.pack('!HQ',addr, ieee)
             return self.send_data(0x0026, data)
 
+    def bind(self, ieee, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
+        '''
+        bind
+        if dst_addr not specified, supposed zigate
+        '''
+        if len(dst_addr) == 4:
+            dst_addr_mode = 2
+            dst_addr_fmt = 'H'
+        else:
+            dst_addr_mode = 1
+            dst_addr_fmt = 'Q'
+        ieee = self.__addr(ieee)
+        dst_addr = self.__addr(dst_addr)
+        data = struct.pack('!QBHB'+dst_addr_fmt+'B', ieee, endpoint,
+                           cluster, dst_addr_mode, dst_addr, dst_endpoint)
+        return self.send_data(0x0030, data)
+
+    def bind_addr(self, addr, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
+        '''
+        bind using addr
+        if dst_addr not specified, supposed zigate
+        convenient function to use addr instead of ieee
+        '''
+        if addr in self._devices:
+            ieee = self._devices[addr]['ieee']
+            return self.bind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
+        LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
+
+    def unbind(self, ieee, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
+        '''
+        unbind
+        if dst_addr not specified, supposed zigate
+        '''
+        if len(dst_addr) == 4:
+            dst_addr_mode = 2
+            dst_addr_fmt = 'H'
+        else:
+            dst_addr_mode = 1
+            dst_addr_fmt = 'Q'
+        ieee = self.__addr(ieee)
+        dst_addr = self.__addr(dst_addr)
+        data = struct.pack('!QBHB'+dst_addr_fmt+'B', ieee, endpoint,
+                           cluster, dst_addr_mode, dst_addr, dst_endpoint)
+        return self.send_data(0x0031, data)
+
+    def unbind_addr(self, addr, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
+        '''
+        unbind using addr
+        if dst_addr not specified, supposed zigate
+        convenient function to use addr instead of ieee
+        '''
+        if addr in self._devices:
+            ieee = self._devices[addr]['ieee']
+            return self.unbind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
+        LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
+
     def node_descriptor_request(self, addr):
         ''' node descriptor request '''
         return self.send_data(0x0042, addr)
@@ -523,6 +579,19 @@ class ZiGate(object):
         '''
         return self.send_data(0x0045, addr)
 
+    def management_leave_request(self, addr, ieee=None, rejoin=0, remove_children=0):
+        '''
+        Management Leave request
+        rejoin : 0 do not rejoin, 1 rejoin
+        remove_children : 0 Leave, removing children, 1 = Leave, do not remove children
+        '''
+        addr = self.__addr(addr)
+        if not ieee:
+            ieee = self._devices[addr]['ieee']
+        ieee = self.__addr(ieee)
+        data = struct.pack('!HQBB', addr, ieee, rejoin, remove_children)
+        return self.send_data(0x0047, data)
+
     def refresh_device(self, addr):
         '''
         convenient function to refresh device info by calling
@@ -534,13 +603,74 @@ class ZiGate(object):
 #         self.power_descriptor_request(addr)
         self.active_endpoint_request(addr)
 
+    def add_group(self, addr, endpoint, group):
+        '''
+        Add group
+        '''
+        addr_mode = 2
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        src_endpoint = 1
+        data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint, group)
+        return self.send_data(0x0060, data)
+
+    def view_group(self, addr, endpoint, group):
+        '''
+        View group
+        '''
+        addr_mode = 2
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        src_endpoint = 1
+        data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint, group)
+        return self.send_data(0x0061, data)
+
+    def get_group_membership(self, addr, endpoint, groups):
+        '''
+        Get group membership
+        groups is list of group addr
+        '''
+        addr_mode = 2
+        addr = self.__addr(addr)
+        src_endpoint = 1
+        length = len(groups)
+        groups = [self.__addr(group) for group in groups]
+        data = struct.pack('!BHBBB{}H'.format(length), addr_mode, addr, src_endpoint, endpoint, length, *groups)
+        return self.send_data(0x0061, data)
+
+    def remove_group(self, addr, endpoint, group=None):
+        '''
+        Remove group
+        if group not specified, remove all groups
+        '''
+        addr_mode = 2
+        addr = self.__addr(addr)
+        src_endpoint = 1
+        if not group:
+            data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint)
+            return self.send_data(0x0064, data)
+        group = self.__addr(group)
+        data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint, group)
+        return self.send_data(0x0063, data)
+
+    def add_group_identify(self, addr, endpoint, group):
+        '''
+        Add group if identify ??
+        '''
+        addr_mode = 2
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        src_endpoint = 1
+        data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint, group)
+        return self.send_data(0x0065, data)
+
     def identify_send(self, addr, endpoint, time_sec):
         '''
         identify query
         '''
         addr = self.__addr(addr)
         data = struct.pack('!BHBBH', 2, addr, 1, endpoint, time_sec)
-        return self.send_data(0x0041, data)
+        return self.send_data(0x0070, data)
 
     def identify_query(self, addr, endpoint):
         '''
@@ -548,7 +678,7 @@ class ZiGate(object):
         '''
         addr = self.__addr(addr)
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
-        return self.send_data(0x0041, data)
+        return self.send_data(0x0071, data)
 
     def initiate_touchlink(self):
         '''
@@ -613,6 +743,33 @@ class ZiGate(object):
                            direction, manufacturer_specific, 
                            manufacturer_id, length, *attribute)
         self.send_data(0x0110, data)
+
+    def reporting_request(self, addr, endpoint, cluster, attribute):
+        '''
+        Configure reporting request
+        for now support only one attribute
+        '''
+        addr = self.__addr(addr)
+        direction = 0
+        manufacturer_specific = 0
+        manufacturer_id = 0
+#         if not isinstance(attributes, list):
+#             attributes = [attributes]
+#         length = len(attributes)
+        length = 1
+        attribute_direction = 0
+        attribute_type = 0
+        attribute_id = attribute
+        min_interval = 0
+        max_interval = 0
+        timeout = 0
+        change = 0
+        data = struct.pack('!BHBBHBBHBBBHHHHB', 2, addr, 1, endpoint, cluster, 
+                           direction, manufacturer_specific, 
+                           manufacturer_id, length, attribute_direction,
+                           attribute_type, attribute_id, min_interval,
+                           max_interval, timeout, change)
+        self.send_data(0x0120, data)
 
     def attribute_discovery_request(self, addr, endpoint, cluster):
         '''

@@ -35,7 +35,8 @@ class Response(object):
     type = 'Base response'
     s = OrderedDict()
     format = {'addr': '{:04x}',
-              'ieee': '{:08x}'}
+              'ieee': '{:08x}',
+              'group': '{:04x}'}
 
     def __init__(self, msg_data, rssi):
         self.msg_data = msg_data
@@ -513,6 +514,48 @@ class R004D(Response):
 #     Bit 4,5 – Reserved
 #     Bit 6 – Security capability
 #     Bit 7 – Allocate Address
+
+
+@register_response
+class R8060(Response):
+    msg = 0x8060
+    type = 'Add group response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ])
+
+
+@register_response
+class R8061(Response):
+    msg = 0x8061
+    type = 'View group response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
+                     ])
+
+
+@register_response
+class R8062(Response):
+    msg = 0x8062
+    type = 'Get group membership'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('addr', 'H'),
+                     ('capacity', 'B'),
+                     ('group_count', 'B'),
+                     ('groups', OrderedDict([('group', 'H')]))
+                     ])
+
+
+@register_response
+class R8063(R8061):
+    msg = 0x8063
+    type = 'Remove group response'
 
 
 @register_response
