@@ -452,8 +452,15 @@ class ZiGate(object):
     def permit_join(self, duration=30):
         '''
         start permit join
+        duration in secs, 0 means stop permit join 
         '''
         return self.send_data(0x0049, 'FFFC{:02X}00'.format(duration))
+
+    def stop_permit_join(self):
+        '''
+        convenient function to stop permit_join
+        '''
+        return self.permit_join(0)
 
     def set_channel(self, channels=None):
         '''
@@ -1013,7 +1020,7 @@ class Device(object):
     @property
     def battery_percent(self):
         percent = 100
-        if self.info.get('power_source') == 0:
+        if self.info.get('power_type') == 0:
             power_source = self.get_property_value('power_source')
             battery = self.get_property_value('battery')
             if power_source and battery:

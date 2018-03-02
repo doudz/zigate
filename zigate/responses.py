@@ -339,7 +339,7 @@ class R8015(Response):
                                             ('id', 'B'),
                                             ('addr', 'H'),
                                             ('ieee', 'Q'),
-                                            ('power_source', 'B'),
+                                            ('power_type', 'B'),
                                             ('rssi', 'B'),
                                             ]))])
 

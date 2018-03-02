@@ -122,6 +122,17 @@ class C0000(Cluster):
 
 
 @register_cluster
+class C0001(Cluster):
+    cluster_id = 0x0001
+    type = 'General: Power Config'
+    attributes_def = {0x0000: {'name': 'voltage', 'value': 'value'},
+                      0x0010: {'name': 'voltage_alarm', 'value': 'value'},
+                      0x0020: {'name': 'battery_voltage', 'value': 'value'},
+                      0x0030: {'name': 'battery_settings', 'value': 'value'},
+                      }
+
+
+@register_cluster
 class C0006(Cluster):
     cluster_id = 0x0006
     type = 'General: On/Off'
