@@ -14,6 +14,7 @@ from .clusters import (CLUSTERS, Cluster)
 import functools
 import struct
 import threading
+import random
 
 LOGGER = logging.getLogger('zigate')
 
@@ -37,6 +38,7 @@ class ZiGate(object):
                  auto_start=True,
                  auto_save=True):
         self._devices = {}
+        self._groups = {}
         self._path = path
         self._version = None
         self._port = port
@@ -391,6 +393,10 @@ class ZiGate(object):
             addr = int(addr, 16)
         return addr
 
+    def __haddr(self, int_addr, length=4):
+        ''' convert int addr to hex '''
+        return '{0:0{1}x}'.format(int_addr, length)
+
     @property
     def devices(self):
         return list(self._devices.values())
@@ -586,11 +592,13 @@ class ZiGate(object):
         '''
         return self.send_data(0x0045, addr)
 
-    def management_leave_request(self, addr, ieee=None, rejoin=0, remove_children=0):
+    def management_leave_request(self, addr, ieee=None, rejoin=0,
+                                 remove_children=0):
         '''
         Management Leave request
         rejoin : 0 do not rejoin, 1 rejoin
-        remove_children : 0 Leave, removing children, 1 = Leave, do not remove children
+        remove_children : 0 Leave, removing children,
+                            1 = Leave, do not remove children
         '''
         addr = self.__addr(addr)
         if not ieee:
@@ -610,16 +618,57 @@ class ZiGate(object):
 #         self.power_descriptor_request(addr)
         self.active_endpoint_request(addr)
 
-    def add_group(self, addr, endpoint, group):
+    def _generate_addr(self):
+        addr = None
+        while not addr or addr in self._devices:
+            addr = random.randint(1, 0xffff)
+        return addr
+
+    @property
+    def groups(self):
+        '''
+        return known groups
+        '''
+        return self._groups
+
+    def _add_group(self, cmd, addr, endpoint, group=None):
         '''
         Add group
+        if group addr not specified, generate one
+        return group addr
         '''
         addr_mode = 2
         addr = self.__addr(addr)
-        group = self.__addr(group)
+        if not group:
+            group = self._generate_addr()
+        else:
+            group = self.__addr(group)
         src_endpoint = 1
-        data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint, group)
-        return self.send_data(0x0060, data)
+        data = struct.pack('!BHBBH', addr_mode, addr,
+                           src_endpoint, endpoint, group)
+        r = self.send_data(cmd, data)
+        group_addr = self.__haddr(group)
+        if r == 0:
+            if group_addr not in self._groups:
+                self._groups[group_addr] = set()
+            self._groups[group_addr].add((self.__haddr(addr), endpoint))
+        return group_addr
+
+    def add_group(self, addr, endpoint, group=None):
+        '''
+        Add group
+        if group addr not specified, generate one
+        return group addr
+        '''
+        return self._add_group(0x0060, addr, endpoint, group)
+
+    def add_group_identify(self, addr, endpoint, group=None):
+        '''
+        Add group if identify ??
+        if group addr not specified, generate one
+        return group addr
+        '''
+        return self._add_group(0x0065, addr, endpoint, group)
 
     def view_group(self, addr, endpoint, group):
         '''
@@ -629,7 +678,8 @@ class ZiGate(object):
         addr = self.__addr(addr)
         group = self.__addr(group)
         src_endpoint = 1
-        data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint, group)
+        data = struct.pack('!BHBBH', addr_mode, addr,
+                           src_endpoint, endpoint, group)
         return self.send_data(0x0061, data)
 
     def get_group_membership(self, addr, endpoint, groups):
@@ -642,7 +692,8 @@ class ZiGate(object):
         src_endpoint = 1
         length = len(groups)
         groups = [self.__addr(group) for group in groups]
-        data = struct.pack('!BHBBB{}H'.format(length), addr_mode, addr, src_endpoint, endpoint, length, *groups)
+        data = struct.pack('!BHBBB{}H'.format(length), addr_mode, addr,
+                           src_endpoint, endpoint, length, *groups)
         return self.send_data(0x0061, data)
 
     def remove_group(self, addr, endpoint, group=None):
@@ -654,22 +705,19 @@ class ZiGate(object):
         addr = self.__addr(addr)
         src_endpoint = 1
         if not group:
-            data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint)
+            data = struct.pack('!BHBBH', addr_mode, addr,
+                               src_endpoint, endpoint)
             return self.send_data(0x0064, data)
         group = self.__addr(group)
-        data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint, group)
-        return self.send_data(0x0063, data)
-
-    def add_group_identify(self, addr, endpoint, group):
-        '''
-        Add group if identify ??
-        '''
-        addr_mode = 2
-        addr = self.__addr(addr)
-        group = self.__addr(group)
-        src_endpoint = 1
-        data = struct.pack('!BHBBH', addr_mode, addr, src_endpoint, endpoint, group)
-        return self.send_data(0x0065, data)
+        data = struct.pack('!BHBBH', addr_mode, addr,
+                           src_endpoint, endpoint, group)
+        r = self.send_data(0x0063, data)
+        if r == 0:
+            if group:
+                del self._groups[self.__haddr(group)]
+            else:
+                self._groups = {}
+        return r
 
     def identify_send(self, addr, endpoint, time_sec):
         '''
@@ -978,6 +1026,8 @@ class Device(object):
                 for cl in ep['clusters']:
                     cluster = Cluster.from_json(cl)
                     endpoint['clusters'][cluster.cluster_id] = cluster
+        if 'power_source' in d.info:  # old version
+            d.info['power_type'] = d.info.pop('power_source')
         return d
 
     def to_json(self, properties=False):
