@@ -35,7 +35,7 @@ class Response(object):
     type = 'Base response'
     s = OrderedDict()
     format = {'addr': '{:04x}',
-              'ieee': '{:08x}',
+              'ieee': '{:016x}',
               'group': '{:04x}'}
 
     def __init__(self, msg_data, rssi):
@@ -504,7 +504,7 @@ class R004D(Response):
                      ('mac_capability', 'B')
                      ])
     format = {'addr': '{:04x}',
-              'ieee': '{:08x}',
+              'ieee': '{:016x}',
               'mac_capability': '{:08b}'}
 #     MAC capability
 #     Bit 0 – Alternate PAN Coordinator

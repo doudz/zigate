@@ -126,10 +126,21 @@ class C0001(Cluster):
     cluster_id = 0x0001
     type = 'General: Power Config'
     attributes_def = {0x0000: {'name': 'voltage', 'value': 'value'},
-                      0x0010: {'name': 'voltage_alarm', 'value': 'value'},
                       0x0020: {'name': 'battery_voltage', 'value': 'value'},
-                      0x0030: {'name': 'battery_settings', 'value': 'value'},
+                      0x0021: {'name': 'battery_percent', 'value': 'value'},
+                      0x0030: {'name': 'battery_manufacturer', 'value': 'value'},
+                      0x0031: {'name': 'battery_size', 'value': 'value'},
+                      0x0033: {'name': 'battery_quantity', 'value': 'value'},
                       }
+#     battery_size
+#     E_CLD_PWRCFG_BATTERY_SIZE_NO_BATTERY= 0x00,
+#     E_CLD_PWRCFG_BATTERY_SIZE_BUILT_IN,
+#     E_CLD_PWRCFG_BATTERY_SIZE_OTHER,
+#     E_CLD_PWRCFG_BATTERY_SIZE_AA,
+#     E_CLD_PWRCFG_BATTERY_SIZE_AAA,
+#     E_CLD_PWRCFG_BATTERY_SIZE_C,
+#     E_CLD_PWRCFG_BATTERY_SIZE_D,
+#     E_CLD_PWRCFG_BATTERY_SIZE_UNKNOWN     = 0xff,
 
 
 @register_cluster

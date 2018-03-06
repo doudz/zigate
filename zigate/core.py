@@ -20,6 +20,7 @@ LOGGER = logging.getLogger('zigate')
 
 
 AUTO_SAVE = 5*60  # 5 minutes
+BIND_REPORT_LIGHT = True  # automatically bind and report state for light
 ACTIONS = {}
 
 
@@ -95,6 +96,7 @@ class ZiGate(object):
                     device = Device.from_json(data, self)
                     self._devices[device.addr] = device
                     device._create_actions()
+                    device._bind_report()
                 LOGGER.debug('Load success')
                 return True
             except Exception as e:
@@ -129,11 +131,30 @@ class ZiGate(object):
         self.set_channel()
         self.set_type(TYPE_COORDINATOR)
         LOGGER.debug('Check network state')
+        self.start_network()
         network_state = self.get_network_state()
-        if network_state.get('pan') == 0:
+        if network_state.get('extend_pan') == 0:
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
         self.get_devices_list(True)
+        self.need_refresh()
+
+    def need_refresh(self):
+        '''
+        scan device which need refresh
+        auto refresh if possible
+        else dispatch signal
+        '''
+        for device in self.devices:
+            if device.need_refresh():
+                if device.receiver_on_when_idle():
+                    LOGGER.debug('Auto refresh device {}'.format(device))
+                    device.refresh_device()
+                else:
+                    LOGGER.debug('Dispatch ZIGATE_DEVICE_NEED_REFRESH {}'.format(device))
+                    dispatcher.send(ZIGATE_DEVICE_NEED_REFRESH,
+                                    self, **{'zigate': self,
+                                             'device': device})
 
     def zigate_encode(self, data):
         encoded = bytearray()
@@ -270,6 +291,7 @@ class ZiGate(object):
                 ep['in_clusters'] = response['in_clusters']
                 ep['out_clusters'] = response['out_clusters']
                 d._create_actions()
+                d._bind_report()
                 # ask for various general information
                 for c in response['in_clusters']:
                     cluster = CLUSTERS.get(c)
@@ -476,7 +498,7 @@ class ZiGate(object):
         if not isinstance(channels, list):
             channels = [channels]
         mask = functools.reduce(lambda acc, x: acc ^ 2 ** x, channels, 0)
-        mask = '{:08X}'.format(mask)
+        mask = struct.pack('!I',mask)
         return self.send_data(0x0021, mask)
 
     def set_type(self, typ=TYPE_COORDINATOR):
@@ -509,7 +531,7 @@ class ZiGate(object):
             ieee = self._devices[addr]['ieee']
             addr = self.__addr(addr)
             ieee = self.__addr(ieee)
-            data = struct.pack('!HQ',addr, ieee)
+            data = struct.pack('!QQ', addr, ieee)
             return self.send_data(0x0026, data)
 
     def bind(self, ieee, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
@@ -1003,6 +1025,26 @@ class Device(object):
                     functools.update_wrapper(wfunc, func)
                     setattr(self, func_name, wfunc)
 
+    def _bind_report(self):
+        '''
+        automatically bind and report data for light
+        '''
+        if not BIND_REPORT_LIGHT:
+            return
+        for endpoint_id, endpoint in self.endpoints.items():
+            if endpoint['device'] == 0x0100:  # light
+                ieee = self.info['ieee']
+                if 0x0006 in endpoint['in_clusters']:
+                    LOGGER.debug('bind and report for cluster 0x0006')
+                    self._zigate.bind(self, ieee, endpoint_id, 0x0006)
+                    self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x0006, 0x000)
+                if 0x0008 in endpoint['in_clusters']:
+                    LOGGER.debug('bind and report for cluster 0x0006')
+                    self._zigate.bind(self, ieee, endpoint_id, 0x0008)
+                    self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x0008, 0x000)
+
     @staticmethod
     def from_json(data, zigate_instance=None):
         d = Device(zigate_instance=zigate_instance)
@@ -1060,6 +1102,10 @@ class Device(object):
         return self.info['addr']
 
     @property
+    def ieee(self):
+        return self.info['ieee']
+
+    @property
     def rssi(self):
         return self.info.get('rssi', 0)
 
@@ -1069,14 +1115,17 @@ class Device(object):
 
     @property
     def battery_percent(self):
-        percent = 100
-        if self.info.get('power_type') == 0:
-            power_source = self.get_property_value('power_source')
-            battery = self.get_property_value('battery')
-            if power_source and battery:
-                percent = battery*100/power_source
-            if percent > 100:
-                percent = 100
+        percent = self.get_property_value('battery_percent')
+        if not percent:
+            percent = 100
+            if self.info.get('power_type') == 0:
+                power_source = self.get_property_value('power_source')
+                battery = self.get_property_value('battery')
+                if power_source and battery:
+                    power_end = 0.75*power_source
+                    percent = (battery-power_end)*100/(power_source-power_end)
+                if percent > 100:
+                    percent = 100
         return percent
 
     @property
@@ -1235,3 +1284,30 @@ class Device(object):
                     if 'name' in attribute:
                         yield attribute
 
+    def receiver_on_when_idle(self):
+        mac_flags = self.info.get('mac_flags')
+        if mac_flags:
+            return mac_flags[3] == '1'
+        return False
+
+    def need_refresh(self):
+        '''
+        return True if device need to be refresh
+        because of missing important information
+        '''
+        need = False
+        LOGGER.debug('Check Need refresh {}'.format(self))
+        if not self.get_property_value('type'):
+            LOGGER.debug('Need refresh : no type')
+            need = True
+        if not self.endpoints:
+            LOGGER.debug('Need refresh : no endpoints')
+            need = True
+        for endpoint in self.endpoints.values():
+            if not endpoint.get('device'):
+                LOGGER.debug('Need refresh : no device id')
+                need = True
+            if not endpoint.get('in_clusters'):
+                LOGGER.debug('Need refresh : no clusters list')
+                need = True
+        return need
