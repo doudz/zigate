@@ -367,14 +367,14 @@ class R8042(Response):
                      ('max_tx', 'H'),
                      ('server_mask', 'H'),
                      ('descriptor_capability', 'B'),
-                     ('mac_flags', 'B'),
+                     ('mac_capability', 'B'),
                      ('max_buffer', 'B'),
                      ('bit_field', 'H')
                      ])
     format = {'addr': '{:04x}',
               'manufacturer': '{:04x}',
               'descriptor_capability': '{:08b}',
-              'mac_flags': '{:08b}',
+              'mac_capability': '{:08b}',
               'bit_field': '{:016b}'}
 #     Bitfields:    
 #     Logical type (bits 0-2    

@@ -1285,9 +1285,9 @@ class Device(object):
                         yield attribute
 
     def receiver_on_when_idle(self):
-        mac_flags = self.info.get('mac_flags')
-        if mac_flags:
-            return mac_flags[3] == '1'
+        mac_capability = self.info.get('mac_capability')
+        if mac_capability:
+            return mac_capability[3] == '1'
         return False
 
     def need_refresh(self):
