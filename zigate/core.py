@@ -49,6 +49,10 @@ class ZiGate(object):
         self._autosavetimer = None
         self._closing = False
         self.connection = None
+
+        self._addr = None
+        self._ieee = None
+
         dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
         dispatcher.connect(self.decode_data, ZIGATE_PACKET_RECEIVED)
         self.setup_connection()
@@ -96,7 +100,7 @@ class ZiGate(object):
                     device = Device.from_json(data, self)
                     self._devices[device.addr] = device
                     device._create_actions()
-                    device._bind_report()
+#                     device._bind_report()
                 LOGGER.debug('Load success')
                 return True
             except Exception as e:
@@ -138,6 +142,8 @@ class ZiGate(object):
             self.start_network(True)
         self.get_devices_list(True)
         self.need_refresh()
+        for device in self.devices:
+            device._bind_report()
 
     def need_refresh(self):
         '''
@@ -218,13 +224,13 @@ class ZiGate(object):
         checksum = self.checksum(byte_cmd, byte_length, byte_data)
 
         msg = struct.pack('!HHB%ds' % length, cmd, length, checksum, byte_data)
-        LOGGER.debug('Msg to send {}'.format(msg))
+        LOGGER.debug('Msg to send {}'.format(hexlify(msg)))
 
         enc_msg = self.zigate_encode(msg)
         enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
         encoded_output = bytes(enc_msg)
-        LOGGER.debug('Encoded Msg to send {}'.format(encoded_output))
+#         LOGGER.debug('Encoded Msg to send {}'.format(encoded_output))
 
         self.send_to_transport(encoded_output)
         status = self._wait_status(cmd)
@@ -329,8 +335,8 @@ class ZiGate(object):
         elif response.msg == 0x004D:  # device announce
             device = Device(response.data, self)
             self._set_device(device)
-        else:
-            LOGGER.debug('Do nothing special for response {}'.format(response))
+#         else:
+#             LOGGER.debug('Do nothing special for response {}'.format(response))
 
     def _get_device(self, addr):
         '''
@@ -418,6 +424,18 @@ class ZiGate(object):
     def __haddr(self, int_addr, length=4):
         ''' convert int addr to hex '''
         return '{0:0{1}x}'.format(int_addr, length)
+
+    @property
+    def ieee(self):
+        if not self._ieee:
+            self.get_network_state()
+        return self._ieee
+
+    @property
+    def addr(self):
+        if not self._addr:
+            self.get_network_state()
+        return self._addr
 
     @property
     def devices(self):
@@ -512,7 +530,10 @@ class ZiGate(object):
         ''' get network state '''
         r = self.send_data(0x0009, wait_response=0x8009)
         if r:
-            return r.cleaned_data()
+            data = r.cleaned_data()
+            self._addr = data['addr']
+            self._ieee = data['ieee']
+            return data
 
     def start_network(self, wait=False):
         ''' start network '''
@@ -534,11 +555,14 @@ class ZiGate(object):
             data = struct.pack('!QQ', addr, ieee)
             return self.send_data(0x0026, data)
 
-    def bind(self, ieee, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
+    def _bind_unbind(self, cmd, ieee, endpoint, cluster,
+                     dst_addr=None, dst_endpoint=1):
         '''
         bind
         if dst_addr not specified, supposed zigate
         '''
+        if not dst_addr:
+            dst_addr = self.ieee
         if len(dst_addr) == 4:
             dst_addr_mode = 2
             dst_addr_fmt = 'H'
@@ -549,9 +573,18 @@ class ZiGate(object):
         dst_addr = self.__addr(dst_addr)
         data = struct.pack('!QBHB'+dst_addr_fmt+'B', ieee, endpoint,
                            cluster, dst_addr_mode, dst_addr, dst_endpoint)
-        return self.send_data(0x0030, data)
+        wait_response = cmd + 0x8000
+        return self.send_data(cmd, data, wait_response)
 
-    def bind_addr(self, addr, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
+    def bind(self, ieee, endpoint, cluster, dst_addr=None, dst_endpoint=1):
+        '''
+        bind
+        if dst_addr not specified, supposed zigate
+        '''
+        return self._bind_unbind(0x0030, ieee, endpoint, cluster,
+                                 dst_addr, dst_endpoint)
+
+    def bind_addr(self, addr, endpoint, cluster, dst_addr=None, dst_endpoint=1):
         '''
         bind using addr
         if dst_addr not specified, supposed zigate
@@ -562,22 +595,13 @@ class ZiGate(object):
             return self.bind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
         LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
 
-    def unbind(self, ieee, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
+    def unbind(self, ieee, endpoint, cluster, dst_addr=None, dst_endpoint=1):
         '''
         unbind
         if dst_addr not specified, supposed zigate
         '''
-        if len(dst_addr) == 4:
-            dst_addr_mode = 2
-            dst_addr_fmt = 'H'
-        else:
-            dst_addr_mode = 1
-            dst_addr_fmt = 'Q'
-        ieee = self.__addr(ieee)
-        dst_addr = self.__addr(dst_addr)
-        data = struct.pack('!QBHB'+dst_addr_fmt+'B', ieee, endpoint,
-                           cluster, dst_addr_mode, dst_addr, dst_endpoint)
-        return self.send_data(0x0031, data)
+        return self._bind_unbind(0x0031, ieee, endpoint, cluster,
+                                 dst_addr, dst_endpoint)
 
     def unbind_addr(self, addr, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
         '''
@@ -821,7 +845,7 @@ class ZiGate(object):
                            manufacturer_id, length, *attribute)
         self.send_data(0x0110, data)
 
-    def reporting_request(self, addr, endpoint, cluster, attribute):
+    def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type):
         '''
         Configure reporting request
         for now support only one attribute
@@ -835,7 +859,7 @@ class ZiGate(object):
 #         length = len(attributes)
         length = 1
         attribute_direction = 0
-        attribute_type = 0
+#         attribute_type = 0
         attribute_id = attribute
         min_interval = 0
         max_interval = 0
@@ -846,7 +870,7 @@ class ZiGate(object):
                            manufacturer_id, length, attribute_direction,
                            attribute_type, attribute_id, min_interval,
                            max_interval, timeout, change)
-        self.send_data(0x0120, data)
+        self.send_data(0x0120, data, 0x8120)
 
     def attribute_discovery_request(self, addr, endpoint, cluster):
         '''
@@ -1036,14 +1060,14 @@ class Device(object):
                 ieee = self.info['ieee']
                 if 0x0006 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0006')
-                    self._zigate.bind(self, ieee, endpoint_id, 0x0006)
+                    self._zigate.bind(self.ieee, endpoint_id, 0x0006)
                     self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0006, 0x000)
+                                                   0x0006, 0x0000, 0x10)
                 if 0x0008 in endpoint['in_clusters']:
-                    LOGGER.debug('bind and report for cluster 0x0006')
-                    self._zigate.bind(self, ieee, endpoint_id, 0x0008)
+                    LOGGER.debug('bind and report for cluster 0x0008')
+                    self._zigate.bind(self.ieee, endpoint_id, 0x0008)
                     self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0008, 0x000)
+                                                   0x0008, 0x0000, 0x20)
 
     @staticmethod
     def from_json(data, zigate_instance=None):

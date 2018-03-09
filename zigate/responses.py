@@ -356,6 +356,21 @@ class R8024(Response):
 
 
 @register_response
+class R8030(Response):
+    msg = 0x8030
+    type = 'Bind response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ])
+
+
+@register_response
+class R8031(R8030):
+    msg = 0x8031
+    type = 'unBind response'
+
+
+@register_response
 class R8042(Response):
     msg = 0x8042
     type = 'Node descriptor'
@@ -556,6 +571,18 @@ class R8062(Response):
 class R8063(R8061):
     msg = 0x8063
     type = 'Remove group response'
+
+
+@register_response
+class R8120(Response):
+    msg = 0x8120
+    type = 'Configure Reporting response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('addr', 'H'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ])
 
 
 @register_response
