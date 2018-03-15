@@ -88,7 +88,7 @@ class ThreadSerialConnection(object):
         self.serial.close()
 
 
-class ThreadSocketConnection_old(ThreadSerialConnection):
+class ThreadSocketConnection2(ThreadSerialConnection):
     def __init__(self, device, host, port=9999):
         self._host = host
         ThreadSerialConnection.__init__(self, device, port)
@@ -103,7 +103,7 @@ class ThreadSocketConnection(ThreadSerialConnection):
         ThreadSerialConnection.__init__(self, device, port)
 
     def initSerial(self):
-        return socket.create_connection((self._host, self._port), timeout=0.05)
+        return socket.create_connection((self._host, self._port), timeout=0.1)
 
     def listen(self):
         while self._running:

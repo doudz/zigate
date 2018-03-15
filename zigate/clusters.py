@@ -7,7 +7,6 @@ import struct
 from binascii import unhexlify, hexlify
 import logging
 
-
 LOGGER = logging.getLogger('zigate')
 
 
@@ -72,14 +71,14 @@ class Cluster(object):
             attribute.update(attr_def)
             try:
                 attribute['value'] = eval(attribute['value'],
-                                      globals(),
-                                      {'value': attribute['data']})
+                                          globals(),
+                                          {'value': attribute['data']})
             except:
                 LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
                                                                      attribute['data']
                                                                      ))
                 attribute['value'] = None
-        return added
+        return (added, attribute)
 
     def __str__(self):
         return 'Cluster 0x{:04x} {}'.format(self.cluster_id, self.type)
@@ -102,6 +101,20 @@ class Cluster(object):
         for attribute in data['attributes']:
             cluster.update(attribute)
         return cluster
+
+    def get_property(self, name):
+        '''
+        return attribute matching name
+        '''
+        for attribute in self.attributes.values():
+            if attribute.get('name') == name:
+                return attribute
+
+    def has_property(self, name):
+        '''
+        check attribute matching name exist
+        '''
+        return self.get_property(name) is not None
 
 
 @register_cluster
@@ -148,7 +161,7 @@ class C0006(Cluster):
     cluster_id = 0x0006
     type = 'General: On/Off'
     attributes_def = {0x0000: {'name': 'onoff', 'value': 'value'},
-                      0x8000: {'name': 'multiclick', 'value': 'value'},
+                      0x8000: {'name': 'multiclick', 'value': 'value', 'expire': 1},
                       }
 
 
@@ -205,5 +218,7 @@ class C0405(Cluster):
 class C0406(Cluster):
     cluster_id = 0x0406
     type = 'Measurement: Occupancy Sensing'
-    attributes_def = {0x0000: {'name': 'presence', 'value': 'value'},
+    attributes_def = {0x0000: {'name': 'presence', 'value': 'value', 'expire': 10},
                       }
+
+
