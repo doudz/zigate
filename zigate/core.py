@@ -1292,6 +1292,8 @@ class Device(object):
                 self._set_expire_timer(endpoint_id, cluster_id,
                                        attribute['attribute'], attribute['expire'])
         self._lock.release()
+        if not r:
+            return
         return added
 
     def _set_expire_timer(self, endpoint_id, cluster_id, attribute_id, expire):
@@ -1335,7 +1337,7 @@ class Device(object):
             endpoint = self.endpoints[endpoint_id]
             if cluster_id in endpoint['clusters']:
                 cluster = endpoint['clusters'][cluster_id]
-                attribute = cluster.attributes.get(attribute_id)
+                attribute = cluster.get_attribute(attribute_id)
                 if extended_info:
                     attr = {'endpoint': endpoint_id,
                             'cluster': cluster_id,

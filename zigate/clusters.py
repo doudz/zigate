@@ -102,6 +102,9 @@ class Cluster(object):
             cluster.update(attribute)
         return cluster
 
+    def get_attribute(self, attribute_id):
+        return self.attributes.get(attribute_id, {})
+
     def get_property(self, name):
         '''
         return attribute matching name
@@ -218,7 +221,7 @@ class C0405(Cluster):
 class C0406(Cluster):
     cluster_id = 0x0406
     type = 'Measurement: Occupancy Sensing'
-    attributes_def = {0x0000: {'name': 'presence', 'value': 'value', 'expire': 10},
+    attributes_def = {0x0000: {'name': 'presence', 'value': 'bool(value)', 'expire': 10},
                       }
 
 
