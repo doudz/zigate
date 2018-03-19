@@ -4,7 +4,7 @@ from .core import (ZiGate, ZiGateWiFi)
 from .const import *
 from pydispatch import dispatcher
 
-__version__ = '0.11.1'
+__version__ = '0.11.4'
 
 __all__ = ['ZiGate', 'ZiGateWiFi',
            'dispatcher']

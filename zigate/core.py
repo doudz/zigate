@@ -1278,16 +1278,19 @@ class Device(object):
         return endpoint['clusters'][cluster_id]
 
     def set_attribute(self, endpoint_id, cluster_id, data):
+        added = False
         rssi = data.pop('rssi', 0)
         if rssi > 0:
             self.info['rssi'] = rssi
         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
         cluster = self.get_cluster(endpoint_id, cluster_id)
         self._lock.acquire()
-        added, attribute = cluster.update(data)
-        if 'expire' in attribute:
-            self._set_expire_timer(endpoint_id, cluster_id,
-                                   attribute['attribute'], attribute['expire'])
+        r = cluster.update(data)
+        if r:
+            added, attribute = r
+            if 'expire' in attribute:
+                self._set_expire_timer(endpoint_id, cluster_id,
+                                       attribute['attribute'], attribute['expire'])
         self._lock.release()
         return added
 

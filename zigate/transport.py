@@ -69,7 +69,7 @@ class ThreadSerialConnection(object):
         if port == 'auto':
             LOGGER.debug('Searching ZiGate port')
             context = pyudev.Context()
-            devices = list(context.list_devices(ID_USB_DRIVER='pl2303', ID_VENDOR_ID='067b'))
+            devices = list(context.list_devices(ID_USB_DRIVER='pl2303', ID_VENDOR_ID='067b', subsystem='tty'))
             if devices:
                 port = devices[0].device_node
                 LOGGER.debug('ZiGate found at {}'.format(port))
