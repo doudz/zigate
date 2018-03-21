@@ -128,7 +128,9 @@ class C0000(Cluster):
                       0x0005: {'name': 'type', 'value': 'value'},
                       0x0006: {'name': 'datecode', 'value': 'value'},
                       0x0007: {'name': 'power_source', 'value': 'value'},
-                      0xff01: {'name': 'battery', 'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.", 'unit': 'V'},
+                      0xff01: {'name': 'battery',
+                               'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
+                               'unit': 'V'},
                       }
 
     def update(self, data):
@@ -164,7 +166,8 @@ class C0006(Cluster):
     cluster_id = 0x0006
     type = 'General: On/Off'
     attributes_def = {0x0000: {'name': 'onoff', 'value': 'value'},
-                      0x8000: {'name': 'multiclick', 'value': 'value', 'expire': 1},
+                      0x8000: {'name': 'multiclick', 'value': 'value',
+                               'expire': 1},
                       }
 
 
@@ -196,7 +199,8 @@ class C0012(Cluster):
 class C0402(Cluster):
     cluster_id = 0x0402
     type = 'Measurement: Temperature'
-    attributes_def = {0x0000: {'name': 'temperature', 'value': 'value/100.', 'unit': '°C'},
+    attributes_def = {0x0000: {'name': 'temperature', 'value': 'value/100.',
+                               'unit': '°C'},
                       }
 
 
@@ -204,8 +208,10 @@ class C0402(Cluster):
 class C0403(Cluster):
     cluster_id = 0x0403
     type = 'Measurement: Atmospheric Pressure'
-    attributes_def = {0x0000: {'name': 'pressure', 'value': 'value', 'unit': 'mb'},
-                      0x0010: {'name': 'pressure2', 'value': 'value/10.', 'unit': 'mb'},
+    attributes_def = {0x0000: {'name': 'pressure', 'value': 'value',
+                               'unit': 'mb'},
+                      0x0010: {'name': 'pressure2', 'value': 'value/10.',
+                               'unit': 'mb'},
                       }
 
 
@@ -213,7 +219,8 @@ class C0403(Cluster):
 class C0405(Cluster):
     cluster_id = 0x0405
     type = 'Measurement: Humidity'
-    attributes_def = {0x0000: {'name': 'humidity', 'value': 'value/100.', 'unit': '%'},
+    attributes_def = {0x0000: {'name': 'humidity', 'value': 'value/100.',
+                               'unit': '%'},
                       }
 
 
@@ -221,7 +228,6 @@ class C0405(Cluster):
 class C0406(Cluster):
     cluster_id = 0x0406
     type = 'Measurement: Occupancy Sensing'
-    attributes_def = {0x0000: {'name': 'presence', 'value': 'bool(value)', 'expire': 10},
+    attributes_def = {0x0000: {'name': 'presence', 'value': 'bool(value)',
+                               'expire': 10},
                       }
-
-

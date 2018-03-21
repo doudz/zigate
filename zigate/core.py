@@ -803,6 +803,13 @@ class ZiGate(object):
                 self._groups = {}
         return r
 
+    def identify_device(self, addr, time_sec=10):
+        '''
+        convenient function that automatically find destination endpoint
+        '''
+        device = self._devices[addr]
+        device.identify_device(time_sec)
+
     def identify_send(self, addr, endpoint, time_sec):
         '''
         identify query
@@ -1207,6 +1214,19 @@ class Device(object):
 
     def refresh_device(self):
         self._zigate.refresh_device(self.addr)
+
+    def identify_device(self, time_sec=10):
+        '''
+        send identify command
+        sec is time in second
+        '''
+        ep = list(self.endpoints.keys())
+        ep.sort()
+        if ep:
+            endpoint = ep[0]
+        else:
+            endpoint = 1
+        self._zigate.identify_send(self.addr, endpoint, time_sec)
 
     def __setitem__(self, key, value):
         self.info[key] = value
