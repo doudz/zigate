@@ -196,6 +196,24 @@ class C0012(Cluster):
 
 
 @register_cluster
+class C0300(Cluster):
+    cluster_id = 0x0300
+    type = 'Lighting: Color Control'
+    attributes_def = {0x0000: {'name': 'current_x', 'value': 'value'},
+                      0x0010: {'name': 'current_y', 'value': 'value'},
+                      }
+
+
+@register_cluster
+class C0400(Cluster):
+    cluster_id = 0x0400
+    type = 'Measurement: Illuminance'
+    attributes_def = {0x0000: {'name': 'luminosity', 'value': 'value',
+                               'unit': 'lm'},
+                      }
+
+
+@register_cluster
 class C0402(Cluster):
     cluster_id = 0x0402
     type = 'Measurement: Temperature'

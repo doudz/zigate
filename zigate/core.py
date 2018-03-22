@@ -27,7 +27,8 @@ ACTIONS = {}
 
 # Device id
 ACTUATORS = [0x0010, 0x0051,
-             0x0100, 0x0110,
+             0x010a,
+             0x0100, 0x0101, 0x0110,
              0x0200, 0x0210, 0x0220]
 #             On/off light 0x0000
 #             On/off plug-in unit 0x0010
