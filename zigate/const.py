@@ -30,3 +30,10 @@ UNLOCK = 1
 STATUS_CODES = {0: 'Success', 1: 'Invalid parameters',
                 2: 'Unhandled command', 3: 'Command failed',
                 4: 'Busy', 5: 'Stack already started'}
+
+ACTIONS_ONOFF = 'onoff'
+ACTIONS_LEVEL = 'level'
+ACTIONS_COLOR = 'color'
+ACTIONS_LOCK = 'lock'
+
+

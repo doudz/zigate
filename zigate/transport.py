@@ -3,11 +3,12 @@ Created on 22 janv. 2018
 
 @author: sramage
 '''
-import pyudev
+# import pyudev
 import threading
 import logging
 import time
 import serial
+import serial.tools.list_ports
 import queue
 import socket
 from pydispatch import dispatcher
@@ -67,12 +68,20 @@ class ThreadSerialConnection(object):
         '''
         port = port or 'auto'
         if port == 'auto':
-            LOGGER.debug('Searching ZiGate port')
-            context = pyudev.Context()
-            devices = list(context.list_devices(ID_USB_DRIVER='pl2303', ID_VENDOR_ID='067b', subsystem='tty'))
+            LOGGER.info('Searching ZiGate port')
+#             context = pyudev.Context()
+#             devices = list(context.list_devices(ID_USB_DRIVER='pl2303', ID_VENDOR_ID='067b', subsystem='tty'))
+            devices = list(serial.tools.list_ports.grep('067b:2303'))
             if devices:
-                port = devices[0].device_node
-                LOGGER.debug('ZiGate found at {}'.format(port))
+                port = devices[0].device
+                if len(devices) == 1:
+                    LOGGER.info('ZiGate found at {}'.format(port))
+                else:
+                    LOGGER.warning('Found the following devices')
+                    for device in devices:
+                        LOGGER.warning('* {0} - {0.manufacturer}'.format(device))
+    #                 port = devices[0].device_node
+                    LOGGER.warning('Choose the first device... {}'.format(port))
             else:
                 LOGGER.error('ZiGate not found')
                 raise Exception('ZiGate not found')

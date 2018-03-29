@@ -10,7 +10,7 @@ from binascii import unhexlify, hexlify
 RESPONSES = {}
 
 DATA_TYPE = {0x00: None,
-             0x10: '?',
+             0x10: '?',  # bool
              0x18: 'b',
              0x20: 'B',
              0x21: 'H',

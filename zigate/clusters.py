@@ -50,6 +50,20 @@ def register_cluster(o):
     return o
 
 
+def get_cluster(cluster_id):
+    cls_cluster = CLUSTERS.get(cluster_id, Cluster)
+    cluster = cls_cluster()
+    if type(cluster) == Cluster:
+        cluster.cluster_id = cluster_id
+    return cluster
+
+
+def clean_str(text):
+    text = text.replace('\x00', '')
+    text = text.strip()
+    return text
+
+
 class Cluster(object):
     cluster_id = None
     type = 'Unknown cluster'
@@ -72,7 +86,8 @@ class Cluster(object):
             try:
                 attribute['value'] = eval(attribute['value'],
                                           globals(),
-                                          {'value': attribute['data']})
+                                          {'value': attribute['data'],
+                                           'self': self})
             except:
                 LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
                                                                      attribute['data']
@@ -124,10 +139,15 @@ class Cluster(object):
 class C0000(Cluster):
     cluster_id = 0x0000
     type = 'General: Basic'
-    attributes_def = {0x0004: {'name': 'manufacturer', 'value': 'value'},
-                      0x0005: {'name': 'type', 'value': 'value'},
+    attributes_def = {0x0000: {'name': 'zcl_version', 'value': 'value'},
+                      0x0001: {'name': 'application_version', 'value': 'value'},
+                      0x0002: {'name': 'stack_version', 'value': 'value'},
+                      0x0003: {'name': 'hardware_version', 'value': 'value'},
+                      0x0004: {'name': 'manufacturer', 'value': 'clean_str(value)'},
+                      0x0005: {'name': 'type', 'value': 'clean_str(value)'},
                       0x0006: {'name': 'datecode', 'value': 'value'},
                       0x0007: {'name': 'power_source', 'value': 'value'},
+                      0x0010: {'name': 'description', 'value': 'value'},
                       0xff01: {'name': 'battery',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
                                'unit': 'V'},
@@ -199,8 +219,25 @@ class C0012(Cluster):
 class C0300(Cluster):
     cluster_id = 0x0300
     type = 'Lighting: Color Control'
-    attributes_def = {0x0000: {'name': 'current_x', 'value': 'value'},
-                      0x0010: {'name': 'current_y', 'value': 'value'},
+    attributes_def = {0x0000: {'name': 'current_hue', 'value': 'value'},
+                      0x0001: {'name': 'current_saturation', 'value': 'value'},
+                      0x0002: {'name': 'remaining_time', 'value': 'value'},
+                      0x0003: {'name': 'current_x', 'value': 'value'},
+                      0x0004: {'name': 'current_y', 'value': 'value'},
+                      0x0005: {'name': 'drift', 'value': 'value'},
+                      0x0006: {'name': 'colour_temperature', 'value': 'value'},
+                      0x0007: {'name': 'colour_mode', 'value': 'value'},
+                      0x0010: {'name': 'nb_primaries', 'value': 'value'},
+                      0x0011: {'name': 'primary_1_x', 'value': 'value'},
+                      0x0012: {'name': 'primary_1_y', 'value': 'value'},
+                      0x0013: {'name': 'primary_1_intensity', 'value': 'value'},
+                      0x0015: {'name': 'primary_2_x', 'value': 'value'},
+                      0x0016: {'name': 'primary_2_y', 'value': 'value'},
+                      0x0017: {'name': 'primary_2_intensity', 'value': 'value'},
+                      0x0019: {'name': 'primary_3_x', 'value': 'value'},
+                      0x0020: {'name': 'primary_3_y', 'value': 'value'},
+                      0x0021: {'name': 'primary_3_intensity', 'value': 'value'},
+                      0x400a: {'name': 'capabilities', 'value': 'value'},
                       }
 
 
@@ -209,6 +246,10 @@ class C0400(Cluster):
     cluster_id = 0x0400
     type = 'Measurement: Illuminance'
     attributes_def = {0x0000: {'name': 'luminosity', 'value': 'value',
+                               'unit': 'lm'},
+                      0x0001: {'name': 'min_value', 'value': 'value',
+                               'unit': 'lm'},
+                      0x0002: {'name': 'max_value', 'value': 'value',
                                'unit': 'lm'},
                       }
 

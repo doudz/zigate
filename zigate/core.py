@@ -10,7 +10,7 @@ from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection, ThreadSocketConnection)
 from .responses import (RESPONSES, Response)
 from .const import *
-from .clusters import (CLUSTERS, Cluster)
+from .clusters import (CLUSTERS, Cluster, get_cluster)
 import functools
 import struct
 import threading
@@ -28,7 +28,7 @@ ACTIONS = {}
 # Device id
 ACTUATORS = [0x0010, 0x0051,
              0x010a,
-             0x0100, 0x0101, 0x0110,
+             0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0210, 0x0220]
 #             On/off light 0x0000
 #             On/off plug-in unit 0x0010
@@ -944,7 +944,7 @@ class ZiGate(object):
         if device:
             return device.available_actions(endpoint)
 
-    @register_actions('onoff')
+    @register_actions(ACTIONS_ONOFF)
     def action_onoff(self, addr, endpoint, onoff, on_time=0, off_time=0, effect=0, gradient=0):
         '''
         On/Off action
@@ -968,7 +968,7 @@ class ZiGate(object):
             data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effect, gradient)
         self.send_data(cmd, data)
 
-    @register_actions('move')
+    @register_actions(ACTIONS_LEVEL)
     def action_move_level(self, addr, endpoint, onoff=OFF, mode=0, rate=0):
         '''
         move to level
@@ -977,7 +977,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBBBB', 2, addr, 1, endpoint, onoff, mode, rate)
         self.send_data(0x0080, data)
 
-    @register_actions('move')
+    @register_actions(ACTIONS_LEVEL)
     def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition_time=0):
         '''
         move to level with on off
@@ -986,7 +986,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint, onoff, level, transition_time)
         self.send_data(0x0081, data)
 
-    @register_actions('move')
+    @register_actions(ACTIONS_LEVEL)
     def action_move_step(self, addr, endpoint, onoff=OFF, step_mode=0, step_size=0, transition_time=0):
         '''
         move step
@@ -995,7 +995,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBBBBH', 2, addr, 1, endpoint, onoff, step_mode, step_size, transition_time)
         self.send_data(0x0082, data)
 
-    @register_actions('move')
+    @register_actions(ACTIONS_LEVEL)
     def action_move_stop(self, addr, endpoint):
         '''
         move stop
@@ -1004,7 +1004,7 @@ class ZiGate(object):
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
         self.send_data(0x0083, data)
 
-    @register_actions('move')
+    @register_actions(ACTIONS_LEVEL)
     def action_move_stop_onoff(self, addr, endpoint):
         '''
         move stop on off
@@ -1013,7 +1013,47 @@ class ZiGate(object):
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
         self.send_data(0x0084, data)
 
-    @register_actions('lock')
+    @register_actions(ACTIONS_COLOR)
+    def actions_move_hue(self, addr, endpoint, hue, direction, transition=0):
+        '''
+        move to hue
+        '''
+        addr = self.__addr(addr)
+        data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
+                           hue, direction, transition)
+        self.send_data(0x00B0, data)
+
+    @register_actions(ACTIONS_COLOR)
+    def actions_move_hue_saturation(self, addr, endpoint, hue, saturation, transition=0):
+        '''
+        move to hue and saturation
+        '''
+        addr = self.__addr(addr)
+        data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
+                           hue, saturation, transition)
+        self.send_data(0x00B6, data)
+
+    @register_actions(ACTIONS_COLOR)
+    def actions_move_colour(self, addr, endpoint, x, y, transition=0):
+        '''
+        move to colour x y
+        '''
+        addr = self.__addr(addr)
+        data = struct.pack('!BHBBHHH', 2, addr, 1, endpoint,
+                           x, y, transition)
+        self.send_data(0x00B7, data)
+
+    @register_actions(ACTIONS_COLOR)
+    def actions_move_temperature(self, addr, endpoint, temperature, transition=0):
+        '''
+        move colour to temperature
+        '''
+        addr = self.__addr(addr)
+        data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
+                           temperature, transition)
+        self.send_data(0x00C0, data)
+
+    @register_actions(ACTIONS_LOCK)
     def action_lock(self, addr, endpoint, lock):
         '''
         Lock / unlock
@@ -1083,11 +1123,13 @@ class Device(object):
             if endpoint:
                 if endpoint['device'] in ACTUATORS:
                     if 0x0006 in endpoint['in_clusters']:
-                        actions[ep_id].append('onoff')
+                        actions[ep_id].append(ACTIONS_ONOFF)
                     if 0x0008 in endpoint['in_clusters']:
-                        actions[ep_id].append('move')
+                        actions[ep_id].append(ACTIONS_LEVEL)
                     if 0x0101 in endpoint['in_clusters']:
-                        actions[ep_id].append('lock')
+                        actions[ep_id].append(ACTIONS_LOCK)
+                    if 0x0300 in endpoint['in_clusters']:
+                        actions[ep_id].append(ACTIONS_COLOR)
         return actions
 
     def _create_actions(self):
@@ -1119,12 +1161,20 @@ class Device(object):
                     LOGGER.debug('bind and report for cluster 0x0006')
                     self._zigate.bind(self.ieee, endpoint_id, 0x0006)
                     self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0006, 0x0000, 0x10)
+                                                   0x0006, 0x0000, 0x10)  # TODO: auto select data type
                 if 0x0008 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0008')
                     self._zigate.bind(self.ieee, endpoint_id, 0x0008)
                     self._zigate.reporting_request(self.addr, endpoint_id,
                                                    0x0008, 0x0000, 0x20)
+                # TODO : auto select data type
+                # TODO : check if the following is needed
+                if 0x0300 in endpoint['in_clusters']:
+                    LOGGER.debug('bind and report for cluster 0x0300')
+                    self._zigate.bind(self.ieee, endpoint_id, 0x0300)
+                    for i in range(9):  # all color informations
+                        self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x0300, i, 0x20)
 
     @staticmethod
     def from_json(data, zigate_instance=None):
@@ -1151,6 +1201,7 @@ class Device(object):
                     endpoint['clusters'][cluster.cluster_id] = cluster
         if 'power_source' in d.info:  # old version
             d.info['power_type'] = d.info.pop('power_source')
+        d._avoid_duplicate()
         return d
 
     def to_json(self, properties=False):
@@ -1290,10 +1341,7 @@ class Device(object):
         endpoint = self.get_endpoint(endpoint_id)
         self._lock.acquire()
         if cluster_id not in endpoint['clusters']:
-            cls_cluster = CLUSTERS.get(cluster_id, Cluster)
-            cluster = cls_cluster()
-            if type(cluster) == Cluster:
-                cluster.cluster_id = cluster_id
+            cluster = get_cluster(cluster_id)
             endpoint['clusters'][cluster_id] = cluster
         self._lock.release()
         return endpoint['clusters'][cluster_id]
@@ -1312,6 +1360,7 @@ class Device(object):
             if 'expire' in attribute:
                 self._set_expire_timer(endpoint_id, cluster_id,
                                        attribute['attribute'], attribute['expire'])
+        self._avoid_duplicate()
         self._lock.release()
         if not r:
             return
@@ -1372,12 +1421,27 @@ class Device(object):
         '''
         list all attributes including endpoint and cluster id
         '''
-        for endpoint_id, endpoint in self.endpoints.items():
+        return self.get_attributes(True)
+
+    def get_attributes(self, extended_info=False):
+        '''
+        list all attributes
+        including endpoint and cluster id
+        '''
+        attrs = []
+        endpoints = list(self.endpoints.keys())
+        endpoints.sort()
+        for endpoint_id in endpoints:
+            endpoint = self.endpoints[endpoint_id]
             for cluster_id, cluster in endpoint.get('clusters', {}).items():
                 for attribute in cluster.attributes.values():
-                    attr = {'endpoint': endpoint_id, 'cluster': cluster_id}
-                    attr.update(attribute)
-                    yield attr
+                    if extended_info:
+                        attr = {'endpoint': endpoint_id, 'cluster': cluster_id}
+                        attr.update(attribute)
+                        attrs.append(attr)
+                    else:
+                        attrs.append(attribute)
+        return attrs
 
     def set_attributes(self, attributes):
         '''
@@ -1416,11 +1480,13 @@ class Device(object):
         return well known attribute list
         attribute with friendly name
         '''
+        props = []
         for endpoint in self.endpoints.values():
             for cluster in endpoint.get('clusters', {}).values():
                 for attribute in cluster.attributes.values():
                     if 'name' in attribute:
-                        yield attribute
+                        props.append(attribute)
+        return props
 
     def receiver_on_when_idle(self):
         mac_capability = self.info.get('mac_capability')
@@ -1449,3 +1515,20 @@ class Device(object):
                 LOGGER.debug('Need refresh : no clusters list')
                 need = True
         return need
+
+    def _avoid_duplicate(self):
+        '''
+        Rename attribute if needed to avoid duplicate
+        '''
+        properties = []
+        for attribute in self.attributes:
+            if 'name' not in attribute:
+                continue
+            if attribute['name'] in properties:
+                attribute['name'] = '{}{}'.format(attribute['name'],
+                                                  attribute['endpoint'])
+                attr = self.get_attribute(attribute['endpoint'],
+                                          attribute['cluster'],
+                                          attribute['attribute'])
+                attr['name'] = attribute['name']
+            properties.append(attribute['name'])
