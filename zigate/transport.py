@@ -11,6 +11,7 @@ import serial
 import serial.tools.list_ports
 import queue
 import socket
+import select
 from pydispatch import dispatcher
 
 LOGGER = logging.getLogger('zigate')
@@ -24,7 +25,8 @@ class ThreadSerialConnection(object):
         self.device = device
         self.queue = queue.Queue()
         self._running = True
-        self.serial = self.initSerial()
+        self.reconnect()
+#         self.serial = self.initSerial()
         self.thread = threading.Thread(target=self.listen)
         self.thread.setDaemon(True)
         self.thread.start()
@@ -32,6 +34,17 @@ class ThreadSerialConnection(object):
     def initSerial(self):
         self._port = self._find_port(self._port)
         return serial.Serial(self._port, 115200)
+
+    def reconnect(self):
+        while True:
+            try:
+                self.serial = self.initSerial()
+                break
+            except:
+                LOGGER.error('Failed to connect, retry...')
+                time.sleep(1)
+        return self.serial
+
 
     def packet_received(self, raw_message):
         dispatcher.send(ZIGATE_PACKET_RECEIVED, packet=raw_message)
@@ -51,7 +64,12 @@ class ThreadSerialConnection(object):
 
     def listen(self):
         while self._running:
-            data = self.serial.read(self.serial.in_waiting)
+            try:
+                data = self.serial.read(self.serial.in_waiting)
+            except:
+                data = None
+                LOGGER.error('OOPS connection lost, reconnect...')
+                self.reconnect()
             if data:
                 self.read_data(data)
             while not self.queue.empty():
@@ -112,20 +130,25 @@ class ThreadSocketConnection(ThreadSerialConnection):
         ThreadSerialConnection.__init__(self, device, port)
 
     def initSerial(self):
-        return socket.create_connection((self._host, self._port), timeout=0.1)
+        s = socket.create_connection((self._host, self._port))
+        return s
 
     def listen(self):
         while self._running:
-            try:
+            socket_list = [self.serial]
+            read_sockets, write_sockets, error_sockets = select.select(socket_list , socket_list, [])
+            if read_sockets:
                 data = self.serial.recv(1024)
-            except socket.timeout:
-                data = None
-            if data:
-                self.read_data(data)
-            while not self.queue.empty():
-                data = self.queue.get()
-                self.serial.sendall(data)
-#             time.sleep(0.05)
+                if data:
+                    self.read_data(data)
+                else:
+                    LOGGER.error('OOPS connection lost, reconnect...')
+                    self.reconnect()
+            if write_sockets:
+                while not self.queue.empty():
+                    data = self.queue.get()
+                    self.serial.sendall(data)
+            time.sleep(0.05)
 
     def is_connected(self):  # TODO: check if socket is alive
         return True
