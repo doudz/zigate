@@ -182,8 +182,8 @@ class R8002(Response):
                      ('destination_endpoint', 'B'),
                      ('source_address_mode', 'B'),
                      ('source_address', 'H'),
-                     ('destination_address_mode', 'B'),
-                     ('destination_address', 'H'),
+                     ('dst_address_mode', 'B'),
+                     ('dst_address', 'H'),
                      ('payload_size', 'B'),
                      ('payload', 'rawend')
                      ])
@@ -583,6 +583,29 @@ class R8120(Response):
                      ('cluster', 'H'),
                      ('status', 'B'),
                      ])
+
+
+@register_response
+class R8401(Response):
+    msg = 0x8401
+    type = 'IAS Zone Status Change'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),  # ou Q suivant mode
+                     ('zone_status', 'H'),
+                     ('extended_status', 'B'),
+                     ('zone_id', 'B'),
+                     ('delay', 'H'),
+                     ])
+
+    format = {'addr': '{:04x}',
+              'zone_status': '{:016b}'}
+
+    def cleaned_data(self):
+        return self._filter_data(['addr', 'zone_status'])
 
 
 @register_response

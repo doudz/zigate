@@ -37,7 +37,7 @@ class MQTT_Broker(object):
         if payload:
             payload = json.dumps(payload, cls=DeviceEncoder)
         logging.info('Publish {}'.format(topic))
-        self.client.publish(topic, payload)
+        self.client.publish(topic, payload, retain=True)
 
     def device_changed(self, device):
         logging.debug('device_changed {}'.format(device))

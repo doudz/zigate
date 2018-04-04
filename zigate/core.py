@@ -260,7 +260,7 @@ class ZiGate(object):
         enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
         encoded_output = bytes(enc_msg)
-#         LOGGER.debug('Encoded Msg to send {}'.format(encoded_output))
+        LOGGER.debug('Encoded Msg to send {}'.format(encoded_output))
 
         self.send_to_transport(encoded_output)
         status = self._wait_status(cmd)
@@ -342,20 +342,21 @@ class ZiGate(object):
             device = self.get_device_from_ieee(response['ieee'])
             if device:
                 self._remove_device(device.addr)
-        elif response.msg in (0x8100, 0x8102, 0x8110):  # attribute report
+        elif response.msg in (0x8100, 0x8102, 0x8110, 0x8401):  # attribute report or IAS Zone status change
             if response['status'] != 0:
                 LOGGER.debug('Receive Bad status')
                 return
             device = self._get_device(response['addr'])
             device.rssi = response['rssi']
-            added = device.set_attribute(response['endpoint'],
-                                         response['cluster'],
-                                         response.cleaned_data())
-            if added is None:
+            r = device.set_attribute(response['endpoint'],
+                                     response['cluster'],
+                                     response.cleaned_data())
+            if r is None:
                 return
+            added, attribute_id = r
             changed = device.get_attribute(response['endpoint'],
                                            response['cluster'],
-                                           response['attribute'], True)
+                                           attribute_id, True)
             if added:
                 LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_ADDED')
                 dispatcher.send(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
@@ -1364,7 +1365,7 @@ class Device(object):
         self._lock.release()
         if not r:
             return
-        return added
+        return added, attribute['attribute']
 
     def _set_expire_timer(self, endpoint_id, cluster_id, attribute_id, expire):
         LOGGER.debug('Set expire timer for {}-{}-{} in {}'.format(endpoint_id,
@@ -1491,7 +1492,7 @@ class Device(object):
     def receiver_on_when_idle(self):
         mac_capability = self.info.get('mac_capability')
         if mac_capability:
-            return mac_capability[3] == '1'
+            return mac_capability[-3] == '1'
         return False
 
     def need_refresh(self):

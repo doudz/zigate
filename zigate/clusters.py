@@ -290,3 +290,76 @@ class C0406(Cluster):
     attributes_def = {0x0000: {'name': 'presence', 'value': 'bool(value)',
                                'expire': 10},
                       }
+
+
+@register_cluster
+class C0500(Cluster):
+    cluster_id = 0x0500
+    type = 'Security & Safety: IAS Zone'
+    attributes_def = {
+                      0: {'name': 'alarm1', 'value': 'bool(value)'},
+                      1: {'name': 'alarm2', 'value': 'bool(value)'},
+                      2: {'name': 'tamper', 'value': 'bool(value)'},
+                      3: {'name': 'low_battery', 'value': 'bool(value)'},
+                      4: {'name': 'supervision', 'value': 'bool(value)'},
+                      5: {'name': 'restore', 'value': 'bool(value)'},
+                      6: {'name': 'trouble', 'value': 'bool(value)'},
+                      7: {'name': 'ac_fault', 'value': 'bool(value)'},
+                      8: {'name': 'test_mode', 'value': 'bool(value)'},
+                      9: {'name': 'battery_defect', 'value': 'bool(value)'},
+                      }
+
+    def update(self, data):
+        added = False
+        attribute = {}
+        zone_status = data['zone_status'][::-1]
+        for i, bit in enumerate(zone_status):
+            previous = None
+            data = {'attribute': i, 'data': int(bit)}
+            if i in self.attributes:
+                previous = self.attributes[i]
+            a_added, a_attribute = Cluster.update(self, data)
+            if a_added:
+                added = True
+                attribute = a_attribute
+            if previous is not None:
+                if self.attributes[i] != previous:
+                    attribute = self.attributes[i]
+        return (added, attribute)
+# b16ZoneStatus is a mandatory attribute which is a 16-bit bitmap indicating
+# the status of each of the possible notification triggers from the device:
+# Bit
+# 
+# Description
+# 0 Alarm1:
+# 1 - Opened or alarmed
+# 0 - Closed or not alarned
+# 1 Alarm2:
+# 1 - Opened or alarmed
+# 0 - Closed or not alarned
+# 2 Tamper:
+# 1 - Tampered with
+# 0 - Not tampered with
+# 3 Battery:
+# 1 - Low
+# 0 - OK
+# 4 Supervision reports 1 :
+# 1 - Reports
+# 0 - No reports
+# 5 Restore reports 2 :
+# 1 - Reports
+# 0 - No reports
+# 6 Trouble:
+# 1 - Trouble/failure
+# 0 - OK
+# 7 AC (mains):
+# 1 - Fault
+# 0 - OK
+# 8 Test mode:
+# 1 - Sensor in test mode
+# 0 - Sensor in operational mode
+# 9 Battery defect:
+# 1 - Defective battery detected
+# 0 - Battery OK
+# 10-15
+# Reserved
