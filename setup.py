@@ -12,7 +12,7 @@ setup(
     url='https://github.com/doudz/zigate',
     packages=['zigate'],
     keywords='zigate zigbee python3',
-    install_requires=['pyserial', 'pyudev', 'pydispatcher'],
+    install_requires=['pyserial', 'pydispatcher'],
     python_requires='>=3',
     classifiers=[
         'Development Status :: 4 - Beta',
