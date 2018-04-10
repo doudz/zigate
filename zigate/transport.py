@@ -54,11 +54,12 @@ class ThreadSerialConnection(object):
         Read ZiGate output and split messages
         '''
         self._buffer += data
+#         print(self._buffer)
         endpos = self._buffer.find(b'\x03')
         while endpos != -1:
             startpos = self._buffer.find(b'\x01')
             raw_message = self._buffer[startpos:endpos+1]
-            print(raw_message)
+#             print(raw_message)
             threading.Thread(target=self.packet_received, args=(raw_message,)).start()
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')

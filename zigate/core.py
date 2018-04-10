@@ -55,6 +55,34 @@ class AddrMode(Enum):
     ieee = 3
 
 
+def hex_to_rgb(h):
+    ''' convert hex color to rgb tuple '''
+    h = h.strip('#')
+    return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
+
+
+def rgb_to_xy(rgb):
+    ''' convert rgb tuple to xy tuple '''
+    red, green, blue = rgb
+    r = ((red + 0.055) / (1.0 + 0.055))**2.4 if (red > 0.04045) else (red / 12.92)
+    g = ((green + 0.055) / (1.0 + 0.055))**2.4 if (green > 0.04045) else (green / 12.92)
+    b = ((blue + 0.055) / (1.0 + 0.055))**2.4 if (blue > 0.04045) else (blue / 12.92)
+    X = r * 0.664511 + g * 0.154324 + b * 0.162028
+    Y = r * 0.283881 + g * 0.668433 + b * 0.047685
+    Z = r * 0.000088 + g * 0.072310 + b * 0.986039
+    cx = 0
+    cy = 0
+    if (X + Y + Z) != 0:
+        cx = X / (X + Y + Z)
+        cy = Y / (X + Y + Z)
+    return (cx, cy)
+
+
+def hex_to_xy(h):
+    ''' convert hex color to xy tuple '''
+    return rgb_to_xy(hex_to_rgb(h))
+
+
 class ZiGate(object):
 
     def __init__(self, port='auto', path='~/.zigate.json',
@@ -1038,17 +1066,33 @@ class ZiGate(object):
     def actions_move_colour(self, addr, endpoint, x, y, transition=0):
         '''
         move to colour x y
+        x, y can be integer 0-65536 or float 0-1.0
         '''
+        if isinstance(x, float) and x <= 1:
+            x = int(x*65536)
+        if isinstance(y, float) and y <= 1:
+            y = int(y*65536)
         addr = self.__addr(addr)
         data = struct.pack('!BHBBHHH', 2, addr, 1, endpoint,
                            x, y, transition)
         self.send_data(0x00B7, data)
 
     @register_actions(ACTIONS_COLOR)
+    def actions_move_colour_hex(self, addr, endpoint, color_hex, transition=0):
+        '''
+        move to colour #ffffff
+        convenient function to set color in hex format
+        '''
+        x, y = hex_to_xy(color_hex)
+        return self.actions_move_colour(addr, endpoint, x, y, transition)
+
+    @register_actions(ACTIONS_COLOR)
     def actions_move_temperature(self, addr, endpoint, temperature, transition=0):
         '''
         move colour to temperature
+        temperature unit is kelvin
         '''
+        temperature = 1000000//temperature
         addr = self.__addr(addr)
         data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
                            temperature, transition)
