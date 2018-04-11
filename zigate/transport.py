@@ -13,9 +13,14 @@ import queue
 import socket
 import select
 from pydispatch import dispatcher
+import sys
 
 LOGGER = logging.getLogger('zigate')
 ZIGATE_PACKET_RECEIVED = 'ZIGATE_PACKET_RECEIVED'
+
+
+class ZIGATE_NOT_FOUND(Exception):
+    pass
 
 
 class ThreadSerialConnection(object):
@@ -36,15 +41,20 @@ class ThreadSerialConnection(object):
         return serial.Serial(self._port, 115200)
 
     def reconnect(self):
+        delay = 1
         while True:
             try:
                 self.serial = self.initSerial()
                 break
+            except ZIGATE_NOT_FOUND:
+                LOGGER.error('ZiGate has not been found, please check configuration.')
+                sys.exit(2)
             except:
-                LOGGER.error('Failed to connect, retry...')
-                time.sleep(1)
+                LOGGER.error('Failed to connect, retry in {} sec...'.format(delay))
+                time.sleep(delay)
+                if delay < 60:
+                    delay *= 2
         return self.serial
-
 
     def packet_received(self, raw_message):
         dispatcher.send(ZIGATE_PACKET_RECEIVED, packet=raw_message)
@@ -104,7 +114,7 @@ class ThreadSerialConnection(object):
                     LOGGER.warning('Choose the first device... {}'.format(port))
             else:
                 LOGGER.error('ZiGate not found')
-                raise Exception('ZiGate not found')
+                raise ZIGATE_NOT_FOUND('ZiGate not found')
         return port
 
     def is_connected(self):
