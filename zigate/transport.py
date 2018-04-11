@@ -14,10 +14,9 @@ import socket
 import select
 from pydispatch import dispatcher
 import sys
+from .const import ZIGATE_PACKET_RECEIVED, ZIGATE_FAILED_TO_CONNECT
 
 LOGGER = logging.getLogger('zigate')
-ZIGATE_PACKET_RECEIVED = 'ZIGATE_PACKET_RECEIVED'
-ZIGATE_FAILED_TO_CONNECT = 'ZIGATE_FAILED_TO_CONNECT'
 
 
 class ZIGATE_NOT_FOUND(Exception):
