@@ -144,7 +144,7 @@ class ThreadSocketConnection(ThreadSerialConnection):
         ThreadSerialConnection.__init__(self, device, port)
 
     def initSerial(self):
-        s = socket.create_connection((self._host, self._port))
+        s = socket.create_connection((self._host, self._port), 10)
         return s
 
     def listen(self):
