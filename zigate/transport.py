@@ -17,6 +17,7 @@ import sys
 
 LOGGER = logging.getLogger('zigate')
 ZIGATE_PACKET_RECEIVED = 'ZIGATE_PACKET_RECEIVED'
+ZIGATE_FAILED_TO_CONNECT = 'ZIGATE_FAILED_TO_CONNECT'
 
 
 class ZIGATE_NOT_FOUND(Exception):
@@ -50,7 +51,9 @@ class ThreadSerialConnection(object):
                 LOGGER.error('ZiGate has not been found, please check configuration.')
                 sys.exit(2)
             except:
-                LOGGER.error('Failed to connect, retry in {} sec...'.format(delay))
+                msg = 'Failed to connect, retry in {} sec...'.format(delay)
+                dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
+                LOGGER.error(msg)
                 time.sleep(delay)
                 if delay < 60:
                     delay *= 2
