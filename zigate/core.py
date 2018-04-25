@@ -16,7 +16,7 @@ import struct
 import threading
 import random
 from enum import Enum
-
+import colorsys
 
 LOGGER = logging.getLogger('zigate')
 
@@ -58,7 +58,7 @@ class AddrMode(Enum):
 def hex_to_rgb(h):
     ''' convert hex color to rgb tuple '''
     h = h.strip('#')
-    return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
+    return tuple(int(h[i:i+2], 16)/255 for i in (0, 2 ,4))
 
 
 def rgb_to_xy(rgb):
@@ -615,7 +615,8 @@ class ZiGate(object):
             ieee = self._devices[addr]['ieee']
             addr = self.__addr(addr)
             ieee = self.__addr(ieee)
-            data = struct.pack('!QQ', addr, ieee)
+#             data = struct.pack('!QQ', addr, ieee)
+            data = struct.pack('!QQ', ieee, ieee)
             return self.send_data(0x0026, data)
 
     def _bind_unbind(self, cmd, ieee, endpoint, cluster,
@@ -706,7 +707,7 @@ class ZiGate(object):
         '''
         return self.send_data(0x0045, addr)
 
-    def management_leave_request(self, addr, ieee=None, rejoin=0,
+    def leave_request(self, addr, ieee=None, rejoin=0,
                                  remove_children=0):
         '''
         Management Leave request
@@ -720,6 +721,14 @@ class ZiGate(object):
         ieee = self.__addr(ieee)
         data = struct.pack('!HQBB', addr, ieee, rejoin, remove_children)
         return self.send_data(0x0047, data)
+
+    def lqi_request(self, addr='0000', index=0):
+        '''
+        Management LQI request
+        '''
+        addr = self.__addr(addr)
+        data = struct.pack('!HB', addr, index)
+        return self.send_data(0x004e, data)
 
     def refresh_device(self, addr):
         '''
@@ -1001,6 +1010,7 @@ class ZiGate(object):
     def action_move_level(self, addr, endpoint, onoff=OFF, mode=0, rate=0):
         '''
         move to level
+        mode 0 up, 1 down
         '''
         addr = self.__addr(addr)
         data = struct.pack('!BHBBBBB', 2, addr, 1, endpoint, onoff, mode, rate)
@@ -1042,31 +1052,63 @@ class ZiGate(object):
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
         self.send_data(0x0084, data)
 
-    @register_actions(ACTIONS_COLOR)
-    def actions_move_hue(self, addr, endpoint, hue, direction, transition=0):
+    @register_actions(ACTIONS_HUE)
+    def actions_move_hue(self, addr, endpoint, hue, direction=0, transition=0):
         '''
         move to hue
+        hue 0-360 in degrees
+        direction : 0 shortest, 1 longest, 2 up, 3 down
+        transition in second
         '''
         addr = self.__addr(addr)
+        hue = hue*254//360
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
                            hue, direction, transition)
         self.send_data(0x00B0, data)
 
-    @register_actions(ACTIONS_COLOR)
-    def actions_move_hue_saturation(self, addr, endpoint, hue, saturation, transition=0):
+    @register_actions(ACTIONS_HUE)
+    def actions_move_hue_saturation(self, addr, endpoint, hue, saturation=100, transition=0):
         '''
         move to hue and saturation
+        hue 0-360 in degrees
+        saturation 0-100 in percent
+        transition in second
         '''
         addr = self.__addr(addr)
+        hue = hue*254//360
+        saturation = saturation*254//100
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
                            hue, saturation, transition)
         self.send_data(0x00B6, data)
+
+    @register_actions(ACTIONS_HUE)
+    def actions_move_hue_hex(self, addr, endpoint, color_hex, transition=0):
+        '''
+        move to hue color in #ffffff
+        transition in second
+        '''
+        rgb = hex_to_rgb(color_hex)
+        self.actions_move_hue_rgb(addr, endpoint, rgb, transition)
+
+    @register_actions(ACTIONS_HUE)
+    def actions_move_hue_rgb(self, addr, endpoint, rgb, transition=0):
+        '''
+        move to hue (r,g,b) example : (1.0, 1.0, 1.0)
+        transition in second
+        '''
+        hue, saturation, level = colorsys.rgb_to_hsv(*rgb)
+        hue = int(hue*360)
+        saturation = int(saturation*100)
+        level = int(level*254)
+        self.action_move_level_onoff(addr, endpoint, ON, level, transition)
+        self.actions_move_hue_saturation(addr, endpoint, hue, saturation, transition)
 
     @register_actions(ACTIONS_COLOR)
     def actions_move_colour(self, addr, endpoint, x, y, transition=0):
         '''
         move to colour x y
         x, y can be integer 0-65536 or float 0-1.0
+        transition in second
         '''
         if isinstance(x, float) and x <= 1:
             x = int(x*65536)
@@ -1082,15 +1124,27 @@ class ZiGate(object):
         '''
         move to colour #ffffff
         convenient function to set color in hex format
+        transition in second
         '''
         x, y = hex_to_xy(color_hex)
         return self.actions_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_COLOR)
+    def actions_move_colour_rgb(self, addr, endpoint, rgb, transition=0):
+        '''
+        move to colour (r,g,b) example : (1.0, 1.0, 1.0)
+        convenient function to set color in hex format
+        transition in second
+        '''
+        x, y = rgb_to_xy(rgb)
+        return self.actions_move_colour(addr, endpoint, x, y, transition)
+
+    @register_actions(ACTIONS_TEMPERATURE)
     def actions_move_temperature(self, addr, endpoint, temperature, transition=0):
         '''
         move colour to temperature
         temperature unit is kelvin
+        transition in second
         '''
         temperature = 1000000//temperature
         addr = self.__addr(addr)
@@ -1168,13 +1222,21 @@ class Device(object):
             if endpoint:
                 if endpoint['device'] in ACTUATORS:
                     if 0x0006 in endpoint['in_clusters']:
+                        # Oh please XIAOMI, respect the standard...
+                        if ep_id != 1 and self.get_property('type') == 'lumi.ctrl_neutral1':
+                            ep_id -= 1
                         actions[ep_id].append(ACTIONS_ONOFF)
                     if 0x0008 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_LEVEL)
                     if 0x0101 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_LOCK)
                     if 0x0300 in endpoint['in_clusters']:
-                        actions[ep_id].append(ACTIONS_COLOR)
+                        if endpoint['device'] == 0x0210:
+                            actions[ep_id].append(ACTIONS_HUE)
+                        elif endpoint['device'] == 0x0220:
+                            actions[ep_id].append(ACTIONS_TEMPERATURE)
+                        else: # 0x0200
+                            actions[ep_id].append(ACTIONS_COLOR)
         return actions
 
     def _create_actions(self):

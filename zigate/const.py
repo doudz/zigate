@@ -35,6 +35,8 @@ STATUS_CODES = {0: 'Success', 1: 'Invalid parameters',
 ACTIONS_ONOFF = 'onoff'
 ACTIONS_LEVEL = 'level'
 ACTIONS_COLOR = 'color'
+ACTIONS_TEMPERATURE = 'temperature'
+ACTIONS_HUE = 'hue'
 ACTIONS_LOCK = 'lock'
 
 

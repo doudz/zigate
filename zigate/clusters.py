@@ -202,7 +202,7 @@ class C0008(Cluster):
 @register_cluster
 class C000c(Cluster):
     cluster_id = 0x000c
-    type = 'Xiaomi cube: Rotation'
+    type = 'Analog input (Xiaomi cube: Rotation)'
     attributes_def = {0xff05: {'name': 'rotation', 'value': 'value'},
                       }
 
@@ -210,7 +210,7 @@ class C000c(Cluster):
 @register_cluster
 class C0012(Cluster):
     cluster_id = 0x0012
-    type = 'Xiaomi cube: Movement'
+    type = 'Multistate input (Xiaomi cube: Movement)'
     attributes_def = {0x0055: {'name': 'movement', 'value': 'value'},
                       }
 
@@ -219,14 +219,15 @@ class C0012(Cluster):
 class C0300(Cluster):
     cluster_id = 0x0300
     type = 'Lighting: Color Control'
-    attributes_def = {0x0000: {'name': 'current_hue', 'value': 'value'},
-                      0x0001: {'name': 'current_saturation', 'value': 'value'},
+    attributes_def = {0x0000: {'name': 'current_hue', 'value': 'value*360/254'},
+                      0x0001: {'name': 'current_saturation', 'value': 'value*100/254'},
                       0x0002: {'name': 'remaining_time', 'value': 'value'},
-                      0x0003: {'name': 'current_x', 'value': 'value'},
-                      0x0004: {'name': 'current_y', 'value': 'value'},
+                      0x0003: {'name': 'current_x', 'value': 'value/65536'},
+                      0x0004: {'name': 'current_y', 'value': 'value/65536'},
                       0x0005: {'name': 'drift', 'value': 'value'},
-                      0x0006: {'name': 'colour_temperature', 'value': 'value'},
-                      0x0007: {'name': 'colour_mode', 'value': 'value'},
+                      0x0006: {'name': 'compensation', 'value': 'value'},
+                      0x0007: {'name': 'colour_temperature', 'value': '1000000//value'},
+                      0x0008: {'name': 'colour_mode', 'value': 'value'},
                       0x0010: {'name': 'nb_primaries', 'value': 'value'},
                       0x0011: {'name': 'primary_1_x', 'value': 'value'},
                       0x0012: {'name': 'primary_1_y', 'value': 'value'},
@@ -238,6 +239,8 @@ class C0300(Cluster):
                       0x0020: {'name': 'primary_3_y', 'value': 'value'},
                       0x0021: {'name': 'primary_3_intensity', 'value': 'value'},
                       0x400a: {'name': 'capabilities', 'value': 'value'},
+                      0x400b: {'name': 'temperature_phy_min', 'value': 'value'},
+                      0x400c: {'name': 'temperature_phy_max', 'value': 'value'},
                       }
 
 

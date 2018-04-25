@@ -18,7 +18,6 @@ from .const import ZIGATE_PACKET_RECEIVED, ZIGATE_FAILED_TO_CONNECT
 
 LOGGER = logging.getLogger('zigate')
 
-
 class ZIGATE_NOT_FOUND(Exception):
     pass
 
@@ -120,7 +119,7 @@ class ThreadSerialConnection(object):
         return port
 
     def is_connected(self):
-        return self.serial.is_open
+        return self.serial.isOpen()
 
     def close(self):
         self._running = False

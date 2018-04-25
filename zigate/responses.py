@@ -532,6 +532,35 @@ class R004D(Response):
 
 
 @register_response
+class R804E(Response):
+    msg = 0x804E
+    type = 'Management LQI response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('entries', 'B'),
+                     ('count', 'B'),
+                     ('index', 'B'),
+#                      ('neighbour', 'rawend')
+                    ('neighbour', OrderedDict([('addr', 'H'),
+                                               ('extend_pan', 'Q'),
+                                               ('ieee', 'Q'),
+                                               ('depth', 'B'),
+                                               ('rssi', 'B'),
+                                               ('bit_field', 'B'),
+                                               ]))
+                     ])
+#         Bit map of attributes Described below: uint8_t
+#     {bit 0-1 Device Type    
+# (0-Coordinator 1-Router 2-End Device)    
+# bit 2-3 Permit Join status    
+# (1- On 0-Off)    
+# bit 4-5 Relationship    
+# (0-Parent 1-Child 2-Sibling)    
+# bit 6-7 Rx On When Idle status    
+# (1-On 0-Off)}
+
+
+@register_response
 class R8060(Response):
     msg = 0x8060
     type = 'Add group response'
