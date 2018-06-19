@@ -1507,6 +1507,7 @@ class Device(object):
         if new_value is None:
             new_value = type(value)()
         attribute['value'] = new_value
+        attribute['data'] = new_value
         attribute = self.get_attribute(endpoint_id,
                                        cluster_id,
                                        attribute_id,
