@@ -1027,8 +1027,10 @@ class ZiGate(object):
     def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition_time=0):
         '''
         move to level with on off
+        level between 0 - 100
         '''
         addr = self.__addr(addr)
+        level = int(level*254/100)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint, onoff, level, transition_time)
         self.send_data(0x0081, data)
 

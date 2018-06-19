@@ -195,7 +195,7 @@ class C0006(Cluster):
 class C0008(Cluster):
     cluster_id = 0x0008
     type = 'General: Level control'
-    attributes_def = {0x0000: {'name': 'current_level', 'value': 'value'},
+    attributes_def = {0x0000: {'name': 'current_level', 'value': 'int(value*100/254)'},
                       }
 
 
@@ -219,8 +219,8 @@ class C0012(Cluster):
 class C0300(Cluster):
     cluster_id = 0x0300
     type = 'Lighting: Color Control'
-    attributes_def = {0x0000: {'name': 'current_hue', 'value': 'value*360/254'},
-                      0x0001: {'name': 'current_saturation', 'value': 'value*100/254'},
+    attributes_def = {0x0000: {'name': 'current_hue', 'value': 'int(value*360/254)'},
+                      0x0001: {'name': 'current_saturation', 'value': 'int(value*100/254)'},
                       0x0002: {'name': 'remaining_time', 'value': 'value'},
                       0x0003: {'name': 'current_x', 'value': 'value/65536'},
                       0x0004: {'name': 'current_y', 'value': 'value/65536'},
