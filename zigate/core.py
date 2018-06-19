@@ -432,8 +432,13 @@ class ZiGate(object):
             self._devices[device.addr].update(device)
             LOGGER.debug('Dispatch ZIGATE_DEVICE_UPDATED')
             dispatcher.send(ZIGATE_DEVICE_UPDATED, self, **{'zigate': self,
-                                                      'device':self._devices[device.addr]})
+                                                            'device':self._devices[device.addr]})
         else:
+            # check if device already exist with other address
+            d = self.get_device_from_ieee(device.ieee)
+            if d:
+                LOGGER.warning('Device already exists with another addr {}, removing it.'.format(d.addr))
+                self._remove_device(d.addr)
             self._devices[device.addr] = device
             LOGGER.debug('Dispatch ZIGATE_DEVICE_ADDED')
             dispatcher.send(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
@@ -561,7 +566,7 @@ class ZiGate(object):
     def permit_join(self, duration=30):
         '''
         start permit join
-        duration in secs, 0 means stop permit join 
+        duration in secs, 0 means stop permit join
         '''
         return self.send_data(0x0049, 'FFFC{:02X}00'.format(duration))
 
@@ -579,7 +584,7 @@ class ZiGate(object):
         if not isinstance(channels, list):
             channels = [channels]
         mask = functools.reduce(lambda acc, x: acc ^ 2 ** x, channels, 0)
-        mask = struct.pack('!I',mask)
+        mask = struct.pack('!I', mask)
         return self.send_data(0x0021, mask)
 
     def set_type(self, typ=TYPE_COORDINATOR):
@@ -653,7 +658,8 @@ class ZiGate(object):
         return self._bind_unbind(0x0030, ieee, endpoint, cluster,
                                  dst_addr, dst_endpoint)
 
-    def bind_addr(self, addr, endpoint, cluster, dst_addr=None, dst_endpoint=1):
+    def bind_addr(self, addr, endpoint, cluster, dst_addr=None,
+                  dst_endpoint=1):
         '''
         bind using addr
         if dst_addr not specified, supposed zigate
@@ -672,7 +678,8 @@ class ZiGate(object):
         return self._bind_unbind(0x0031, ieee, endpoint, cluster,
                                  dst_addr, dst_endpoint)
 
-    def unbind_addr(self, addr, endpoint, cluster, dst_addr='0000', dst_endpoint=1):
+    def unbind_addr(self, addr, endpoint, cluster, dst_addr='0000',
+                    dst_endpoint=1):
         '''
         unbind using addr
         if dst_addr not specified, supposed zigate
@@ -708,7 +715,7 @@ class ZiGate(object):
         return self.send_data(0x0045, addr)
 
     def leave_request(self, addr, ieee=None, rejoin=0,
-                                 remove_children=0):
+                      remove_children=0):
         '''
         Management Leave request
         rejoin : 0 do not rejoin, 1 rejoin
@@ -1223,7 +1230,7 @@ class Device(object):
                 if endpoint['device'] in ACTUATORS:
                     if 0x0006 in endpoint['in_clusters']:
                         # Oh please XIAOMI, respect the standard...
-                        if ep_id != 1 and self.get_property('type') == 'lumi.ctrl_neutral1':
+                        if ep_id != 1 and self.get_property_value('type') == 'lumi.ctrl_neutral1':
                             ep_id -= 1
                         actions[ep_id].append(ACTIONS_ONOFF)
                     if 0x0008 in endpoint['in_clusters']:
@@ -1281,7 +1288,7 @@ class Device(object):
                     self._zigate.bind(self.ieee, endpoint_id, 0x0300)
                     for i in range(9):  # all color informations
                         self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0300, i, 0x20)
+                                                       0x0300, i, 0x20)
 
     @staticmethod
     def from_json(data, zigate_instance=None):
@@ -1466,7 +1473,8 @@ class Device(object):
             added, attribute = r
             if 'expire' in attribute:
                 self._set_expire_timer(endpoint_id, cluster_id,
-                                       attribute['attribute'], attribute['expire'])
+                                       attribute['attribute'],
+                                       attribute['expire'])
         self._avoid_duplicate()
         self._lock.release()
         if not r:
@@ -1509,7 +1517,8 @@ class Device(object):
                            'device': self,
                            'attribute': attribute})
 
-    def get_attribute(self, endpoint_id, cluster_id, attribute_id, extended_info=False):
+    def get_attribute(self, endpoint_id, cluster_id, attribute_id,
+                      extended_info=False):
         if endpoint_id in self.endpoints:
             endpoint = self.endpoints[endpoint_id]
             if cluster_id in endpoint['clusters']:
@@ -1568,7 +1577,8 @@ class Device(object):
                 for attribute in cluster.attributes.values():
                     if attribute.get('name') == name:
                         if extended_info:
-                            attr = {'endpoint': endpoint_id, 'cluster': cluster_id}
+                            attr = {'endpoint': endpoint_id,
+                                    'cluster': cluster_id}
                             attr.update(attribute)
                             return attr
                         return attribute
@@ -1615,10 +1625,10 @@ class Device(object):
             LOGGER.debug('Need refresh : no endpoints')
             need = True
         for endpoint in self.endpoints.values():
-            if not endpoint.get('device'):
+            if endpoint.get('device') is None:
                 LOGGER.debug('Need refresh : no device id')
                 need = True
-            if not endpoint.get('in_clusters'):
+            if endpoint.get('in_clusters') is None:
                 LOGGER.debug('Need refresh : no clusters list')
                 need = True
         return need
@@ -1639,3 +1649,13 @@ class Device(object):
                                           attribute['attribute'])
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
+
+    def zone_status(self):
+        '''
+        return zone status if device support AIS zone
+        '''
+        zone_status = self.get_property('zone_status', True)
+        if zone_status:
+            cluster = self.get_cluster(zone_status['endpoint'],
+                                       zone_status['cluster'])
+            return cluster.zone()

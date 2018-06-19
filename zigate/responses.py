@@ -621,11 +621,10 @@ class R8401(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
-                     ('status', 'B'),
                      ('address_mode', 'B'),
                      ('addr', 'H'),  # ou Q suivant mode
                      ('zone_status', 'H'),
-                     ('extended_status', 'B'),
+                     ('status', 'B'),
                      ('zone_id', 'B'),
                      ('delay', 'H'),
                      ])
@@ -634,7 +633,7 @@ class R8401(Response):
               'zone_status': '{:016b}'}
 
     def cleaned_data(self):
-        return self._filter_data(['addr', 'zone_status'])
+        return self._filter_data(['addr', 'zone_status', 'zone_id'])
 
 
 @register_response

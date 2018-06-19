@@ -299,36 +299,47 @@ class C0406(Cluster):
 class C0500(Cluster):
     cluster_id = 0x0500
     type = 'Security & Safety: IAS Zone'
-    attributes_def = {
-                      0: {'name': 'alarm1', 'value': 'bool(value)'},
-                      1: {'name': 'alarm2', 'value': 'bool(value)'},
-                      2: {'name': 'tamper', 'value': 'bool(value)'},
-                      3: {'name': 'low_battery', 'value': 'bool(value)'},
-                      4: {'name': 'supervision', 'value': 'bool(value)'},
-                      5: {'name': 'restore', 'value': 'bool(value)'},
-                      6: {'name': 'trouble', 'value': 'bool(value)'},
-                      7: {'name': 'ac_fault', 'value': 'bool(value)'},
-                      8: {'name': 'test_mode', 'value': 'bool(value)'},
-                      9: {'name': 'battery_defect', 'value': 'bool(value)'},
+    attributes_def = {255: {'name': 'zone_status', 'value': 'value'},
+#                       0: {'name': 'alarm1', 'value': 'bool(value)'},
+#                       1: {'name': 'alarm2', 'value': 'bool(value)'},
+#                       2: {'name': 'tamper', 'value': 'bool(value)'},
+#                       3: {'name': 'low_battery', 'value': 'bool(value)'},
+#                       4: {'name': 'supervision', 'value': 'bool(value)'},
+#                       5: {'name': 'restore', 'value': 'bool(value)'},
+#                       6: {'name': 'trouble', 'value': 'bool(value)'},
+#                       7: {'name': 'ac_fault', 'value': 'bool(value)'},
+#                       8: {'name': 'test_mode', 'value': 'bool(value)'},
+#                       9: {'name': 'battery_defect', 'value': 'bool(value)'},
                       }
 
     def update(self, data):
-        added = False
-        attribute = {}
-        zone_status = data['zone_status'][::-1]
-        for i, bit in enumerate(zone_status):
-            previous = None
-            data = {'attribute': i, 'data': int(bit)}
-            if i in self.attributes:
-                previous = self.attributes[i]
-            a_added, a_attribute = Cluster.update(self, data)
-            if a_added:
-                added = True
-                attribute = a_attribute
-            if previous is not None:
-                if self.attributes[i] != previous:
-                    attribute = self.attributes[i]
-        return (added, attribute)
+        zone_id = data['zone_id']
+        data['attribute'] = zone_id
+        # if zone_id is unknown, clone defaut zone
+        if zone_id not in self.attributes_def:
+            self.attributes_def[zone_id] = self.attributes_def[255]
+        r = Cluster.update(self, data)
+        self.decode_zone(zone_id)
+        return r
+
+    def zone(self, zone_id=255):
+        fields = ['alarm1',
+                  'alarm2',
+                  'tamper',
+                  'low_battery',
+                  'supervision',
+                  'restore',
+                  'trouble',
+                  'ac_fault',
+                  'test_mode',
+                  'battery_defect'
+                  ]
+        zone_status = self.attributes[zone_id][::-1]
+        zone = {}
+        for i, field in enumerate(fields):
+            bit = zone_status[i]
+            zone[field] = bool(int(bit))
+        return zone
 # b16ZoneStatus is a mandatory attribute which is a 16-bit bitmap indicating
 # the status of each of the possible notification triggers from the device:
 # Bit
