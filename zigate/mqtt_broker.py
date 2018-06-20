@@ -13,10 +13,12 @@ import json
 
 
 class MQTT_Broker(object):
-    def __init__(self, zigate, mqtt_host='localhost:1883'):
+    def __init__(self, zigate, mqtt_host='localhost:1883', username=None, password=None):
         self._mqtt_host = mqtt_host
         self.zigate = zigate
         self.client = mqtt.Client()
+        if username is not None:
+            self.client.username_pw_set(username, password)
         dispatcher.connect(self.attribute_changed, ZIGATE_ATTRIBUTE_ADDED)
         dispatcher.connect(self.attribute_changed, ZIGATE_ATTRIBUTE_UPDATED)
         dispatcher.connect(self.device_changed, ZIGATE_DEVICE_ADDED)
@@ -91,6 +93,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', help='ZiGate usb port or host:port', default='auto')
     parser.add_argument('--mqtt_host', help='MQTT host:port', default='localhost:1883')
+    parser.add_argument('--mqtt_username', help='MQTT username', default=None)
+    parser.add_argument('--mqtt_password', help='MQTT password', default=None)
     args = parser.parse_args()
 
     if ':' in args.device:  # supposed IP:PORT
@@ -98,5 +102,5 @@ if __name__ == '__main__':
         z = ZiGateWiFi(host, port, auto_start=False)
     else:
         z = ZiGate(args.device, auto_start=False)
-    broker = MQTT_Broker(z, args.mqtt_host)
+    broker = MQTT_Broker(z, args.mqtt_host, args.mqtt_username, args.mqtt_password)
     broker.start()
