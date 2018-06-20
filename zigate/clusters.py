@@ -315,11 +315,11 @@ class C0500(Cluster):
     def update(self, data):
         zone_id = data['zone_id']
         data['attribute'] = zone_id
+        data['data'] = data['zone_status']
         # if zone_id is unknown, clone defaut zone
         if zone_id not in self.attributes_def:
             self.attributes_def[zone_id] = self.attributes_def[255]
         r = Cluster.update(self, data)
-        self.decode_zone(zone_id)
         return r
 
     def zone(self, zone_id=255):
@@ -334,7 +334,7 @@ class C0500(Cluster):
                   'test_mode',
                   'battery_defect'
                   ]
-        zone_status = self.attributes[zone_id][::-1]
+        zone_status = self.attributes[zone_id]['zone_status'][::-1]
         zone = {}
         for i, field in enumerate(fields):
             bit = zone_status[i]
