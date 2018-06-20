@@ -152,6 +152,8 @@ MQTT Broker
 
 python3 -m zigate.mqtt_broker --device auto --mqtt_host localhost:1883
 
+Add `--mqtt_username` and `--mqtt_password` as arguments and allow them to be used to establish connection to the MQTT broker.
+
 the broker publish the following topics:
 zigate/device_changed/[addr]
 Payload example :
