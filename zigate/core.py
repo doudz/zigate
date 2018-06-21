@@ -1653,12 +1653,3 @@ class Device(object):
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
 
-    def zone_status(self):
-        '''
-        return zone status if device support AIS zone
-        '''
-        zone_status = self.get_property('zone_status', True)
-        if zone_status:
-            cluster = self.get_cluster(zone_status['endpoint'],
-                                       zone_status['cluster'])
-            return cluster.zone()

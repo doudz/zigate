@@ -203,7 +203,10 @@ class C0008(Cluster):
 class C000c(Cluster):
     cluster_id = 0x000c
     type = 'Analog input (Xiaomi cube: Rotation)'
-    attributes_def = {0xff05: {'name': 'rotation', 'value': 'value'},
+    attributes_def = {0x0055: {'name': 'rotation ?', 'value': 'value',
+                               'expire': 1},
+                      0xff05: {'name': 'rotation', 'value': 'value',
+                               'expire': 1},
                       }
 
 
@@ -211,7 +214,8 @@ class C000c(Cluster):
 class C0012(Cluster):
     cluster_id = 0x0012
     type = 'Multistate input (Xiaomi cube: Movement)'
-    attributes_def = {0x0055: {'name': 'movement', 'value': 'value'},
+    attributes_def = {0x0055: {'name': 'movement', 'value': 'value',
+                               'expire': 1},
                       }
 
 
@@ -299,7 +303,7 @@ class C0406(Cluster):
 class C0500(Cluster):
     cluster_id = 0x0500
     type = 'Security & Safety: IAS Zone'
-    attributes_def = {255: {'name': 'zone_status', 'value': 'value'},
+    attributes_def = {255: {'name': 'zone_status', 'value': 'self._decode(value[::-1])'},
 #                       0: {'name': 'alarm1', 'value': 'bool(value)'},
 #                       1: {'name': 'alarm2', 'value': 'bool(value)'},
 #                       2: {'name': 'tamper', 'value': 'bool(value)'},
@@ -322,7 +326,7 @@ class C0500(Cluster):
         r = Cluster.update(self, data)
         return r
 
-    def zone(self, zone_id=255):
+    def _decode(self, zone_status):
         fields = ['alarm1',
                   'alarm2',
                   'tamper',
@@ -334,7 +338,6 @@ class C0500(Cluster):
                   'test_mode',
                   'battery_defect'
                   ]
-        zone_status = self.attributes[zone_id]['zone_status'][::-1]
         zone = {}
         for i, field in enumerate(fields):
             bit = zone_status[i]
