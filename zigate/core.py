@@ -1177,7 +1177,7 @@ class ZiGate(object):
         from .mqtt_broker import MQTT_Broker
         broker = MQTT_Broker(self, host, username, password)
         broker.connect()
-        self.broker_thread = threading.Thread(broker.client.loop_forever)
+        self.broker_thread = threading.Thread(target=broker.client.loop_forever)
         self.broker_thread.start()
 
 
