@@ -1652,4 +1652,15 @@ class Device(object):
                                           attribute['attribute'])
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
+            
+    def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
+        '''
+        Start a MQTT broker in a new thread 
+        '''
+        from .mqtt_broker import MQTT_Broker
+        broker = MQTT_Broker(self, host, username, password)
+        broker.connect()
+        self.broker_thread = threading.Thread(broker.client.loop_forever)
+        self.broker_thread.start()
+    
 

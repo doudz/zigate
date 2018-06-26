@@ -26,11 +26,14 @@ class MQTT_Broker(object):
         dispatcher.connect(self.device_removed, ZIGATE_DEVICE_REMOVED)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
-
-    def start(self):
+        
+    def connect(self):
         host, port = self._mqtt_host.split(':')
         port = int(port)
         self.client.connect(host, port)
+        
+    def start(self):
+        self.connect()
         self.zigate.autoStart()
         self.zigate.start_auto_save()
         self.client.loop_forever()
