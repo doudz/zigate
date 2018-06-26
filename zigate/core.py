@@ -1169,7 +1169,7 @@ class ZiGate(object):
         addr = self.__addr(addr)
         data = struct.pack('!BHBBB', 2, addr, 1, endpoint, lock)
         self.send_data(0x00f0, data)
-        
+
     def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
         '''
         Start a MQTT broker in a new thread 
