@@ -1169,6 +1169,16 @@ class ZiGate(object):
         addr = self.__addr(addr)
         data = struct.pack('!BHBBB', 2, addr, 1, endpoint, lock)
         self.send_data(0x00f0, data)
+        
+    def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
+        '''
+        Start a MQTT broker in a new thread 
+        '''
+        from .mqtt_broker import MQTT_Broker
+        broker = MQTT_Broker(self, host, username, password)
+        broker.connect()
+        self.broker_thread = threading.Thread(broker.client.loop_forever)
+        self.broker_thread.start()
 
 
 class ZiGateWiFi(ZiGate):
@@ -1653,14 +1663,5 @@ class Device(object):
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
             
-    def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
-        '''
-        Start a MQTT broker in a new thread 
-        '''
-        from .mqtt_broker import MQTT_Broker
-        broker = MQTT_Broker(self, host, username, password)
-        broker.connect()
-        self.broker_thread = threading.Thread(broker.client.loop_forever)
-        self.broker_thread.start()
     
 
