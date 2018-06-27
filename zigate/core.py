@@ -1378,6 +1378,8 @@ class Device(object):
             percent = 100
             if self.info.get('power_type') == 0:
                 power_source = self.get_property_value('power_source')
+                if power_source is None:
+                    power_source = 3
                 battery = self.get_property_value('battery')
                 if power_source == 3:  # battery
                     power_source = 3.2
