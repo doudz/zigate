@@ -102,6 +102,7 @@ class ZiGate(object):
 
         self._addr = None
         self._ieee = None
+        self._started = False
 
         dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
         dispatcher.connect(self.decode_data, ZIGATE_PACKET_RECEIVED)
@@ -124,6 +125,7 @@ class ZiGate(object):
         except Exception as e:
             LOGGER.error('Exception during closing')
             LOGGER.error(traceback.format_exc())
+        self._started = False
 
     def save_state(self, path=None):
         self._save_lock.acquire()
@@ -184,6 +186,8 @@ class ZiGate(object):
             - Start Network
             - Refresh devices list
         '''
+        if self._started:
+            return
         self.load_state()
 #         erase = not self.load_state()
 #         if erase:
@@ -1447,7 +1451,7 @@ class Device(object):
         self._lock.acquire()
         self.info.update(device.info)
         self.endpoints.update(device.endpoints)
-        self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
+#         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
         self._lock.release()
 
     def update_info(self, info):
@@ -1666,6 +1670,4 @@ class Device(object):
                                           attribute['attribute'])
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
-            
-    
 
