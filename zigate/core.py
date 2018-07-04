@@ -1596,6 +1596,13 @@ class Device(object):
             return prop.get('value', default)
         return default
 
+    def get_value(self, name, default=None):
+        '''
+        return attribute value matching name
+        shorter alias of get_property_value
+        '''
+        return self.get_property_value(name, default)
+
     @property
     def properties(self):
         '''
