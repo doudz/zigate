@@ -889,23 +889,10 @@ class ZiGate(object):
         return self.send_data(0x00D2)
 
     def read_attribute_request(self, addr, endpoint, cluster, attribute):
-        """
+        '''
         Read Attribute request
-
-        :param str addr: length 4. Example "AB01"
-        :param int endpoint: length 2. Example "01"
-        :param int cluster: length 4. Example "0000"
-        :param int attribute: length 4. Example "0005"
         attribute can be a unique int or a list of int
-
-        Examples:
-        ========
-        Replace device_address AB01 with your devices address.
-        All clusters and parameters are not available on every device.
-        - Get device manufacturer name: read_attribute('AB01', '01', '0000', '0004')
-        - Get device name: read_attribute('AB01', '01', '0000', '0005')
-        - Get device battery voltage: read_attribute('AB01', '01', '0001', '0006')
-        """
+        '''
         addr = self.__addr(addr)
         direction = 0
         manufacturer_specific = 0
@@ -919,15 +906,10 @@ class ZiGate(object):
         self.send_data(0x0100, data)
 
     def write_attribute_request(self, addr, endpoint, cluster, attribute):
-        """
+        '''
         Write Attribute request
-
-        :param str addr: length 4. Example "AB01"
-        :param int endpoint: length 2. Example "01"
-        :param int cluster: length 4. Example "0000"
-        :param int attribute: length 4. Example "0005"
         attribute can be a unique int or a list of int
-        """
+        '''
         addr = self.__addr(addr)
         direction = 0
         manufacturer_specific = 0
@@ -935,8 +917,9 @@ class ZiGate(object):
         if not isinstance(attribute, list):
             attribute = [attribute]
         length = len(attribute)
-        data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1, endpoint, cluster, 
-                           direction, manufacturer_specific, 
+        data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1,
+                           endpoint, cluster,
+                           direction, manufacturer_specific,
                            manufacturer_id, length, *attribute)
         self.send_data(0x0110, data)
 
@@ -1604,13 +1587,14 @@ class Device(object):
                             return attr
                         return attribute
 
-    def get_property_value(self, name):
+    def get_property_value(self, name, default=None):
         '''
         return attribute value matching name
         '''
         prop = self.get_property(name)
         if prop:
-            return prop['value']
+            return prop.get('value', default)
+        return default
 
     @property
     def properties(self):
