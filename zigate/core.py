@@ -337,10 +337,11 @@ class ZiGate(object):
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
             LOGGER.debug('Known devices in zigate : {}'.format(known_addr))
-            to_delete = keys.difference(known_addr)
-            LOGGER.debug('Previous devices to delete : {}'.format(to_delete))
-            for addr in to_delete:
-                self._remove_device(addr)
+            missing = keys.difference(known_addr)
+            LOGGER.debug('Previous devices missing : {}'.format(missing))
+            for addr in missing:
+                self._tag_missing(addr)
+#                 self._remove_device(addr)
             for d in response['devices']:
                 device = Device(dict(d), self)
                 self._set_device(device)
@@ -418,6 +419,28 @@ class ZiGate(object):
             self.get_devices_list()  # since device is missing, request info
         return d
 
+    def _tag_missing(self, addr):
+        '''
+        tag a device as missing
+        '''
+        if addr in self._devices:
+            self._devices[addr].missing = True
+            LOGGER.warning('The device {} is missing'.format(addr))
+
+    def get_missing(self):
+        '''
+        return missing devices
+        '''
+        return [device for device in self._devices if device.missing]
+
+    def cleanup_devices(self):
+        '''
+        remove devices tagged missing
+        '''
+        to_remove = [device.addr for device in self.get_missing()]
+        for addr in to_remove:
+            self._remove_device(addr)
+
     def _remove_device(self, addr):
         '''
         remove device from addr
@@ -446,7 +469,7 @@ class ZiGate(object):
             self._devices[device.addr] = device
             LOGGER.debug('Dispatch ZIGATE_DEVICE_ADDED')
             dispatcher.send(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
-                                                    'device': device})
+                                                          'device': device})
             self.refresh_device(device.addr)
 
     def get_status_text(self, status_code):
@@ -517,9 +540,10 @@ class ZiGate(object):
         return self._devices.get(addr)
 
     def get_device_from_ieee(self, ieee):
-        for d in self._devices.values():
-            if d['ieee'] == ieee:
-                return d
+        if ieee:
+            for d in self._devices.values():
+                if d['ieee'] == ieee:
+                    return d
 
     def get_devices_list(self, wait=False):
         '''
@@ -749,7 +773,7 @@ class ZiGate(object):
         active endpoint request
         '''
         self.node_descriptor_request(addr)
-#         self.power_descriptor_request(addr)
+        self.power_descriptor_request(addr)
         self.active_endpoint_request(addr)
 
     def _generate_addr(self):
@@ -1207,6 +1231,7 @@ class Device(object):
         self.info = info or {}
         self.endpoints = {}
         self._expire_timer = {}
+        self.missing = False
 
     def available_actions(self, endpoint_id=None):
         '''
@@ -1348,7 +1373,7 @@ class Device(object):
 
     @property
     def ieee(self):
-        return self.info['ieee']
+        return self.info.get('ieee')
 
     @property
     def rssi(self):
@@ -1632,6 +1657,9 @@ class Device(object):
         LOGGER.debug('Check Need refresh {}'.format(self))
         if not self.get_property_value('type'):
             LOGGER.debug('Need refresh : no type')
+            need = True
+        if not self.ieee:
+            LOGGER.debug('Need refresh : no IEEE')
             need = True
         if not self.endpoints:
             LOGGER.debug('Need refresh : no endpoints')
