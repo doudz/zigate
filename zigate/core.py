@@ -1494,6 +1494,7 @@ class Device(object):
         if rssi > 0:
             self.info['rssi'] = rssi
         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
+        self.missing = False
         cluster = self.get_cluster(endpoint_id, cluster_id)
         self._lock.acquire()
         r = cluster.update(data)
