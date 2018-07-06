@@ -401,6 +401,7 @@ class ZiGate(object):
                                                                    'device': device,
                                                                    'attribute': changed})
         elif response.msg == 0x004D:  # device announce
+            LOGGER.debug('Device Announce')
             device = Device(response.data, self)
             self._set_device(device)
 #         else:
@@ -542,7 +543,7 @@ class ZiGate(object):
     def get_device_from_ieee(self, ieee):
         if ieee:
             for d in self._devices.values():
-                if d['ieee'] == ieee:
+                if d.ieee == ieee:
                     return d
 
     def get_devices_list(self, wait=False):
