@@ -106,7 +106,6 @@ class ZiGate(object):
 
         dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
         dispatcher.connect(self.decode_data, ZIGATE_PACKET_RECEIVED)
-        self.setup_connection()
         if auto_start:
             self.autoStart()
             if auto_save:
@@ -181,6 +180,7 @@ class ZiGate(object):
         '''
         Auto Start sequence:
             - Load persistent file
+            - setup connection
             - Set Channel mask
             - Set Type Coordinator
             - Start Network
@@ -189,6 +189,7 @@ class ZiGate(object):
         if self._started:
             return
         self.load_state()
+        self.setup_connection()
 #         erase = not self.load_state()
 #         if erase:
 #             self.erase_persistent()
