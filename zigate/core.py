@@ -1529,13 +1529,14 @@ class Device(object):
         timer.setDaemon(True)
         timer.start()
 
-    def _reset_attribute(self, endpoint_id, cluster_id, attribute_id,
-                         new_value=None):
+    def _reset_attribute(self, endpoint_id, cluster_id, attribute_id):
         attribute = self.get_attribute(endpoint_id,
                                        cluster_id,
                                        attribute_id)
         value = attribute['value']
-        if new_value is None:
+        if 'expire_value' in attribute:
+            new_value = attribute['expire_value']
+        else:
             new_value = type(value)()
         attribute['value'] = new_value
         attribute['data'] = new_value

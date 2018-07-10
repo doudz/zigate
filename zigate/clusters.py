@@ -210,12 +210,25 @@ class C000c(Cluster):
                       }
 
 
+def cube_decode(value):
+    return {0x0000: 'shake',
+            0x0002: 'wakeup',
+            0x0003: 'drop',
+            0x0040: 'flip90',
+            0x0080: 'flip180',
+            0x0100: 'push',
+            0x0103: 'slide',
+            0x0200: 'double_tap',
+            0x0204: 'tap',
+            }.get(value, value)
+
+
 @register_cluster
 class C0012(Cluster):
     cluster_id = 0x0012
     type = 'Multistate input (Xiaomi cube: Movement)'
-    attributes_def = {0x0055: {'name': 'movement', 'value': 'value',
-                               'expire': 1},
+    attributes_def = {0x0055: {'name': 'movement', 'value': 'cube_decode(value)',
+                               'expire': 1, 'expire_value': None},
                       }
 
 
