@@ -17,12 +17,14 @@ import threading
 import random
 from enum import Enum
 import colorsys
+import queue
 
 LOGGER = logging.getLogger('zigate')
 
 
 AUTO_SAVE = 5*60  # 5 minutes
 BIND_REPORT_LIGHT = True  # automatically bind and report state for light
+SLEEP_INTERVAL = 0.1
 ACTIONS = {}
 
 # Device id
@@ -104,12 +106,28 @@ class ZiGate(object):
         self._ieee = None
         self._started = False
 
+        self._packets = queue.Queue()
+        self._event_thread = threading.Thread(target=self._event_loop)
+        self._event_thread.setDaemon(True)
+        self._event_thread.start()
+
+        dispatcher.connect(self._packet_received, ZIGATE_PACKET_RECEIVED)
         dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
-        dispatcher.connect(self.decode_data, ZIGATE_PACKET_RECEIVED)
+#         dispatcher.connect(self.decode_data, ZIGATE_PACKET_RECEIVED)
         if auto_start:
             self.autoStart()
             if auto_save:
                 self.start_auto_save()
+
+    def _event_loop(self):
+        while True:
+            if not self._packets.empty():
+                packet = self._packets.get()
+                self.decode_data(packet)
+            sleep(SLEEP_INTERVAL)
+
+    def _packet_received(self, packet):
+        self._packets.put(packet)
 
     def setup_connection(self):
         self.connection = ThreadSerialConnection(self, self._port)
