@@ -1681,7 +1681,7 @@ class Device(object):
         mac_capability = self.info.get('mac_capability')
         if mac_capability:
             return mac_capability[-3] == '1'
-        return True
+        return False
 
     def need_refresh(self):
         '''
