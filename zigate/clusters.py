@@ -6,6 +6,7 @@ Created on 12 févr. 2018
 import struct
 from binascii import unhexlify, hexlify
 import logging
+import traceback
 
 LOGGER = logging.getLogger('zigate')
 
@@ -92,6 +93,7 @@ class Cluster(object):
                 LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
                                                                      attribute['data']
                                                                      ))
+                LOGGER.error(traceback.format_exc())
                 attribute['value'] = None
         return (added, attribute)
 
@@ -187,7 +189,7 @@ class C0006(Cluster):
     type = 'General: On/Off'
     attributes_def = {0x0000: {'name': 'onoff', 'value': 'value'},
                       0x8000: {'name': 'multiclick', 'value': 'value',
-                               'expire': 1},
+                               'expire': 2},
                       }
 
 
@@ -204,23 +206,53 @@ class C000c(Cluster):
     cluster_id = 0x000c
     type = 'Analog input (Xiaomi cube: Rotation)'
     attributes_def = {0x0055: {'name': 'rotation ?', 'value': 'value',
-                               'expire': 1},
+                               'expire': 2},
                       0xff05: {'name': 'rotation', 'value': 'value',
-                               'expire': 1},
+                               'expire': 2},
                       }
 
 
+#         +---+
+#         | 2 |
+#     +---+---+---+
+#     | 4 | 0 | 1 |
+#     +---+---+---+
+#         | 5 |
+#         +---+
+#         | 3 |
+#         +---+
+#     Side 5 is with the MI logo; side 3 contains the battery door.
+#
+#     Shake: 0x0000 (side on top doesn't matter)
+#     90º Flip from side x on top to side y on top: 0x0040 + (x << 3) + y
+#     180º Flip to side x on top: 0x0080 + x
+#     Push while side x is on top: 0x0100 + x
+#     Double Tap while side x is on top: 0x0200 + x
+#     Push works in any direction.
+#     For Double Tap you really need to lift the cube and tap it on the table twice.
+
 def cube_decode(value):
-    return {0x0000: 'shake',
-            0x0002: 'wakeup',
-            0x0003: 'drop',
-            0x0040: 'flip90',
-            0x0080: 'flip180',
-            0x0100: 'push',
-            0x0103: 'slide',
-            0x0200: 'double_tap',
-            0x0204: 'tap',
-            }.get(value, value)
+    if value == '' or value is None:
+        return value
+    events = {0x0000: 'shake',
+              0x0002: 'wakeup',
+              0x0003: 'drop',
+              }
+    if value in events:
+        return events[value]
+    elif value & 0x0080 != 0:  # flip180
+        face = value-0x0080
+        value = 'flip180_'.format(face)
+    elif value & 0x0100 != 0:  # push
+        face = value-0x0100
+        value = 'push_'.format(face)
+    elif value & 0x0200 != 0:  # double_tap
+        face = value-0x0200
+        value = 'double_tap_'.format(face)
+    else:  # flip90
+        face = value-0x0040
+        value = 'flip90_'.format(face)
+    return value
 
 
 @register_cluster
@@ -228,7 +260,7 @@ class C0012(Cluster):
     cluster_id = 0x0012
     type = 'Multistate input (Xiaomi cube: Movement)'
     attributes_def = {0x0055: {'name': 'movement', 'value': 'cube_decode(value)',
-                               'expire': 1, 'expire_value': None},
+                               'expire': 2, 'expire_value': ''},
                       }
 
 

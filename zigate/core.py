@@ -19,12 +19,13 @@ from enum import Enum
 import colorsys
 import queue
 
+
 LOGGER = logging.getLogger('zigate')
 
 
 AUTO_SAVE = 5*60  # 5 minutes
 BIND_REPORT_LIGHT = True  # automatically bind and report state for light
-SLEEP_INTERVAL = 0.1
+SLEEP_INTERVAL = 0.2
 ACTIONS = {}
 
 # Device id
@@ -83,6 +84,18 @@ def rgb_to_xy(rgb):
 def hex_to_xy(h):
     ''' convert hex color to xy tuple '''
     return rgb_to_xy(hex_to_rgb(h))
+
+
+def dispatch_signal(signal=dispatcher.Any, sender=dispatcher.Anonymous,
+                    *arguments, **named):
+    '''
+    Dispatch signal with exception proof
+    '''
+    try:
+        dispatcher.send(signal, sender, *arguments, **named)
+    except Exception:
+        LOGGER.error('Exception dispatching signal {}'.format(signal))
+        LOGGER.error(traceback.format_exc())
 
 
 class ZiGate(object):
@@ -155,7 +168,7 @@ class ZiGate(object):
             with open(self._path, 'w') as fp:
                 json.dump(data, fp, cls=DeviceEncoder,
                           sort_keys=True, indent=4, separators=(',', ': '))
-        except Exception as e:
+        except Exception:
             LOGGER.error('Failed to save persistent file {}'.format(self._path))
             LOGGER.error(traceback.format_exc())
         self._save_lock.release()
@@ -178,7 +191,7 @@ class ZiGate(object):
                     device._create_actions()
                 LOGGER.debug('Load success')
                 return True
-            except Exception as e:
+            except Exception:
                 LOGGER.error('Failed to load persistent file {}'.format(self._path))
                 LOGGER.error(traceback.format_exc())
         LOGGER.debug('No file to load')
@@ -239,7 +252,7 @@ class ZiGate(object):
                     device.refresh_device()
                 else:
                     LOGGER.debug('Dispatch ZIGATE_DEVICE_NEED_REFRESH {}'.format(device))
-                    dispatcher.send(ZIGATE_DEVICE_NEED_REFRESH,
+                    dispatch_signal(ZIGATE_DEVICE_NEED_REFRESH,
                                     self, **{'zigate': self,
                                              'device': device})
 
@@ -343,7 +356,7 @@ class ZiGate(object):
         LOGGER.debug(response)
         self._last_response[msg_type] = response
         LOGGER.debug('Dispatch ZIGATE_RESPONSE_RECEIVED')
-        dispatcher.send(ZIGATE_RESPONSE_RECEIVED, self, response=response)
+        dispatch_signal(ZIGATE_RESPONSE_RECEIVED, self, response=response)
 
     def interpret_response(self, response):
         if response.msg == 0x8000:  # status
@@ -411,12 +424,12 @@ class ZiGate(object):
                                            attribute_id, True)
             if added:
                 LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_ADDED')
-                dispatcher.send(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
+                dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
                                                                  'device': device,
                                                                  'attribute': changed})
             else:
                 LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_UPDATED')
-                dispatcher.send(ZIGATE_ATTRIBUTE_UPDATED, self, **{'zigate': self,
+                dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self, **{'zigate': self,
                                                                    'device': device,
                                                                    'attribute': changed})
         elif response.msg == 0x004D:  # device announce
@@ -467,7 +480,7 @@ class ZiGate(object):
         '''
         del self._devices[addr]
         LOGGER.debug('Dispatch ZIGATE_DEVICE_REMOVED')
-        dispatcher.send(ZIGATE_DEVICE_REMOVED, **{'zigate': self,
+        dispatch_signal(ZIGATE_DEVICE_REMOVED, **{'zigate': self,
                                                   'addr': addr})
 
     def _set_device(self, device):
@@ -478,7 +491,7 @@ class ZiGate(object):
         if device.addr in self._devices:
             self._devices[device.addr].update(device)
             LOGGER.debug('Dispatch ZIGATE_DEVICE_UPDATED')
-            dispatcher.send(ZIGATE_DEVICE_UPDATED, self, **{'zigate': self,
+            dispatch_signal(ZIGATE_DEVICE_UPDATED, self, **{'zigate': self,
                                                             'device':self._devices[device.addr]})
         else:
             # check if device already exist with other address
@@ -488,7 +501,7 @@ class ZiGate(object):
                 self._remove_device(d.addr)
             self._devices[device.addr] = device
             LOGGER.debug('Dispatch ZIGATE_DEVICE_ADDED')
-            dispatcher.send(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
+            dispatch_signal(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
                                                           'device': device})
             self.refresh_device(device.addr)
 
@@ -1563,7 +1576,7 @@ class Device(object):
                                        attribute_id,
                                        True)
         LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_UPDATED (auto reset)')
-        dispatcher.send(ZIGATE_ATTRIBUTE_UPDATED, self._zigate,
+        dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self._zigate,
                         **{'zigate': self._zigate,
                            'device': self,
                            'attribute': attribute})
@@ -1668,7 +1681,7 @@ class Device(object):
         mac_capability = self.info.get('mac_capability')
         if mac_capability:
             return mac_capability[-3] == '1'
-        return False
+        return True
 
     def need_refresh(self):
         '''
