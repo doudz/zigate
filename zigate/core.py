@@ -328,7 +328,7 @@ class ZiGate(object):
 
         self.send_to_transport(encoded_output)
         status = self._wait_status(cmd)
-        if wait_response:
+        if wait_response and status is not None:
             r = self._wait_response(wait_response)
             return r
         return status
