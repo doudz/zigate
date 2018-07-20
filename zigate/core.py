@@ -91,6 +91,7 @@ def dispatch_signal(signal=dispatcher.Any, sender=dispatcher.Anonymous,
     '''
     Dispatch signal with exception proof
     '''
+    LOGGER.debug('Dispatch {}'.format(signal))
     try:
         dispatcher.send(signal, sender, *arguments, **named)
     except Exception:
@@ -251,7 +252,6 @@ class ZiGate(object):
                     LOGGER.debug('Auto refresh device {}'.format(device))
                     device.refresh_device()
                 else:
-                    LOGGER.debug('Dispatch ZIGATE_DEVICE_NEED_REFRESH {}'.format(device))
                     dispatch_signal(ZIGATE_DEVICE_NEED_REFRESH,
                                     self, **{'zigate': self,
                                              'device': device})
@@ -355,7 +355,6 @@ class ZiGate(object):
             LOGGER.warning('Unknown response 0x{:04x}'.format(msg_type))
         LOGGER.debug(response)
         self._last_response[msg_type] = response
-        LOGGER.debug('Dispatch ZIGATE_RESPONSE_RECEIVED')
         dispatch_signal(ZIGATE_RESPONSE_RECEIVED, self, response=response)
 
     def interpret_response(self, response):
@@ -423,12 +422,10 @@ class ZiGate(object):
                                            response['cluster'],
                                            attribute_id, True)
             if added:
-                LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_ADDED')
                 dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
                                                                  'device': device,
                                                                  'attribute': changed})
             else:
-                LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_UPDATED')
                 dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self, **{'zigate': self,
                                                                    'device': device,
                                                                    'attribute': changed})
@@ -459,6 +456,9 @@ class ZiGate(object):
         if addr in self._devices:
             self._devices[addr].missing = True
             LOGGER.warning('The device {} is missing'.format(addr))
+            dispatch_signal(ZIGATE_DEVICE_UPDATED,
+                            self, **{'zigate': self,
+                                     'device': self._devices[addr]})
 
     def get_missing(self):
         '''
@@ -479,7 +479,6 @@ class ZiGate(object):
         remove device from addr
         '''
         del self._devices[addr]
-        LOGGER.debug('Dispatch ZIGATE_DEVICE_REMOVED')
         dispatch_signal(ZIGATE_DEVICE_REMOVED, **{'zigate': self,
                                                   'addr': addr})
 
@@ -490,7 +489,6 @@ class ZiGate(object):
         assert type(device) == Device
         if device.addr in self._devices:
             self._devices[device.addr].update(device)
-            LOGGER.debug('Dispatch ZIGATE_DEVICE_UPDATED')
             dispatch_signal(ZIGATE_DEVICE_UPDATED, self, **{'zigate': self,
                                                             'device':self._devices[device.addr]})
         else:
@@ -500,7 +498,6 @@ class ZiGate(object):
                 LOGGER.warning('Device already exists with another addr {}, removing it.'.format(d.addr))
                 self._remove_device(d.addr)
             self._devices[device.addr] = device
-            LOGGER.debug('Dispatch ZIGATE_DEVICE_ADDED')
             dispatch_signal(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
                                                           'device': device})
             self.refresh_device(device.addr)
@@ -1575,7 +1572,6 @@ class Device(object):
                                        cluster_id,
                                        attribute_id,
                                        True)
-        LOGGER.debug('Dispatch ZIGATE_ATTRIBUTE_UPDATED (auto reset)')
         dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self._zigate,
                         **{'zigate': self._zigate,
                            'device': self,
