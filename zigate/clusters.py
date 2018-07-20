@@ -205,7 +205,7 @@ class C0008(Cluster):
 class C000c(Cluster):
     cluster_id = 0x000c
     type = 'Analog input (Xiaomi cube: Rotation)'
-    attributes_def = {0x0055: {'name': 'rotation ?', 'value': 'value',
+    attributes_def = {0x0055: {'name': 'rotation_angle?', 'value': 'value',
                                'expire': 2},
                       0xff05: {'name': 'rotation', 'value': 'value',
                                'expire': 2},
@@ -241,17 +241,19 @@ def cube_decode(value):
     if value in events:
         return events[value]
     elif value & 0x0080 != 0:  # flip180
-        face = value-0x0080
-        value = 'flip180_'.format(face)
+        face = value ^ 0x0080
+        value = 'flip180_{}'.format(face)
     elif value & 0x0100 != 0:  # push
-        face = value-0x0100
-        value = 'push_'.format(face)
+        face = value ^ 0x0100
+        value = 'push_{}'.format(face)
     elif value & 0x0200 != 0:  # double_tap
-        face = value-0x0200
-        value = 'double_tap_'.format(face)
+        face = value ^ 0x0200
+        value = 'double_tap_{}'.format(face)
     else:  # flip90
-        face = value-0x0040
-        value = 'flip90_'.format(face)
+        face = value ^ 0x0040
+        face1 = face >> 3
+        face2 = face ^ (face1 << 3)
+        value = 'flip90_{}{}'.format(face1, face2)
     return value
 
 
