@@ -18,7 +18,12 @@ from .const import ZIGATE_PACKET_RECEIVED, ZIGATE_FAILED_TO_CONNECT
 
 LOGGER = logging.getLogger('zigate')
 
+
 class ZIGATE_NOT_FOUND(Exception):
+    pass
+
+
+class ZIGATE_CANNOT_CONNECT(Exception):
     pass
 
 
@@ -145,8 +150,8 @@ class ThreadSocketConnection(ThreadSerialConnection):
             except:
                 LOGGER.debug('ZiGate not found on port {}'.format(port))
                 continue
-        LOGGER.error('ZiGate not found')
-        raise ZIGATE_NOT_FOUND('ZiGate not found')
+        LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))
+        raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using port {}'.format(self._port))
 
     def listen(self):
         while self._running:
