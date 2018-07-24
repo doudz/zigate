@@ -464,7 +464,7 @@ class ZiGate(object):
         '''
         return missing devices
         '''
-        return [device for device in self._devices if device.missing]
+        return [device for device in self._devices.values() if device.missing]
 
     def cleanup_devices(self):
         '''
