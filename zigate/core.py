@@ -1223,7 +1223,7 @@ class ZiGate(object):
 
 
 class ZiGateWiFi(ZiGate):
-    def __init__(self, host, port=9999, path='~/.zigate.json',
+    def __init__(self, host, port=None, path='~/.zigate.json',
                  auto_start=True,
                  auto_save=True):
         self._host = host

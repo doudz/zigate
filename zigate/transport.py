@@ -128,28 +128,30 @@ class ThreadSerialConnection(object):
         self.serial.close()
 
 
-class ThreadSocketConnection2(ThreadSerialConnection):
-    def __init__(self, device, host, port=9999):
-        self._host = host
-        ThreadSerialConnection.__init__(self, device, port)
-
-    def initSerial(self):
-        return serial.serial_for_url('socket://{}:{}'.format(self._host, self._port))
-
-
 class ThreadSocketConnection(ThreadSerialConnection):
-    def __init__(self, device, host, port=9999):
+    def __init__(self, device, host, port=None):
         self._host = host
         ThreadSerialConnection.__init__(self, device, port)
 
     def initSerial(self):
-        s = socket.create_connection((self._host, self._port), 10)
-        return s
+        if self._port in (None, 'auto'):
+            ports = [9999, 23]
+        else:
+            ports = [self._port]
+        for port in ports:
+            try:
+                s = socket.create_connection((self._host, port), 10)
+                return s
+            except:
+                LOGGER.debug('ZiGate not found on port {}'.format(port))
+                continue
+        LOGGER.error('ZiGate not found')
+        raise ZIGATE_NOT_FOUND('ZiGate not found')
 
     def listen(self):
         while self._running:
             socket_list = [self.serial]
-            read_sockets, write_sockets, error_sockets = select.select(socket_list , socket_list, [])
+            read_sockets, write_sockets, error_sockets = select.select(socket_list, socket_list, [])
             if read_sockets:
                 data = self.serial.recv(1024)
                 if data:
