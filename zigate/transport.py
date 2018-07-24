@@ -105,8 +105,6 @@ class ThreadSerialConnection(object):
         port = port or 'auto'
         if port == 'auto':
             LOGGER.info('Searching ZiGate port')
-#             context = pyudev.Context()
-#             devices = list(context.list_devices(ID_USB_DRIVER='pl2303', ID_VENDOR_ID='067b', subsystem='tty'))
             devices = list(serial.tools.list_ports.grep('067b:2303'))
             if devices:
                 port = devices[0].device
@@ -140,12 +138,13 @@ class ThreadSocketConnection(ThreadSerialConnection):
 
     def initSerial(self):
         if self._port in (None, 'auto'):
-            ports = [9999, 23]
+            ports = [23, 9999]
         else:
             ports = [self._port]
         for port in ports:
             try:
                 s = socket.create_connection((self._host, port), 10)
+                LOGGER.debug('ZiGate found on port {}'.format(port))
                 return s
             except:
                 LOGGER.debug('ZiGate not found on port {}'.format(port))
