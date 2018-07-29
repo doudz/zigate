@@ -222,6 +222,7 @@ class ZiGate(object):
             return
         self.load_state()
         self.setup_connection()
+        self.get_version()
 #         erase = not self.load_state()
 #         if erase:
 #             self.erase_persistent()
