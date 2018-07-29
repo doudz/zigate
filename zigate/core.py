@@ -238,8 +238,8 @@ class ZiGate(object):
             self.start_network(True)
         self.get_devices_list(True)
         self.need_refresh()
-        for device in self.devices:
-            device._bind_report()
+#         for device in self.devices:
+#             device._bind_report()
 
     def need_refresh(self):
         '''
@@ -804,7 +804,7 @@ class ZiGate(object):
         active endpoint request
         '''
         self.node_descriptor_request(addr)
-        self.power_descriptor_request(addr)
+#         self.power_descriptor_request(addr)
         self.active_endpoint_request(addr)
 
     def _generate_addr(self):
