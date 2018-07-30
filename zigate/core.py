@@ -1072,7 +1072,7 @@ class ZiGate(object):
         level between 0 - 100
         '''
         addr = self.__addr(addr)
-        level = int(level*254/100)
+        level = int(level*254//100)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint, onoff, level, transition_time)
         self.send_data(0x0081, data)
 
@@ -1112,7 +1112,7 @@ class ZiGate(object):
         transition in second
         '''
         addr = self.__addr(addr)
-        hue = hue*254//360
+        hue = int(hue*254//360)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
                            hue, direction, transition)
         self.send_data(0x00B0, data)
@@ -1126,8 +1126,8 @@ class ZiGate(object):
         transition in second
         '''
         addr = self.__addr(addr)
-        hue = hue*254//360
-        saturation = saturation*254//100
+        hue = int(hue*254//360)
+        saturation = int(saturation*254//100)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
                            hue, saturation, transition)
         self.send_data(0x00B6, data)
@@ -1150,8 +1150,8 @@ class ZiGate(object):
         hue, saturation, level = colorsys.rgb_to_hsv(*rgb)
         hue = int(hue*360)
         saturation = int(saturation*100)
-        level = int(level*254)
-        self.action_move_level_onoff(addr, endpoint, ON, level, transition)
+        level = int(level*100)
+        self.action_move_level_onoff(addr, endpoint, ON, level, 0)
         self.actions_move_hue_saturation(addr, endpoint, hue, saturation, transition)
 
     @register_actions(ACTIONS_COLOR)
@@ -1197,7 +1197,7 @@ class ZiGate(object):
         temperature unit is kelvin
         transition in second
         '''
-        temperature = 1000000//temperature
+        temperature = int(1000000//temperature)
         addr = self.__addr(addr)
         data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
                            temperature, transition)
