@@ -8,3 +8,11 @@ __version__ = '0.19.0'
 
 __all__ = ['ZiGate', 'ZiGateWiFi',
            'dispatcher']
+
+
+def connect(port=None, host=None):
+    if host:
+        z = ZiGateWiFi(host)
+    else:
+        z = ZiGate(port)
+    return z
