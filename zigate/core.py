@@ -1549,6 +1549,7 @@ class Device(object):
         k = (endpoint_id, cluster_id, attribute_id)
         timer = self._expire_timer.get(k)
         if timer:
+            LOGGER.debug('Cancel previous Timer {}'.format(timer))
             timer.cancel()
         timer = threading.Timer(expire,
                                 functools.partial(self._reset_attribute,
@@ -1557,6 +1558,7 @@ class Device(object):
                                                   attribute_id))
         timer.setDaemon(True)
         timer.start()
+        self._expire_timer[k] = timer
 
     def _reset_attribute(self, endpoint_id, cluster_id, attribute_id):
         attribute = self.get_attribute(endpoint_id,
