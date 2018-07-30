@@ -114,7 +114,6 @@ class ThreadSerialConnection(object):
                     LOGGER.warning('Found the following devices')
                     for device in devices:
                         LOGGER.warning('* {0} - {0.manufacturer}'.format(device))
-    #                 port = devices[0].device_node
                     LOGGER.warning('Choose the first device... {}'.format(port))
             else:
                 LOGGER.error('ZiGate not found')
@@ -141,9 +140,10 @@ class ThreadSocketConnection(ThreadSerialConnection):
             ports = [23, 9999]
         else:
             ports = [self._port]
+        host = self._find_host(self._host)
         for port in ports:
             try:
-                s = socket.create_connection((self._host, port), 10)
+                s = socket.create_connection((host, port), 10)
                 LOGGER.debug('ZiGate found on port {}'.format(port))
                 return s
             except:
@@ -151,6 +151,16 @@ class ThreadSocketConnection(ThreadSerialConnection):
                 continue
         LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))
         raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using port {}'.format(self._port))
+
+    def _find_host(self, host):
+        host = host or 'auto'
+        if host == 'auto':
+            LOGGER.info('Searching ZiGate Wifi host')
+            host = discover_host()
+            if not host:
+                LOGGER.error('ZiGate not found')
+#                 raise ZIGATE_NOT_FOUND('ZiGate not found')
+        return host
 
     def listen(self):
         while self._running:
@@ -161,7 +171,7 @@ class ThreadSocketConnection(ThreadSerialConnection):
                 if data:
                     self.read_data(data)
                 else:
-                    LOGGER.error('OOPS connection lost, reconnect...')
+                    LOGGER.warning('OOPS connection lost, reconnect...')
                     self.reconnect()
             if write_sockets:
                 while not self.queue.empty():
@@ -172,3 +182,25 @@ class ThreadSocketConnection(ThreadSerialConnection):
     def is_connected(self):  # TODO: check if socket is alive
         return True
 
+
+def discover_host():
+    from zeroconf import ServiceBrowser, Zeroconf
+    host = None
+
+    def on_service_state_change(zeroconf, service_type, name, state_change):
+        pass
+
+    zeroconf = Zeroconf()
+    browser = ServiceBrowser(zeroconf, "_zigate._tcp.local.",
+                             handlers=[on_service_state_change])
+    i = 0
+    while not host:
+        if browser.services:
+            service = list(browser.services.values())[0]
+            info = zeroconf.get_service_info(service.name, service.alias)
+            host = socket.inet_ntoa(info.address)
+        time.sleep(0.1)
+        i += 1
+        if i > 50:
+            break
+    return host
