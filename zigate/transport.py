@@ -15,6 +15,7 @@ import select
 from pydispatch import dispatcher
 import sys
 from .const import ZIGATE_PACKET_RECEIVED, ZIGATE_FAILED_TO_CONNECT
+from pydoc import browse
 
 LOGGER = logging.getLogger('zigate')
 
@@ -195,12 +196,13 @@ def discover_host():
                              handlers=[on_service_state_change])
     i = 0
     while not host:
+        time.sleep(0.1)
         if browser.services:
             service = list(browser.services.values())[0]
             info = zeroconf.get_service_info(service.name, service.alias)
             host = socket.inet_ntoa(info.address)
-        time.sleep(0.1)
         i += 1
         if i > 50:
             break
+    zeroconf.close()
     return host
