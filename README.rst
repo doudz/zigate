@@ -28,7 +28,7 @@ Usage
    logging.root.setLevel(logging.DEBUG)
 
    import zigate
-   z = zigate.ZiGate(port=None) # Leave None to auto-discover the port
+   z = zigate.connect(port=None) # Leave None to auto-discover the port
 
    print(z.get_version())
    OrderedDict([('major', 1), ('installer', '30c'), ('rssi', 0), ('version', '3.0c')])
@@ -100,7 +100,7 @@ We use pydispatcher for callback
      
    dispatcher.connect(my_callback, zigate.ZIGATE_ATTRIBUTE_UPDATED)
 
-   z = zigate.ZiGate()
+   z = zigate.connect()
    
    # to catch any events
    dispatcher.connect(my_callback, dispatcher.Any)
@@ -142,7 +142,10 @@ WiFi ZiGate is also supported :
 .. code-block:: python
 
    import zigate
-   z = zigate.ZiGateWiFi(host='192.168.0.10', port=9999)
+   z = zigate.connect(host='192.168.0.10')
+   
+   # or if you want to set the port
+   z = zigate.connect(host='192.168.0.10:1234')
 
 
 
