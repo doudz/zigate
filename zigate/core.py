@@ -871,7 +871,7 @@ class ZiGate(object):
                            src_endpoint, endpoint, group)
         return self.send_data(0x0061, data)
 
-    def get_group_membership(self, addr, endpoint, groups):
+    def get_group_membership(self, addr, endpoint, groups=[]):
         '''
         Get group membership
         groups is list of group addr
