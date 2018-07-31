@@ -883,7 +883,7 @@ class ZiGate(object):
         groups = [self.__addr(group) for group in groups]
         data = struct.pack('!BHBBB{}H'.format(length), addr_mode, addr,
                            src_endpoint, endpoint, length, *groups)
-        return self.send_data(0x0061, data)
+        return self.send_data(0x0062, data)
 
     def remove_group(self, addr, endpoint, group=None):
         '''
