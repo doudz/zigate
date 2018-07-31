@@ -875,6 +875,7 @@ class ZiGate(object):
         '''
         Get group membership
         groups is list of group addr
+        if empty get all groups
         '''
         addr_mode = 2
         addr = self.__addr(addr)
