@@ -223,9 +223,6 @@ class ZiGate(object):
         self.load_state()
         self.setup_connection()
         self.get_version()
-#         erase = not self.load_state()
-#         if erase:
-#             self.erase_persistent()
         self.set_channel()
         self.set_type(TYPE_COORDINATOR)
         LOGGER.debug('Check network state')
@@ -238,8 +235,6 @@ class ZiGate(object):
             self.start_network(True)
         self.get_devices_list(True)
         self.need_refresh()
-#         for device in self.devices:
-#             device._bind_report()
 
     def need_refresh(self):
         '''
@@ -610,8 +605,8 @@ class ZiGate(object):
         '''
         erase persistent data in zigate
         '''
+        self._devices = {}
         return self.send_data(0x0012)
-        # todo, erase local persistent
 
     def is_permitting_join(self):
         '''
@@ -677,9 +672,9 @@ class ZiGate(object):
         ''' remove device '''
         if addr in self._devices:
             ieee = self._devices[addr]['ieee']
-            addr = self.__addr(addr)
+#             addr = self.__addr(addr)
             ieee = self.__addr(ieee)
-#             data = struct.pack('!QQ', addr, ieee)
+#             data = struct.pack('!HQ', addr, ieee)
             data = struct.pack('!QQ', ieee, ieee)
             return self.send_data(0x0026, data)
 
