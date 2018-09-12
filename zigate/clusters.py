@@ -234,6 +234,9 @@ class C000c(Cluster):
 #     For Double Tap you really need to lift the cube and tap it on the table twice.
 
 def cube_decode(value):
+    '''
+    Special decoder for XIAOMI CUBE
+    '''
     if value == '' or value is None:
         return value
     events = {0x0000: 'shake',
@@ -265,6 +268,37 @@ class C0012(Cluster):
     type = 'Multistate input (Xiaomi cube: Movement)'
     attributes_def = {0x0055: {'name': 'movement', 'value': 'cube_decode(value)',
                                'expire': 2, 'expire_value': ''},
+                      }
+
+
+def vibration_decode(value):
+    '''
+    Special decoder for XIAOMI Vibration sensor
+    '''
+    if value == '' or value is None:
+        return value
+    events = {0x0001: 'take',
+              0x0002: 'tilt',
+              0x0003: 'drop',
+              }
+    if value in events:
+        return events[value]
+    return value
+
+
+@register_cluster
+class C0101(Cluster):
+    cluster_id = 0x0101
+    type = 'General: Door Lock'
+    attributes_def = {0x0000: {'name': 'lockstate', 'value': 'value'},
+                      0x0001: {'name': 'locktype', 'value': 'value'},
+                      0x0002: {'name': 'enabled', 'value': 'bool(value)'},
+                      0x0055: {'name': 'movement', 'value': 'vibration_decode(value)',
+                               'expire': 2, 'expire_value': ''},
+                      0x0503: {'name': 'rotation', 'value': 'value',
+                               'expire': 2, 'expire_value': ''},
+                      0x0505: {'name': 'unknown', 'value': 'value',
+                               'expire': 2, 'expire_value': ''}
                       }
 
 
