@@ -1,0 +1,3 @@
+# Include docs
+include *.rst
+include LICENSE
