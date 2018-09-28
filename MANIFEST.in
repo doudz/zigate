@@ -1,3 +1,4 @@
 # Include docs
 include *.rst
 include LICENSE
+prune .editorconfig
