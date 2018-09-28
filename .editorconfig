@@ -1,0 +1,27 @@
+; EditorConfig is awesome: http://EditorConfig.org
+; top-most EditorConfig file
+root = true
+
+; Unix-style
+[*]
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = false
+
+[*.ini]
+indent_style = space
+indent_size = 4
+
+[*.md]
+indent_style = space
+indent_size = 4
+
+[*.py]
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+
+[*.rst]
+indent_style = space
+indent_size = 4
