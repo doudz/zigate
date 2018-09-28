@@ -15,12 +15,18 @@ https://github.com/pypa/sampleproject
 """
 
 from setuptools import setup
-import zigate
+from distutils.util import convert_path
+
+# Get __version without load zigate module
+main_ns = {}
+version_path = convert_path('zigate/version.py')
+with open(version_path) as version_file:
+    exec(version_file.read(), main_ns)
 
 # Setup part
 setup(
     name='zigate',
-    version=zigate.__version__,
+    version=main_ns['__version__'],
     description='python library for the zigate gateway (zigbee) http://zigate.fr',
     long_description=open('README.rst').read(),
     url='https://github.com/doudz/zigate',
