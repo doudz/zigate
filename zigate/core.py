@@ -346,6 +346,7 @@ class ZiGate(object):
             LOGGER.error('Bad checksum {} != {}'.format(checksum,
                                                         computed_checksum))
             return
+        LOGGER.debug('Received response 0x{:04x}: {}'.format(msg_type, value))
         response = RESPONSES.get(msg_type, Response)(value, rssi)
         if msg_type != response.msg:
             LOGGER.warning('Unknown response 0x{:04x}'.format(msg_type))
