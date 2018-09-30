@@ -1,4 +1,5 @@
 # Include docs
-include *.rst
+include *.md
 include LICENSE
 prune .editorconfig
+prune *.rb

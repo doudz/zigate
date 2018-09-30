@@ -1,17 +1,28 @@
 language: python
+
 matrix:
   include:
     - python: 3.4
       env: TOXENV=py34
+      install:
+        - pip install -e ".[dev]"
+      script:
+        - tox
     - python: 3.5
       env: TOXENV=py35
+      install:
+        - pip install -e ".[dev]"
+      script:
+        - tox
     - python: 3.6
       env: TOXENV=py36
-    - python: 3.7
-      env: TOXENV=py37
+      install:
+        - pip install -e ".[dev]"
+      script:
+        - tox
 
-install:
-  - pip install -e ".[dev]"
-
-script:
-  - tox
+    - language: markdown
+      script:
+        - gem install mdl
+        - cd ${TRAVIS_BUILD_DIR}
+        - mdl -s markdownlint.rb *.md
