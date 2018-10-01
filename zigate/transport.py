@@ -1,9 +1,11 @@
-'''
-Created on 22 janv. 2018
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2018 Sébastien RAMAGE
+#
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+#
 
-@author: sramage
-'''
-# import pyudev
 import threading
 import logging
 import time
@@ -15,7 +17,6 @@ import select
 from pydispatch import dispatcher
 import sys
 from .const import ZIGATE_PACKET_RECEIVED, ZIGATE_FAILED_TO_CONNECT
-from pydoc import browse
 
 LOGGER = logging.getLogger('zigate')
 
@@ -54,7 +55,7 @@ class ThreadSerialConnection(object):
             except ZIGATE_NOT_FOUND:
                 LOGGER.error('ZiGate has not been found, please check configuration.')
                 sys.exit(2)
-            except:
+            except Exception as exc:
                 msg = 'Failed to connect, retry in {} sec...'.format(delay)
                 dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
                 LOGGER.error(msg)
@@ -75,7 +76,7 @@ class ThreadSerialConnection(object):
         endpos = self._buffer.find(b'\x03')
         while endpos != -1:
             startpos = self._buffer.find(b'\x01')
-            raw_message = self._buffer[startpos:endpos+1]
+            raw_message = self._buffer[startpos:endpos + 1]
 #             print(raw_message)
             threading.Thread(target=self.packet_received, args=(raw_message,)).start()
             self._buffer = self._buffer[endpos + 1:]
@@ -85,7 +86,7 @@ class ThreadSerialConnection(object):
         while self._running:
             try:
                 data = self.serial.read(self.serial.in_waiting)
-            except:
+            except Exception as exc:
                 data = None
                 LOGGER.error('OOPS connection lost, reconnect...')
                 self.reconnect()
@@ -147,7 +148,7 @@ class ThreadSocketConnection(ThreadSerialConnection):
                 s = socket.create_connection((host, port), 10)
                 LOGGER.debug('ZiGate found on port {}'.format(port))
                 return s
-            except:
+            except Exception as exc:
                 LOGGER.debug('ZiGate not found on port {}'.format(port))
                 continue
         LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))

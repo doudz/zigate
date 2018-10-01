@@ -1,15 +1,27 @@
 #! /usr/bin/python3
-from binascii import (hexlify, unhexlify)
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2018 Sébastien RAMAGE
+#
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+#
+
+from binascii import hexlify
 import traceback
 from time import (sleep, strftime, time)
-from collections import OrderedDict
 import logging
 import json
 import os
 from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection, ThreadSocketConnection)
 from .responses import (RESPONSES, Response)
-from .const import *
+from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE, ACTIONS_ONOFF, ACTIONS_TEMPERATURE,
+                    OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
+                    ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
+                    ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED, ZIGATE_DEVICE_UPDATED,
+                    ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH, ZIGATE_RESPONSE_RECEIVED)
+
 from .clusters import (CLUSTERS, Cluster, get_cluster)
 import functools
 import struct
@@ -23,7 +35,7 @@ import queue
 LOGGER = logging.getLogger('zigate')
 
 
-AUTO_SAVE = 5*60  # 5 minutes
+AUTO_SAVE = 5 * 60  # 5 minutes
 BIND_REPORT_LIGHT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.2
 ACTIONS = {}
@@ -61,7 +73,7 @@ class AddrMode(Enum):
 def hex_to_rgb(h):
     ''' convert hex color to rgb tuple '''
     h = h.strip('#')
-    return tuple(int(h[i:i+2], 16)/255 for i in (0, 2 ,4))
+    return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
 
 
 def rgb_to_xy(rgb):
@@ -336,9 +348,9 @@ class ZiGate(object):
         decoded = self.zigate_decode(packet[1:-1])
         msg_type, length, checksum, value, rssi = \
             struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
-        if length != len(value)+1:  # add rssi length
+        if length != len(value) + 1:  # add rssi length
             LOGGER.error('Bad length {} != {} : {}'.format(length,
-                                                           len(value)+1,
+                                                           len(value) + 1,
                                                            value))
             return
         computed_checksum = self.checksum(decoded[:4], rssi, value)
@@ -358,8 +370,8 @@ class ZiGate(object):
         if response.msg == 0x8000:  # status
             if response['status'] != 0:
                 LOGGER.error('Command 0x{:04x} failed {} : {}'.format(response['packet_type'],
-                                                                 response.status_text(),
-                                                                 response['error']))
+                                                                      response.status_text(),
+                                                                      response['error']))
             self._last_status[response['packet_type']] = response['status']
         elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
@@ -487,7 +499,7 @@ class ZiGate(object):
         if device.addr in self._devices:
             self._devices[device.addr].update(device)
             dispatch_signal(ZIGATE_DEVICE_UPDATED, self, **{'zigate': self,
-                                                            'device':self._devices[device.addr]})
+                                                            'device': self._devices[device.addr]})
         else:
             # check if device already exist with other address
             d = self.get_device_from_ieee(device.ieee)
@@ -516,7 +528,7 @@ class ZiGate(object):
         while self._last_response.get(msg_type) is None:
             sleep(0.01)
             t2 = time()
-            if t2-t1 > 3:  # no response timeout
+            if t2 - t1 > 3:  # no response timeout
                 LOGGER.error('No response waiting command 0x{:04x}'.format(msg_type))
                 return
         LOGGER.debug('Stop waiting, got message 0x{:04x}'.format(msg_type))
@@ -531,7 +543,7 @@ class ZiGate(object):
         while self._last_status.get(cmd) is None:
             sleep(0.01)
             t2 = time()
-            if t2-t1 > 3:  # no response timeout
+            if t2 - t1 > 3:  # no response timeout
                 LOGGER.error('No response after command 0x{:04x}'.format(cmd))
                 return
         LOGGER.debug('STATUS code to command 0x{:04x}:{}'.format(cmd, self._last_status.get(cmd)))
@@ -700,7 +712,7 @@ class ZiGate(object):
             dst_addr_fmt = 'Q'
         ieee = self.__addr(ieee)
         dst_addr = self.__addr(dst_addr)
-        data = struct.pack('!QBHB'+dst_addr_fmt+'B', ieee, endpoint,
+        data = struct.pack('!QBHB' + dst_addr_fmt + 'B', ieee, endpoint,
                            cluster, dst_addr_mode, dst_addr, dst_endpoint)
         wait_response = cmd + 0x8000
         return self.send_data(cmd, data, wait_response)
@@ -952,8 +964,8 @@ class ZiGate(object):
         if not isinstance(attribute, list):
             attribute = [attribute]
         length = len(attribute)
-        data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1, endpoint, cluster, 
-                           direction, manufacturer_specific, 
+        data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1, endpoint, cluster,
+                           direction, manufacturer_specific,
                            manufacturer_id, length, *attribute)
         self.send_data(0x0100, data)
 
@@ -995,8 +1007,8 @@ class ZiGate(object):
         max_interval = 0
         timeout = 0
         change = 0
-        data = struct.pack('!BHBBHBBHBBBHHHHB', 2, addr, 1, endpoint, cluster, 
-                           direction, manufacturer_specific, 
+        data = struct.pack('!BHBBHBBHBBBHHHHB', 2, addr, 1, endpoint, cluster,
+                           direction, manufacturer_specific,
                            manufacturer_id, length, attribute_direction,
                            attribute_type, attribute_id, min_interval,
                            max_interval, timeout, change)
@@ -1010,7 +1022,7 @@ class ZiGate(object):
         direction = 0
         manufacturer_specific = 0
         manufacturer_id = 0
-        data = struct.pack('!BHBBHBBBHB', 2, addr, 1, endpoint, cluster, 
+        data = struct.pack('!BHBBHBBBHB', 2, addr, 1, endpoint, cluster,
                            0, direction, manufacturer_specific,
                            manufacturer_id, 255)
         self.send_data(0x0140, data)
@@ -1069,7 +1081,7 @@ class ZiGate(object):
         level between 0 - 100
         '''
         addr = self.__addr(addr)
-        level = int(level*254//100)
+        level = int(level * 254 // 100)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint, onoff, level, transition_time)
         self.send_data(0x0081, data)
 
@@ -1109,7 +1121,7 @@ class ZiGate(object):
         transition in second
         '''
         addr = self.__addr(addr)
-        hue = int(hue*254//360)
+        hue = int(hue * 254 // 360)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
                            hue, direction, transition)
         self.send_data(0x00B0, data)
@@ -1123,8 +1135,8 @@ class ZiGate(object):
         transition in second
         '''
         addr = self.__addr(addr)
-        hue = int(hue*254//360)
-        saturation = int(saturation*254//100)
+        hue = int(hue * 254 // 360)
+        saturation = int(saturation * 254 // 100)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
                            hue, saturation, transition)
         self.send_data(0x00B6, data)
@@ -1145,9 +1157,9 @@ class ZiGate(object):
         transition in second
         '''
         hue, saturation, level = colorsys.rgb_to_hsv(*rgb)
-        hue = int(hue*360)
-        saturation = int(saturation*100)
-        level = int(level*100)
+        hue = int(hue * 360)
+        saturation = int(saturation * 100)
+        level = int(level * 100)
         self.action_move_level_onoff(addr, endpoint, ON, level, 0)
         self.actions_move_hue_saturation(addr, endpoint, hue, saturation, transition)
 
@@ -1159,9 +1171,9 @@ class ZiGate(object):
         transition in second
         '''
         if isinstance(x, float) and x <= 1:
-            x = int(x*65536)
+            x = int(x * 65536)
         if isinstance(y, float) and y <= 1:
-            y = int(y*65536)
+            y = int(y * 65536)
         addr = self.__addr(addr)
         data = struct.pack('!BHBBHHH', 2, addr, 1, endpoint,
                            x, y, transition)
@@ -1194,7 +1206,7 @@ class ZiGate(object):
         temperature unit is kelvin
         transition in second
         '''
-        temperature = int(1000000//temperature)
+        temperature = int(1000000 // temperature)
         addr = self.__addr(addr)
         data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
                            temperature, transition)
@@ -1211,7 +1223,7 @@ class ZiGate(object):
 
     def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
         '''
-        Start a MQTT broker in a new thread 
+        Start a MQTT broker in a new thread
         '''
         from .mqtt_broker import MQTT_Broker
         broker = MQTT_Broker(self, host, username, password)
@@ -1238,7 +1250,7 @@ class ZiGateWiFi(ZiGate):
         ask zigate wifi to reboot
         '''
         import requests
-        r = requests.get('http://{}/reboot'.format(self._host))
+        requests.get('http://{}/reboot'.format(self._host))
 
 
 class DeviceEncoder(json.JSONEncoder):
@@ -1294,7 +1306,7 @@ class Device(object):
                             actions[ep_id].append(ACTIONS_HUE)
                         elif endpoint['device'] == 0x0220:
                             actions[ep_id].append(ACTIONS_TEMPERATURE)
-                        else: # 0x0200
+                        else:  # 0x0200
                             actions[ep_id].append(ACTIONS_COLOR)
         return actions
 
@@ -1424,15 +1436,15 @@ class Device(object):
                 if power_source == 3:  # battery
                     power_source = 3.2
                 if power_source and battery:
-                    power_end = 0.9*power_source
-                    percent = (battery-power_end)*100/(power_source-power_end)
+                    power_end = 0.9 * power_source
+                    percent = (battery - power_end) * 100 / (power_source - power_end)
                 if percent > 100:
                     percent = 100
         return percent
 
     @property
     def rssi_percent(self):
-        return round(100*self.rssi/255)
+        return round(100 * self.rssi / 255)
 
     def refresh_device(self):
         self._zigate.refresh_device(self.addr)
@@ -1720,4 +1732,3 @@ class Device(object):
                                           attribute['attribute'])
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
-
