@@ -5,12 +5,10 @@
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Percentage of issues still open")
 
+Python library for [ZiGate](http://zigate.fr/).
+This library manage communication between python and zigate key, both USB and WiFi key are supported (wifi is almost untested).
 
-python library for zigate <http://zigate.fr/> This library manage
-communication between python and zigate key, both USB and WiFi key are
-supported (wifi is almost untested) ZiGate is an universal gateway
-compatible with a lot of ZigBee device (like Xiaomi, Philipps Hue, Ikea,
-etc)
+ZiGate is an universal gateway compatible with a lot of ZigBee device (like Xiaomi, Philipps Hue, Ikea, etc).
 
 ## Getting Started
 
@@ -114,4 +112,85 @@ event can be :
 zigate.ZIGATE_DEVICE_ADDED
 zigate.ZIGATE_DEVICE_UPDATED
 zigate.ZIGATE_D
+```
+
+kwargs depends of the event type:
+
+* for `zigate.ZIGATE_DEVICE_ADDED` kwargs contains device.
+* for `zigate.ZIGATE_DEVICE_UPDATED` kwargs contains device.
+* for `zigate.ZIGATE_DEVICE_REMOVED` kwargs contains addr (the device short address).
+* for `zigate.ZIGATE_ATTRIBUTE_ADDED` kwargs contains device and discovered attribute.
+* for `zigate.ZIGATE_ATTRIBUTE_UPDATED` kwargs contains device and updated attribute.
+
+## Wifi ZiGate
+
+WiFi ZiGate is also supported:
+
+```python
+import zigate
+z = zigate.connect(host='192.168.0.10')
+
+# or if you want to set the port
+z = zigate.connect(host='192.168.0.10:1234')
+```
+
+## MQTT Broker
+
+```bash
+python3 -m zigate.mqtt_broker --device auto --mqtt_host localhost:1883
+```
+
+Add `--mqtt_username` and `--mqtt_password` as arguments and allow them to be used to establish connection to the MQTT broker.
+
+The broker publish the following topics: zigate/device_changed/[addr]
+
+Payload example :
+
+```python
+'zigate/device_changed/522a'
+{"addr": "522a", "endpoints": [{"device": 0, "clusters": [{"cluster": 1026, "attributes": [{"value": 22.27, "data": 2227, "unit": "\u00b0C", "name": "temperature", "attribute": 0}]}, {"cluster": 1027, "attributes": [{"value": 977, "data": 977, "unit": "mb", "name": "pressure", "attribute": 0}, {"value": 977.7, "data": 9777, "unit": "mb", "name": "pressure2", "attribute": 16}, {"data": -1, "attribute": 20}]}, {"cluster": 1029, "attributes": [{"value": 35.03, "data": 3503, "unit": "%", "name": "humidity", "attribute": 0}]}], "profile": 0, "out_clusters": [], "in_clusters": [], "endpoint": 1}], "info": {"power_source": 0, "ieee": "158d0002271c25", "addr": "522a", "id": 2, "rssi": 255, "last_seen": "2018-02-21 09:41:27"}}
+```
+
+zigate/device_removed.
+Payload example :
+
+```python
+{"addr": "522a"}
+```
+
+zigate/attribute_changed/[addr]/[endpoint]/[cluster]/[attribute] payload is changed attribute.
+Payload example :
+
+```python
+'zigate/attribute_changed/522a/01/0403/0010'
+{"cluster": 1027, "value": 978.5, "data": 9785, "attribute": 16, "unit": "mb", "endpoint": 1, "addr": "522a", "name": "pressure2"}
+```
+
+You can send command to zigate using the topic zigate/command payload should be:
+
+```python
+{"function": "function_name", "args": ["optional","args","list"]}
+
+# example to start permit join
+payload = '{"function": "permit_join"}'
+client.publish('zigate/command', payload)
+```
+
+The broker will publish the result using the topic "zigate/command/result".
+Payload example :
+
+```python
+{"function": "permit_join", "result": 0}
+```
+
+All the zigate functions can be call:
+
+```python
+# turn on endpoint 1
+payload = '{"function": "action_onoff", "args": ["522a", 1, 1]}'
+client.publish('zigate/command', payload)
+
+# turn off endpoint 1
+payload = '{"function": "action_onoff", "args": ["522a", 1, 0]}'
+client.publish('zigate/command', payload)
 ```
