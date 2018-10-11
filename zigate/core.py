@@ -184,7 +184,10 @@ class ZiGate(object):
                     data = json.load(fp)
                 if not isinstance(data, dict):  # old version
                     data = {'devices': data, 'groups': {}}
-                self._groups = data.get('groups', {})
+                groups = data.get('groups', {})
+                for k, v in groups:
+                    groups[k] = set([tuple(r) for r in v])
+                self._groups = groups
                 devices = data.get('devices', [])
                 for data in devices:
                     device = Device.from_json(data, self)
@@ -1249,6 +1252,8 @@ class DeviceEncoder(json.JSONEncoder):
             return obj.to_json()
         elif isinstance(obj, bytes):
             return hexlify(obj).decode()
+        elif isinstance(obj, set):
+            return list(obj)
         return json.JSONEncoder.default(self, obj)
 
 
