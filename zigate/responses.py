@@ -15,7 +15,7 @@ DATA_TYPE = {0x00: None,
              0x20: 'B',
              0x21: 'H',
              0x22: 'I',
-             0x25: 'L',
+#             0x25: 'L', supposed to be unsigned int 48bit, so len 6...
              0x28: 'b',
              0x29: 'h',
              0x2a: 'i',
