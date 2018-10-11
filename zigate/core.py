@@ -25,7 +25,7 @@ LOGGER = logging.getLogger('zigate')
 
 AUTO_SAVE = 5*60  # 5 minutes
 BIND_REPORT_LIGHT = True  # automatically bind and report state for light
-SLEEP_INTERVAL = 0.2
+SLEEP_INTERVAL = 0.1
 ACTIONS = {}
 
 # Device id
@@ -138,7 +138,8 @@ class ZiGate(object):
             if not self._packets.empty():
                 packet = self._packets.get()
                 self.decode_data(packet)
-            sleep(SLEEP_INTERVAL)
+            else:
+                sleep(SLEEP_INTERVAL)
 
     def _packet_received(self, packet):
         self._packets.put(packet)
