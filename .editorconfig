@@ -22,6 +22,6 @@ indent_style = space
 indent_size = 4
 insert_final_newline = true
 
-[*.rst]
+[*.yml]
 indent_style = space
-indent_size = 4
+indent_size = 2

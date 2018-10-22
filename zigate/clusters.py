@@ -1,10 +1,10 @@
-'''
-Created on 12 févr. 2018
+#
+# Copyright (c) 2018 Sébastien RAMAGE
+#
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+#
 
-@author: doudz
-'''
-import struct
-from binascii import unhexlify, hexlify
 import logging
 import traceback
 
@@ -89,7 +89,7 @@ class Cluster(object):
                                           globals(),
                                           {'value': attribute['data'],
                                            'self': self})
-            except:
+            except Exception as exc:
                 LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
                                                                      attribute['data']
                                                                      ))
@@ -386,18 +386,7 @@ class C0406(Cluster):
 class C0500(Cluster):
     cluster_id = 0x0500
     type = 'Security & Safety: IAS Zone'
-    attributes_def = {255: {'name': 'zone_status', 'value': 'self._decode(value[::-1])'},
-#                       0: {'name': 'alarm1', 'value': 'bool(value)'},
-#                       1: {'name': 'alarm2', 'value': 'bool(value)'},
-#                       2: {'name': 'tamper', 'value': 'bool(value)'},
-#                       3: {'name': 'low_battery', 'value': 'bool(value)'},
-#                       4: {'name': 'supervision', 'value': 'bool(value)'},
-#                       5: {'name': 'restore', 'value': 'bool(value)'},
-#                       6: {'name': 'trouble', 'value': 'bool(value)'},
-#                       7: {'name': 'ac_fault', 'value': 'bool(value)'},
-#                       8: {'name': 'test_mode', 'value': 'bool(value)'},
-#                       9: {'name': 'battery_defect', 'value': 'bool(value)'},
-                      }
+    attributes_def = {255: {'name': 'zone_status', 'value': 'self._decode(value[::-1])'}}
 
     def update(self, data):
         zone_id = data['zone_id']
@@ -429,7 +418,7 @@ class C0500(Cluster):
 # b16ZoneStatus is a mandatory attribute which is a 16-bit bitmap indicating
 # the status of each of the possible notification triggers from the device:
 # Bit
-# 
+#
 # Description
 # 0 Alarm1:
 # 1 - Opened or alarmed

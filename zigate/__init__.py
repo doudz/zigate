@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
+#
+# Copyright (c) 2018 Sébastien RAMAGE
+#
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+#
 
 from .core import (ZiGate, ZiGateWiFi)
-from .const import *
+from .version import __version__
 from pydispatch import dispatcher
 
-__version__ = '0.20.0'
-
+__version__ = __version__
 __all__ = ['ZiGate', 'ZiGateWiFi',
            'dispatcher']
 

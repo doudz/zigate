@@ -1,8 +1,9 @@
-'''
-Created on 12 févr. 2018
-
-@author: sramage
-'''
+#
+# Copyright (c) 2018 Sébastien RAMAGE
+#
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+#
 
 # event signal
 ZIGATE_DEVICE_ADDED = 'ZIGATE_DEVICE_ADDED'
@@ -38,5 +39,3 @@ ACTIONS_COLOR = 'color'
 ACTIONS_TEMPERATURE = 'temperature'
 ACTIONS_HUE = 'hue'
 ACTIONS_LOCK = 'lock'
-
-

@@ -1,11 +1,13 @@
-'''
-Created on 24 janv. 2018
+#
+# Copyright (c) 2018 Sébastien RAMAGE
+#
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+#
 
-@author: sramage
-'''
 import struct
 from collections import OrderedDict
-from binascii import unhexlify, hexlify
+from binascii import hexlify
 
 RESPONSES = {}
 
@@ -87,9 +89,9 @@ class Response(object):
         for k, v in self.s.items():
             if isinstance(v, OrderedDict):
                 keys.remove(k)
-                rest = len(msg_data)-struct.calcsize(fmt)
-                subfmt = '!'+''.join(v.values())
-                count = rest//struct.calcsize(subfmt)
+                rest = len(msg_data) - struct.calcsize(fmt)
+                subfmt = '!' + ''.join(v.values())
+                count = rest // struct.calcsize(subfmt)
                 submsg_data = msg_data[-rest:]
                 msg_data = msg_data[:-rest]
                 self.data[k] = []
@@ -100,7 +102,7 @@ class Response(object):
                     self.__format(sdata)
                     self.data[k].append(sdata)
             elif v == 'rawend':
-                fmt += '{}s'.format(len(msg_data)-struct.calcsize(fmt))
+                fmt += '{}s'.format(len(msg_data) - struct.calcsize(fmt))
             else:
                 fmt += v
         sdata, msg_data = self.__decode(fmt, keys, msg_data)
@@ -287,7 +289,7 @@ class R8100(Response):
     def decode(self):
         Response.decode(self)
         fmt = DATA_TYPE.get(self.data['data_type'], 's')
-        fmt = '!{}{}'.format(self.data['size']//struct.calcsize(fmt), fmt)
+        fmt = '!{}{}'.format(self.data['size'] // struct.calcsize(fmt), fmt)
         data = struct.unpack(fmt, self.data['data'])[0]
         if isinstance(data, bytes):
             try:
@@ -335,13 +337,11 @@ class R8014(Response):
 class R8015(Response):
     msg = 0x8015
     type = 'Device list'
-    s = OrderedDict([('devices', OrderedDict([
-                                            ('id', 'B'),
-                                            ('addr', 'H'),
-                                            ('ieee', 'Q'),
-                                            ('power_type', 'B'),
-                                            ('rssi', 'B'),
-                                            ]))])
+    s = OrderedDict([('devices', OrderedDict([('id', 'B'),
+                                              ('addr', 'H'),
+                                              ('ieee', 'Q'),
+                                              ('power_type', 'B'),
+                                              ('rssi', 'B')]))])
 
 
 @register_response
@@ -391,39 +391,39 @@ class R8042(Response):
               'descriptor_capability': '{:08b}',
               'mac_capability': '{:08b}',
               'bit_field': '{:016b}'}
-#     Bitfields:    
-#     Logical type (bits 0-2    
-#     0 – Coordinator    
-#     1 – Router    
-#     2 – End Device)    
-#     Complex descriptor available (bit 3)    
-#     User descriptor available (bit 4)    
-#     Reserved (bit 5-7)    
-#     APS flags (bit 8-10 – currently 0)    
+#     Bitfields:
+#     Logical type (bits 0-2
+#     0 – Coordinator
+#     1 – Router
+#     2 – End Device)
+#     Complex descriptor available (bit 3)
+#     User descriptor available (bit 4)
+#     Reserved (bit 5-7)
+#     APS flags (bit 8-10 – currently 0)
 #     Frequency band(11-15 set to 3 (2.4Ghz))
 
-#     Server mask bits:    
-#     0 – Primary trust center    
-#     1 – Back up trust center    
-#     2 – Primary binding cache    
-#     3 – Backup binding cache    
-#     4 – Primary discovery cache    
-#     5 – Backup discovery cache    
-#     6 – Network manager    
+#     Server mask bits:
+#     0 – Primary trust center
+#     1 – Back up trust center
+#     2 – Primary binding cache
+#     3 – Backup binding cache
+#     4 – Primary discovery cache
+#     5 – Backup discovery cache
+#     6 – Network manager
 #     7 to15 – Reserved
 
-#     MAC capability    
-#     Bit 0 – Alternate PAN Coordinator    
-#     Bit 1 – Device Type    
-#     Bit 2 – Power source    
-#     Bit 3 – Receiver On when Idle    
-#     Bit 4-5 – Reserved    
-#     Bit 6 – Security capability    
+#     MAC capability
+#     Bit 0 – Alternate PAN Coordinator
+#     Bit 1 – Device Type
+#     Bit 2 – Power source
+#     Bit 3 – Receiver On when Idle
+#     Bit 4-5 – Reserved
+#     Bit 6 – Security capability
 #     Bit 7 – Allocate Address
 
-#     Descriptor capability:    
-#     0 – extended Active endpoint list available    
-#     1 – Extended simple descriptor list available    
+#     Descriptor capability:
+#     0 – extended Active endpoint list available
+#     1 – Extended simple descriptor list available
 #     2 to 7 – Reserved
 
     def cleaned_data(self):
@@ -461,11 +461,11 @@ class R8043(Response):
         in_cluster_count = struct.unpack('!B', data[:1])[0]
         cluster_size = struct.calcsize('!H')
         in_clusters = struct.unpack('!{}H'.format(in_cluster_count),
-                                    data[1:in_cluster_count*cluster_size+1])
-        data = data[in_cluster_count*2+1:]
+                                    data[1:in_cluster_count * cluster_size + 1])
+        data = data[in_cluster_count * 2 + 1:]
         out_cluster_count = struct.unpack('!B', data[:1])[0]
         out_clusters = struct.unpack('!{}H'.format(out_cluster_count),
-                                     data[1:out_cluster_count*cluster_size+1])
+                                     data[1:out_cluster_count * cluster_size + 1])
         self.data['in_clusters'] = in_clusters
         self.data['out_clusters'] = out_clusters
 
@@ -540,23 +540,20 @@ class R804E(Response):
                      ('entries', 'B'),
                      ('count', 'B'),
                      ('index', 'B'),
-#                      ('neighbour', 'rawend')
-                    ('neighbour', OrderedDict([('addr', 'H'),
-                                               ('extend_pan', 'Q'),
-                                               ('ieee', 'Q'),
-                                               ('depth', 'B'),
-                                               ('rssi', 'B'),
-                                               ('bit_field', 'B'),
-                                               ]))
-                     ])
-#         Bit map of attributes Described below: uint8_t
-#     {bit 0-1 Device Type    
-# (0-Coordinator 1-Router 2-End Device)    
-# bit 2-3 Permit Join status    
-# (1- On 0-Off)    
-# bit 4-5 Relationship    
-# (0-Parent 1-Child 2-Sibling)    
-# bit 6-7 Rx On When Idle status    
+                     ('neighbour', OrderedDict([('addr', 'H'),
+                                                ('extend_pan', 'Q'),
+                                                ('ieee', 'Q'),
+                                                ('depth', 'B'),
+                                                ('rssi', 'B'),
+                                                ('bit_field', 'B')]))])
+# Bit map of attributes Described below: uint8_t
+# {bit 0-1 Device Type
+# (0-Coordinator 1-Router 2-End Device)
+# bit 2-3 Permit Join status
+# (1- On 0-Off)
+# bit 4-5 Relationship
+# (0-Parent 1-Child 2-Sibling)
+# bit 6-7 Rx On When Idle status
 # (1-On 0-Off)}
 
 

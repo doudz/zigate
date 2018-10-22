@@ -1,8 +1,10 @@
-'''
-Created on 31 janv. 2018
+#
+# Copyright (c) 2018 Sébastien RAMAGE
+#
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+#
 
-@author: sramage
-'''
 import threading
 import socket
 import sys
@@ -37,7 +39,7 @@ class Broker(threading.Thread):
         for conn, addr in self.users:
             try:
                 conn.sendall(raw_message)
-            except:
+            except Exception as exc:
                 to_remove.append((conn, addr))
         for d in to_remove:
             self.users.remove(d)

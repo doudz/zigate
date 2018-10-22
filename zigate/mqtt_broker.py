@@ -1,12 +1,14 @@
-'''
-Created on 21 févr. 2018
-
-@author: sramage
-'''
+#
+# Copyright (c) 2018 Sébastien RAMAGE
+#
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+#
 
 from pydispatch import dispatcher
 import logging
-from zigate.const import *
+from .const import (ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
+                    ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED, ZIGATE_DEVICE_UPDATED)
 from zigate.core import DeviceEncoder
 import paho.mqtt.client as mqtt
 import json
@@ -26,12 +28,12 @@ class MQTT_Broker(object):
         dispatcher.connect(self.device_removed, ZIGATE_DEVICE_REMOVED)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
-        
+
     def connect(self):
         host, port = self._mqtt_host.split(':')
         port = int(port)
         self.client.connect(host, port)
-        
+
     def start(self):
         self.connect()
         self.zigate.autoStart()
@@ -74,7 +76,7 @@ class MQTT_Broker(object):
                 if callable(func):
                     try:
                         result = func(*args)
-                    except:
+                    except Exception as exc:
                         result = None
                         logging.error('Error calling function {}'.format(func_name))
                 else:
