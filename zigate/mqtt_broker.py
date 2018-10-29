@@ -97,6 +97,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', help='ZiGate usb port or host:port', default='auto')
+    parser.add_argument('--path', help='ZiGate state file path', default='~/.zigate.json')
     parser.add_argument('--mqtt_host', help='MQTT host:port', default='localhost:1883')
     parser.add_argument('--mqtt_username', help='MQTT username', default=None)
     parser.add_argument('--mqtt_password', help='MQTT password', default=None)
@@ -104,8 +105,8 @@ if __name__ == '__main__':
 
     if ':' in args.device:  # supposed IP:PORT
         host, port = args.device.split(':')
-        z = ZiGateWiFi(host, port, auto_start=False)
+        z = ZiGateWiFi(host, port, auto_start=False, path=args.path)
     else:
-        z = ZiGate(args.device, auto_start=False)
+        z = ZiGate(args.device, auto_start=False, path=args.path)
     broker = MQTT_Broker(z, args.mqtt_host, args.mqtt_username, args.mqtt_password)
     broker.start()
