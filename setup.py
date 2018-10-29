@@ -56,7 +56,8 @@ setup(
         'pydispatcher'
     ],
     extras_require={
-        'dev': ['tox']
+        'dev': ['tox'],
+        'mqtt': ['paho-mqtt']
     },
     python_requires='>=3',
 

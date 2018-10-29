@@ -20,6 +20,12 @@ To install simply do:
 pip3 install zigate
 ```
 
+Or if you've planned to use mqtt
+
+```bash
+pip3 install zigate[mqtt]
+```
+
 ### Usage
 
 ```python
@@ -135,6 +141,8 @@ z = zigate.connect(host='192.168.0.10:1234')
 ```
 
 ## MQTT Broker
+
+This requires paho-mqtt. It could be install as a dependency with `pip3 install zigate[mqtt]`
 
 ```bash
 python3 -m zigate.mqtt_broker --device auto --mqtt_host localhost:1883
