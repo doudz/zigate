@@ -165,7 +165,7 @@ class ZiGate(object):
         try:
             if self.connection:
                 self.connection.close()
-        except Exception as e:
+        except Exception:
             LOGGER.error('Exception during closing')
             LOGGER.error(traceback.format_exc())
         self._started = False
