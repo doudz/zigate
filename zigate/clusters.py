@@ -89,7 +89,7 @@ class Cluster(object):
                                           globals(),
                                           {'value': attribute['data'],
                                            'self': self})
-            except Exception as exc:
+            except Exception:
                 LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
                                                                      attribute['data']
                                                                      ))

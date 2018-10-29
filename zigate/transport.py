@@ -54,7 +54,7 @@ class ThreadSerialConnection(object):
             except ZIGATE_NOT_FOUND:
                 LOGGER.error('ZiGate has not been found, please check configuration.')
                 sys.exit(2)
-            except Exception as exc:
+            except Exception:
                 msg = 'Failed to connect, retry in {} sec...'.format(delay)
                 dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
                 LOGGER.error(msg)
@@ -85,7 +85,7 @@ class ThreadSerialConnection(object):
         while self._running:
             try:
                 data = self.serial.read(self.serial.in_waiting)
-            except Exception as exc:
+            except Exception:
                 data = None
                 LOGGER.error('OOPS connection lost, reconnect...')
                 self.reconnect()
@@ -147,7 +147,7 @@ class ThreadSocketConnection(ThreadSerialConnection):
                 s = socket.create_connection((host, port), 10)
                 LOGGER.debug('ZiGate found on port {}'.format(port))
                 return s
-            except Exception as exc:
+            except Exception:
                 LOGGER.debug('ZiGate not found on port {}'.format(port))
                 continue
         LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))

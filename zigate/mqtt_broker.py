@@ -76,7 +76,7 @@ class MQTT_Broker(object):
                 if callable(func):
                     try:
                         result = func(*args)
-                    except Exception as exc:
+                    except Exception:
                         result = None
                         logging.error('Error calling function {}'.format(func_name))
                 else:

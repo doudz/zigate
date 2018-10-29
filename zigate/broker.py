@@ -39,7 +39,7 @@ class Broker(threading.Thread):
         for conn, addr in self.users:
             try:
                 conn.sendall(raw_message)
-            except Exception as exc:
+            except Exception:
                 to_remove.append((conn, addr))
         for d in to_remove:
             self.users.remove(d)
