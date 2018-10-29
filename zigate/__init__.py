@@ -7,10 +7,10 @@
 #
 
 from .core import (ZiGate, ZiGateWiFi)
-from .version import __version__
+from .const import *  # noqa
+from .version import __version__  # noqa
 from pydispatch import dispatcher
 
-__version__ = __version__
 __all__ = ['ZiGate', 'ZiGateWiFi',
            'dispatcher']
 
