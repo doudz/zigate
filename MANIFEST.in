@@ -3,3 +3,4 @@ include *.md
 include LICENSE
 prune .editorconfig
 prune *.rb
+prune build_upload.sh
