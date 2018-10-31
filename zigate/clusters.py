@@ -7,6 +7,8 @@
 
 import logging
 import traceback
+import struct  # noqa
+from binascii import unhexlify, hexlify  # noqa
 
 LOGGER = logging.getLogger('zigate')
 
