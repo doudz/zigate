@@ -532,7 +532,7 @@ class ZiGate(object):
             sleep(0.01)
             t2 = time()
             if t2 - t1 > 3:  # no response timeout
-                LOGGER.error('No response waiting command 0x{:04x}'.format(msg_type))
+                LOGGER.warning('No response waiting command 0x{:04x}'.format(msg_type))
                 return
         LOGGER.debug('Stop waiting, got message 0x{:04x}'.format(msg_type))
         return self._last_response.get(msg_type)
@@ -547,7 +547,7 @@ class ZiGate(object):
             sleep(0.01)
             t2 = time()
             if t2 - t1 > 3:  # no response timeout
-                LOGGER.error('No response after command 0x{:04x}'.format(cmd))
+                LOGGER.warning('No response after command 0x{:04x}'.format(cmd))
                 return
         LOGGER.debug('STATUS code to command 0x{:04x}:{}'.format(cmd, self._last_status.get(cmd)))
         return self._last_status.get(cmd)
@@ -955,15 +955,13 @@ class ZiGate(object):
         '''
         return self.send_data(0x00D2)
 
-    def read_attribute_request(self, addr, endpoint, cluster, attribute):
+    def read_attribute_request(self, addr, endpoint, cluster, attribute,
+                               direction=0, manufacturer_specific=0, manufacturer_id=0):
         '''
         Read Attribute request
         attribute can be a unique int or a list of int
         '''
         addr = self.__addr(addr)
-        direction = 0
-        manufacturer_specific = 0
-        manufacturer_id = 0
         if not isinstance(attribute, list):
             attribute = [attribute]
         length = len(attribute)
@@ -972,15 +970,13 @@ class ZiGate(object):
                            manufacturer_id, length, *attribute)
         self.send_data(0x0100, data)
 
-    def write_attribute_request(self, addr, endpoint, cluster, attribute):
+    def write_attribute_request(self, addr, endpoint, cluster, attribute,
+                                direction=0, manufacturer_specific=0, manufacturer_id=0):
         '''
         Write Attribute request
         attribute can be a unique int or a list of int
         '''
         addr = self.__addr(addr)
-        direction = 0
-        manufacturer_specific = 0
-        manufacturer_id = 0
         if not isinstance(attribute, list):
             attribute = [attribute]
         length = len(attribute)
@@ -990,15 +986,13 @@ class ZiGate(object):
                            manufacturer_id, length, *attribute)
         self.send_data(0x0110, data)
 
-    def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type):
+    def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type,
+                          direction=0, manufacturer_specific=0, manufacturer_id=0):
         '''
         Configure reporting request
         for now support only one attribute
         '''
         addr = self.__addr(addr)
-        direction = 0
-        manufacturer_specific = 0
-        manufacturer_id = 0
 #         if not isinstance(attributes, list):
 #             attributes = [attributes]
 #         length = len(attributes)
@@ -1017,14 +1011,13 @@ class ZiGate(object):
                            max_interval, timeout, change)
         self.send_data(0x0120, data, 0x8120)
 
-    def attribute_discovery_request(self, addr, endpoint, cluster):
+    def attribute_discovery_request(self, addr, endpoint, cluster,
+                                    direction=0, manufacturer_specific=0,
+                                    manufacturer_id=0):
         '''
         Attribute discovery request
         '''
         addr = self.__addr(addr)
-        direction = 0
-        manufacturer_specific = 0
-        manufacturer_id = 0
         data = struct.pack('!BHBBHBBBHB', 2, addr, 1, endpoint, cluster,
                            0, direction, manufacturer_specific,
                            manufacturer_id, 255)
