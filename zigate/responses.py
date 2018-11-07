@@ -21,7 +21,7 @@ DATA_TYPE = {0x00: None,
              0x29: 'h',
              0x2a: 'i',
              0x30: 'b',
-             0x41: 'e',
+             0x41: 's',
              0x42: 's',
              }
 
@@ -469,7 +469,8 @@ class R8043(Response):
         self.data['out_clusters'] = out_clusters
 
     def cleaned_data(self):
-        return self._filter_data(['profile', 'device', 'in_clusters', 'out_clusters'])
+        return self._filter_data(['profile', 'device',
+                                  'in_clusters', 'out_clusters'])
 
 
 @register_response
