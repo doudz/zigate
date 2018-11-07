@@ -97,11 +97,11 @@ True
 We use pydispatcher for callback
 
 ```python
-from pydispatch import dispatcher
+from zigate import dispatcher
 
 def my_callback(sender, signal, **kwargs):
-   print(sender)  # zigate instance
-   print(signal)  # one of EVENT
+    print(sender)  # zigate instance
+    print(signal)  # one of EVENT
     print(kwargs)  # contains device and/or attribute changes, etc
 
 dispatcher.connect(my_callback, zigate.ZIGATE_ATTRIBUTE_UPDATED)
@@ -117,7 +117,10 @@ event can be :
 ```python
 zigate.ZIGATE_DEVICE_ADDED
 zigate.ZIGATE_DEVICE_UPDATED
-zigate.ZIGATE_D
+zigate.ZIGATE_DEVICE_REMOVED
+zigate.ZIGATE_ATTRIBUTE_ADDED
+zigate.ZIGATE_ATTRIBUTE_UPDATED
+zigate.ZIGATE_DEVICE_NEED_REFRESH
 ```
 
 kwargs depends of the event type:
