@@ -15,11 +15,14 @@ import os
 from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection, ThreadSocketConnection)
 from .responses import (RESPONSES, Response)
-from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE, ACTIONS_ONOFF, ACTIONS_TEMPERATURE,
+from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
+                    ACTIONS_ONOFF, ACTIONS_TEMPERATURE,
                     OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
                     ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
-                    ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED, ZIGATE_DEVICE_UPDATED,
-                    ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH, ZIGATE_RESPONSE_RECEIVED)
+                    ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
+                    ZIGATE_DEVICE_UPDATED, ZIGATE_DEVICE_RENAMED,
+                    ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH,
+                    ZIGATE_RESPONSE_RECEIVED)
 
 from .clusters import (CLUSTERS, Cluster, get_cluster)
 import functools
@@ -507,11 +510,21 @@ class ZiGate(object):
             # check if device already exist with other address
             d = self.get_device_from_ieee(device.ieee)
             if d:
-                LOGGER.warning('Device already exists with another addr {}, removing it.'.format(d.addr))
-                self._remove_device(d.addr)
-            self._devices[device.addr] = device
-            dispatch_signal(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
-                                                          'device': device})
+                LOGGER.warning('Device already exists with another addr {}, rename it.'.format(d.addr))
+                old_addr = d.addr
+                new_addr = device.addr
+                d.update(device)
+                self._devices[new_addr] = d
+                del self._devices[old_addr]
+                dispatch_signal(ZIGATE_DEVICE_RENAMED, self,
+                                **{'zigate': self,
+                                   'old_addr': old_addr,
+                                   'new_addr': new_addr,
+                                   })
+            else:
+                self._devices[device.addr] = device
+                dispatch_signal(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
+                                                              'device': device})
             self.refresh_device(device.addr)
 
     def get_status_text(self, status_code):
