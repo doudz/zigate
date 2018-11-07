@@ -118,6 +118,7 @@ event can be :
 zigate.ZIGATE_DEVICE_ADDED
 zigate.ZIGATE_DEVICE_UPDATED
 zigate.ZIGATE_DEVICE_REMOVED
+zigate.ZIGATE_DEVICE_RENAMED
 zigate.ZIGATE_ATTRIBUTE_ADDED
 zigate.ZIGATE_ATTRIBUTE_UPDATED
 zigate.ZIGATE_DEVICE_NEED_REFRESH
@@ -128,6 +129,7 @@ kwargs depends of the event type:
 * for `zigate.ZIGATE_DEVICE_ADDED` kwargs contains device.
 * for `zigate.ZIGATE_DEVICE_UPDATED` kwargs contains device.
 * for `zigate.ZIGATE_DEVICE_REMOVED` kwargs contains addr (the device short address).
+* for `zigate.ZIGATE_DEVICE_RENAMED` kwargs contains old_addr and new_addr (used when re-pairing an already known device).
 * for `zigate.ZIGATE_ATTRIBUTE_ADDED` kwargs contains device and discovered attribute.
 * for `zigate.ZIGATE_ATTRIBUTE_UPDATED` kwargs contains device and updated attribute.
 
