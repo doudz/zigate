@@ -240,7 +240,7 @@ class ZiGate(object):
             return
         self.load_state()
         self.setup_connection()
-        self.get_version()
+        version = self.get_version()
         self.set_channel()
         self.set_type(TYPE_COORDINATOR)
         LOGGER.debug('Check network state')
@@ -251,6 +251,10 @@ class ZiGate(object):
         if not network_state or network_state.get('extend_pan') == 0:
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
+
+        LOGGER.debug('Set Zigate Time (firmware >= 3.0e)')
+        if version['version'] >= '3.0e':
+            self.setTime()
         self.get_devices_list(True)
         self.need_refresh()
 
