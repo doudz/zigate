@@ -271,6 +271,14 @@ class R8010(Response):
 
 
 @register_response
+class R8017(Response):
+    msg = 0x8017
+    type = 'TimeServer'
+    s = OrderedDict([('time', 'L'),
+                     ])
+
+
+@register_response
 class R8100(Response):
     msg = 0x8100
     type = 'Read Attribute response'

@@ -646,6 +646,23 @@ class ZiGate(object):
             r = r.get('status', False)
         return r
 
+    def setTime(self, timestamp=None):
+        '''
+        Set internal zigate time
+        '''
+        timestamp = int(timestamp or time.time())
+        data = struct.pack('!L', timestamp)
+        self.send_data(0x0016, data)
+
+    def getTime(self):
+        '''
+        get internal zigate time
+        '''
+        r = self.send_data(0x0017, wait_response=0x8017)
+        if r:
+            r = r.get('time')
+        return r
+
     def permit_join(self, duration=30):
         '''
         start permit join
