@@ -271,69 +271,6 @@ class R8010(Response):
 
 
 @register_response
-class R8017(Response):
-    msg = 0x8017
-    type = 'TimeServer'
-    s = OrderedDict([('time', 'L'),
-                     ])
-
-
-@register_response
-class R8100(Response):
-    msg = 0x8100
-    type = 'Read Attribute response'
-    s = OrderedDict([('sequence', 'B'),
-                     ('addr', 'H'),
-                     ('endpoint', 'B'),
-                     ('cluster', 'H'),
-                     ('attribute', 'H'),
-                     ('status', 'B'),
-                     ('data_type', 'B'),
-                     ('size', 'H'),
-                     ('data', 'rawend')
-                     ])
-
-    def decode(self):
-        Response.decode(self)
-        fmt = DATA_TYPE.get(self.data['data_type'], 's')
-        fmt = '!{}{}'.format(self.data['size'] // struct.calcsize(fmt), fmt)
-        data = struct.unpack(fmt, self.data['data'])[0]
-        if isinstance(data, bytes):
-            try:
-                data = data.decode()
-            except UnicodeDecodeError:
-                data = hexlify(data).decode()
-        self.data['data'] = data
-
-    def cleaned_data(self):
-        return self._filter_data(['attribute', 'data'])
-
-
-@register_response
-class R8101(Response):
-    msg = 0x8101
-    type = 'Default device response'
-    s = OrderedDict([('sequence', 'B'),
-                     ('endpoint', 'B'),
-                     ('cluster', 'H'),
-                     ('cmd', 'B'),
-                     ('status', 'B'),
-                     ])
-
-
-@register_response
-class R8102(R8100):
-    msg = 0x8102
-    type = 'Individual Attribute Report'
-
-
-@register_response
-class R8110(R8100):
-    msg = 0x8110
-    type = 'Write Attribute response'
-
-
-@register_response
 class R8014(Response):
     msg = 0x8014
     type = 'Permit join status'
@@ -349,6 +286,14 @@ class R8015(Response):
                                               ('ieee', 'Q'),
                                               ('power_type', 'B'),
                                               ('rssi', 'B')]))])
+
+
+@register_response
+class R8017(Response):
+    msg = 0x8017
+    type = 'TimeServer'
+    s = OrderedDict([('time', 'L'),
+                     ])
 
 
 @register_response
@@ -605,6 +550,61 @@ class R8062(Response):
 class R8063(R8061):
     msg = 0x8063
     type = 'Remove group response'
+
+
+@register_response
+class R8100(Response):
+    msg = 0x8100
+    type = 'Read Attribute response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('addr', 'H'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('attribute', 'H'),
+                     ('status', 'B'),
+                     ('data_type', 'B'),
+                     ('size', 'H'),
+                     ('data', 'rawend')
+                     ])
+
+    def decode(self):
+        Response.decode(self)
+        fmt = DATA_TYPE.get(self.data['data_type'], 's')
+        fmt = '!{}{}'.format(self.data['size'] // struct.calcsize(fmt), fmt)
+        data = struct.unpack(fmt, self.data['data'])[0]
+        if isinstance(data, bytes):
+            try:
+                data = data.decode()
+            except UnicodeDecodeError:
+                data = hexlify(data).decode()
+        self.data['data'] = data
+
+    def cleaned_data(self):
+        return self._filter_data(['attribute', 'data'])
+
+
+@register_response
+class R8101(Response):
+    msg = 0x8101
+    type = 'Default device response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('cmd', 'B'),
+                     ('status', 'B'),
+                     ])
+
+
+@register_response
+class R8102(R8100):
+    msg = 0x8102
+    type = 'Individual Attribute Report'
+
+
+@register_response
+class R8110(R8100):
+    msg = 0x8110
+    type = 'Write Attribute response'
 
 
 @register_response
