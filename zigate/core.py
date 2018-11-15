@@ -728,10 +728,9 @@ class ZiGate(object):
         ''' remove device '''
         if addr in self._devices:
             ieee = self._devices[addr]['ieee']
-#             addr = self.__addr(addr)
             ieee = self.__addr(ieee)
-#             data = struct.pack('!HQ', addr, ieee)
-            data = struct.pack('!QQ', ieee, ieee)
+            zigate_ieee = self.__addr(self.ieee)
+            data = struct.pack('!QQ', zigate_ieee, ieee)
             return self.send_data(0x0026, data)
 
     def _bind_unbind(self, cmd, ieee, endpoint, cluster,
