@@ -32,6 +32,7 @@ import random
 from enum import Enum
 import colorsys
 import queue
+import datetime
 
 
 LOGGER = logging.getLogger('zigate')
@@ -252,8 +253,8 @@ class ZiGate(object):
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
 
-        LOGGER.debug('Set Zigate Time (firmware >= 3.0e)')
-        if version['version'] >= '3.0e':
+        LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
+        if version['version'] >= '3.0f':
             self.setTime()
         self.get_devices_list(True)
         self.need_refresh()
@@ -650,11 +651,14 @@ class ZiGate(object):
             r = r.get('status', False)
         return r
 
-    def setTime(self, timestamp=None):
+    def setTime(self, dt=None):
         '''
         Set internal zigate time
+        dt should be datetime.datetime object
         '''
-        timestamp = int(timestamp or time.time())
+        dt = dt or datetime.datetime.now()
+        # timestamp from 2001-01-01 00:00:00
+        timestamp = int((dt - datetime.datetime(2001, 1, 1)).total_seconds())
         data = struct.pack('!L', timestamp)
         self.send_data(0x0016, data)
 
@@ -663,9 +667,11 @@ class ZiGate(object):
         get internal zigate time
         '''
         r = self.send_data(0x0017, wait_response=0x8017)
+        dt = None
         if r:
-            r = r.get('time')
-        return r
+            timestamp = r.get('timestamp')
+            dt = datetime.datetime(2001, 1, 1) + datetime.timedelta(seconds=timestamp)
+        return dt
 
     def permit_join(self, duration=30):
         '''

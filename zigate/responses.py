@@ -292,7 +292,7 @@ class R8015(Response):
 class R8017(Response):
     msg = 0x8017
     type = 'TimeServer'
-    s = OrderedDict([('time', 'L'),
+    s = OrderedDict([('timestamp', 'L'),
                      ])
 
 
