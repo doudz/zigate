@@ -10,10 +10,10 @@ This library manage communication between python and zigate key, both USB and Wi
 
 ZiGate is an universal gateway compatible with a lot of ZigBee device (like Xiaomi, Philipps Hue, Ikea, etc).
 
-Current coverage :
-- Commands : 41 / 53
-- Responses : 33 / 40
+#### Current coverage :
 
+- Commands : 38 / 53
+- Responses : 33 / 40
 
 ## Getting Started
 
