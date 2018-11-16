@@ -343,7 +343,7 @@ class ZiGate(object):
         enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
         encoded_output = bytes(enc_msg)
-        LOGGER.debug('Encoded Msg to send {}'.format(encoded_output))
+        LOGGER.debug('Encoded Msg to send {}'.format(hexlify(encoded_output)))
 
         self.send_to_transport(encoded_output)
         status = self._wait_status(cmd)
@@ -369,7 +369,7 @@ class ZiGate(object):
             LOGGER.error('Bad checksum {} != {}'.format(checksum,
                                                         computed_checksum))
             return
-        LOGGER.debug('Received response 0x{:04x}: {}'.format(msg_type, value))
+        LOGGER.debug('Received response 0x{:04x}: {}'.format(msg_type, hexlify(value)))
         response = RESPONSES.get(msg_type, Response)(value, rssi)
         if msg_type != response.msg:
             LOGGER.warning('Unknown response 0x{:04x}'.format(msg_type))
@@ -498,9 +498,10 @@ class ZiGate(object):
         '''
         remove device from addr
         '''
-        del self._devices[addr]
+        device = self._devices.pop(addr)
         dispatch_signal(ZIGATE_DEVICE_REMOVED, **{'zigate': self,
-                                                  'addr': addr})
+                                                  'addr': addr,
+                                                  'device': device})
 
     def _set_device(self, device):
         '''
