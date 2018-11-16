@@ -301,10 +301,11 @@ class R8024(Response):
     msg = 0x8024
     type = 'Network joined / formed'
     s = OrderedDict([('status', 'B'),
-                     ('addr', 'H'),
-                     ('ieee', 'Q'),
-                     ('channel', 'B')
-                     ])
+#                      ])
+                    ('addr', 'H'),
+                    ('ieee', 'Q'),
+                    ('channel', 'B')
+                    ])
 
 
 @register_response
