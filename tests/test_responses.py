@@ -15,18 +15,19 @@ class TestResponses(unittest.TestCase):
         r = responses.R8024(msg_data, 255)
         self.assertEqual(r.cleaned_data(),
                          OrderedDict([('status', 1),
+                                      ('rssi', 255),
                                       ('addr', '1234'),
                                       ('ieee', '0000000000000000'),
                                       ('channel', 1),
-                                      ('rssi', 255)]),
+                                      ]),
                          )
         # bad status
         msg_data = b'\x04'
         r = responses.R8024(msg_data, 255)
-        self.assertEqual(r.cleaned_data(),
-                         OrderedDict([('status', 4),
-                                      ('rssi', 255)]),
-                         )
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('status', 4),
+                                          ('rssi', 255)]),
+                             )
 
 
 if __name__ == '__main__':
