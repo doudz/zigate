@@ -130,6 +130,10 @@ pip-selfcheck.json
 
 
 # End of https://www.gitignore.io/api/python
+<<<<<<< HEAD
 
 # intelij idea
 .idea
+
+/.project
+/.pydevproject

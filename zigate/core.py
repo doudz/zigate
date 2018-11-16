@@ -15,11 +15,14 @@ import os
 from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection, ThreadSocketConnection)
 from .responses import (RESPONSES, Response)
-from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE, ACTIONS_ONOFF, ACTIONS_TEMPERATURE,
+from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
+                    ACTIONS_ONOFF, ACTIONS_TEMPERATURE,
                     OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
                     ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
-                    ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED, ZIGATE_DEVICE_UPDATED,
-                    ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH, ZIGATE_RESPONSE_RECEIVED)
+                    ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
+                    ZIGATE_DEVICE_UPDATED, ZIGATE_DEVICE_RENAMED,
+                    ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH,
+                    ZIGATE_RESPONSE_RECEIVED)
 
 from .clusters import (CLUSTERS, Cluster, get_cluster)
 import functools
@@ -29,6 +32,7 @@ import random
 from enum import Enum
 import colorsys
 import queue
+import datetime
 
 
 LOGGER = logging.getLogger('zigate')
@@ -237,7 +241,7 @@ class ZiGate(object):
             return
         self.load_state()
         self.setup_connection()
-        self.get_version()
+        version = self.get_version()
         self.set_channel()
         self.set_type(TYPE_COORDINATOR)
         LOGGER.debug('Check network state')
@@ -248,6 +252,10 @@ class ZiGate(object):
         if not network_state or network_state.get('extend_pan') == 0:
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
+
+        LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
+        if version['version'] >= '3.0f':
+            self.setTime()
         self.get_devices_list(True)
         self.need_refresh()
 
@@ -507,11 +515,21 @@ class ZiGate(object):
             # check if device already exist with other address
             d = self.get_device_from_ieee(device.ieee)
             if d:
-                LOGGER.warning('Device already exists with another addr {}, removing it.'.format(d.addr))
-                self._remove_device(d.addr)
-            self._devices[device.addr] = device
-            dispatch_signal(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
-                                                          'device': device})
+                LOGGER.warning('Device already exists with another addr {}, rename it.'.format(d.addr))
+                old_addr = d.addr
+                new_addr = device.addr
+                d.update(device)
+                self._devices[new_addr] = d
+                del self._devices[old_addr]
+                dispatch_signal(ZIGATE_DEVICE_RENAMED, self,
+                                **{'zigate': self,
+                                   'old_addr': old_addr,
+                                   'new_addr': new_addr,
+                                   })
+            else:
+                self._devices[device.addr] = device
+                dispatch_signal(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
+                                                              'device': device})
             self.refresh_device(device.addr)
 
     def get_status_text(self, status_code):
@@ -532,7 +550,7 @@ class ZiGate(object):
             sleep(0.01)
             t2 = time()
             if t2 - t1 > 3:  # no response timeout
-                LOGGER.error('No response waiting command 0x{:04x}'.format(msg_type))
+                LOGGER.warning('No response waiting command 0x{:04x}'.format(msg_type))
                 return
         LOGGER.debug('Stop waiting, got message 0x{:04x}'.format(msg_type))
         return self._last_response.get(msg_type)
@@ -547,7 +565,7 @@ class ZiGate(object):
             sleep(0.01)
             t2 = time()
             if t2 - t1 > 3:  # no response timeout
-                LOGGER.error('No response after command 0x{:04x}'.format(cmd))
+                LOGGER.warning('No response after command 0x{:04x}'.format(cmd))
                 return
         LOGGER.debug('STATUS code to command 0x{:04x}:{}'.format(cmd, self._last_status.get(cmd)))
         return self._last_status.get(cmd)
@@ -633,6 +651,28 @@ class ZiGate(object):
             r = r.get('status', False)
         return r
 
+    def setTime(self, dt=None):
+        '''
+        Set internal zigate time
+        dt should be datetime.datetime object
+        '''
+        dt = dt or datetime.datetime.now()
+        # timestamp from 2001-01-01 00:00:00
+        timestamp = int((dt - datetime.datetime(2001, 1, 1)).total_seconds())
+        data = struct.pack('!L', timestamp)
+        self.send_data(0x0016, data)
+
+    def getTime(self):
+        '''
+        get internal zigate time
+        '''
+        r = self.send_data(0x0017, wait_response=0x8017)
+        dt = None
+        if r:
+            timestamp = r.get('timestamp')
+            dt = datetime.datetime(2001, 1, 1) + datetime.timedelta(seconds=timestamp)
+        return dt
+
     def permit_join(self, duration=30):
         '''
         start permit join
@@ -688,10 +728,9 @@ class ZiGate(object):
         ''' remove device '''
         if addr in self._devices:
             ieee = self._devices[addr]['ieee']
-#             addr = self.__addr(addr)
             ieee = self.__addr(ieee)
-#             data = struct.pack('!HQ', addr, ieee)
-            data = struct.pack('!QQ', ieee, ieee)
+            zigate_ieee = self.__addr(self.ieee)
+            data = struct.pack('!QQ', zigate_ieee, ieee)
             return self.send_data(0x0026, data)
 
     def _bind_unbind(self, cmd, ieee, endpoint, cluster,
@@ -955,15 +994,13 @@ class ZiGate(object):
         '''
         return self.send_data(0x00D2)
 
-    def read_attribute_request(self, addr, endpoint, cluster, attribute):
+    def read_attribute_request(self, addr, endpoint, cluster, attribute,
+                               direction=0, manufacturer_specific=0, manufacturer_id=0):
         '''
         Read Attribute request
         attribute can be a unique int or a list of int
         '''
         addr = self.__addr(addr)
-        direction = 0
-        manufacturer_specific = 0
-        manufacturer_id = 0
         if not isinstance(attribute, list):
             attribute = [attribute]
         length = len(attribute)
@@ -972,15 +1009,13 @@ class ZiGate(object):
                            manufacturer_id, length, *attribute)
         self.send_data(0x0100, data)
 
-    def write_attribute_request(self, addr, endpoint, cluster, attribute):
+    def write_attribute_request(self, addr, endpoint, cluster, attribute,
+                                direction=0, manufacturer_specific=0, manufacturer_id=0):
         '''
         Write Attribute request
         attribute can be a unique int or a list of int
         '''
         addr = self.__addr(addr)
-        direction = 0
-        manufacturer_specific = 0
-        manufacturer_id = 0
         if not isinstance(attribute, list):
             attribute = [attribute]
         length = len(attribute)
@@ -990,15 +1025,13 @@ class ZiGate(object):
                            manufacturer_id, length, *attribute)
         self.send_data(0x0110, data)
 
-    def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type):
+    def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type,
+                          direction=0, manufacturer_specific=0, manufacturer_id=0):
         '''
         Configure reporting request
         for now support only one attribute
         '''
         addr = self.__addr(addr)
-        direction = 0
-        manufacturer_specific = 0
-        manufacturer_id = 0
 #         if not isinstance(attributes, list):
 #             attributes = [attributes]
 #         length = len(attributes)
@@ -1017,14 +1050,13 @@ class ZiGate(object):
                            max_interval, timeout, change)
         self.send_data(0x0120, data, 0x8120)
 
-    def attribute_discovery_request(self, addr, endpoint, cluster):
+    def attribute_discovery_request(self, addr, endpoint, cluster,
+                                    direction=0, manufacturer_specific=0,
+                                    manufacturer_id=0):
         '''
         Attribute discovery request
         '''
         addr = self.__addr(addr)
-        direction = 0
-        manufacturer_specific = 0
-        manufacturer_id = 0
         data = struct.pack('!BHBBHBBBHB', 2, addr, 1, endpoint, cluster,
                            0, direction, manufacturer_specific,
                            manufacturer_id, 255)

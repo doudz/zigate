@@ -10,6 +10,11 @@ This library manage communication between python and zigate key, both USB and Wi
 
 ZiGate is an universal gateway compatible with a lot of ZigBee device (like Xiaomi, Philipps Hue, Ikea, etc).
 
+Current coverage :
+
+* Commands : 38 / 53
+* Responses : 33 / 40
+
 ## Getting Started
 
 ### Installation
@@ -97,11 +102,11 @@ True
 We use pydispatcher for callback
 
 ```python
-from pydispatch import dispatcher
+from zigate import dispatcher
 
 def my_callback(sender, signal, **kwargs):
-   print(sender)  # zigate instance
-   print(signal)  # one of EVENT
+    print(sender)  # zigate instance
+    print(signal)  # one of EVENT
     print(kwargs)  # contains device and/or attribute changes, etc
 
 dispatcher.connect(my_callback, zigate.ZIGATE_ATTRIBUTE_UPDATED)
@@ -117,7 +122,11 @@ event can be :
 ```python
 zigate.ZIGATE_DEVICE_ADDED
 zigate.ZIGATE_DEVICE_UPDATED
-zigate.ZIGATE_D
+zigate.ZIGATE_DEVICE_REMOVED
+zigate.ZIGATE_DEVICE_RENAMED
+zigate.ZIGATE_ATTRIBUTE_ADDED
+zigate.ZIGATE_ATTRIBUTE_UPDATED
+zigate.ZIGATE_DEVICE_NEED_REFRESH
 ```
 
 kwargs depends of the event type:
@@ -125,6 +134,7 @@ kwargs depends of the event type:
 * for `zigate.ZIGATE_DEVICE_ADDED` kwargs contains device.
 * for `zigate.ZIGATE_DEVICE_UPDATED` kwargs contains device.
 * for `zigate.ZIGATE_DEVICE_REMOVED` kwargs contains addr (the device short address).
+* for `zigate.ZIGATE_DEVICE_RENAMED` kwargs contains old_addr and new_addr (used when re-pairing an already known device).
 * for `zigate.ZIGATE_ATTRIBUTE_ADDED` kwargs contains device and discovered attribute.
 * for `zigate.ZIGATE_ATTRIBUTE_UPDATED` kwargs contains device and updated attribute.
 
