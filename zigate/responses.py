@@ -98,7 +98,7 @@ class Response(object):
                     sdata, submsg_data = self.__decode(subfmt,
                                                        v.keys(),
                                                        submsg_data)
-                    self.__format(sdata)
+                    self._format(sdata)
                     self.data[k].append(sdata)
             elif v == 'rawend':
                 fmt += '{}s'.format(len(msg_data) - struct.calcsize(fmt))
@@ -110,7 +110,7 @@ class Response(object):
             self.data['additionnal'] = msg_data
 
         # reformat output, TODO: do it live
-        self.__format(self.data)
+        self._format(self.data)
         self.data['rssi'] = self.rssi
 
     def __decode(self, fmt, keys, data):
@@ -119,7 +119,7 @@ class Response(object):
         data = data[size:]
         return sdata, data
 
-    def __format(self, data):
+    def _format(self, data):
         for k in data.keys():
             if k in self.format:
                 data[k] = self.format[k].format(data[k])
@@ -301,10 +301,17 @@ class R8024(Response):
     msg = 0x8024
     type = 'Network joined / formed'
     s = OrderedDict([('status', 'B'),
-                     ('addr', 'H'),
-                     ('ieee', 'Q'),
-                     ('channel', 'B')
                      ])
+
+    def decode(self):
+        Response.decode(self)
+        if self.data['status'] < 2:
+            data = self.data.pop('additionnal')
+            data = struct.unpack('!HQB', data)
+            self.data['addr'] = data[0]
+            self.data['ieee'] = data[1]
+            self.data['channel'] = data[2]
+            self._format(self.data)
 
 
 @register_response

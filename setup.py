@@ -65,4 +65,5 @@ setup(
         'Bug Reports': 'https://github.com/doudz/zigate/issues',
         'Source': 'https://github.com/doudz/zigate/',
     },
+    test_suite='tests',
 )
