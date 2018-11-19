@@ -188,6 +188,7 @@ class ZiGate(object):
         except Exception:
             LOGGER.error('Failed to create backup, cancel saving.')
             LOGGER.error(traceback.format_exc())
+            self._save_lock.release()
             return
         try:
             data = {'devices': list(self._devices.values()),
@@ -227,7 +228,7 @@ class ZiGate(object):
                 LOGGER.error('Failed to load persistent file {}'.format(self._path))
                 LOGGER.error(traceback.format_exc())
                 if os.path.exists(backup_path):
-                    LOGGER.warning('A backup exists {}'.format(backup_path))
+                    LOGGER.warning('A backup exists {}, you should consider restoring it.'.format(backup_path))
         LOGGER.debug('No file to load')
         return False
 
