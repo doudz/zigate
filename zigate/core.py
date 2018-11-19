@@ -1451,7 +1451,7 @@ class Device(object):
 
     @property
     def ieee(self):
-        return self.info.get('ieee')
+        return self.info['ieee']
 
     @property
     def rssi(self):
