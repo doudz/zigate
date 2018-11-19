@@ -12,6 +12,7 @@ from time import (sleep, strftime, time)
 import logging
 import json
 import os
+from shutil import copyfile
 from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection, ThreadSocketConnection)
 from .responses import (RESPONSES, Response)
@@ -175,9 +176,19 @@ class ZiGate(object):
         self._started = False
 
     def save_state(self, path=None):
+        LOGGER.debug('Saving persistent file')
         self._save_lock.acquire()
         path = path or self._path
         self._path = os.path.expanduser(path)
+        backup_path = self._path + '.0'
+        try:
+            if os.path.exists(self._path):
+                LOGGER.debug('File already existing, make a backup before')
+                copyfile(self._path, backup_path)
+        except Exception:
+            LOGGER.error('Failed to create backup, cancel saving.')
+            LOGGER.error(traceback.format_exc())
+            return
         try:
             data = {'devices': list(self._devices.values()),
                     'groups': self._groups
@@ -194,6 +205,7 @@ class ZiGate(object):
         LOGGER.debug('Try loading persistent file')
         path = path or self._path
         self._path = os.path.expanduser(path)
+        backup_path = self._path + '.0'
         if os.path.exists(self._path):
             try:
                 with open(self._path) as fp:
@@ -214,6 +226,8 @@ class ZiGate(object):
             except Exception:
                 LOGGER.error('Failed to load persistent file {}'.format(self._path))
                 LOGGER.error(traceback.format_exc())
+                if os.path.exists(backup_path):
+                    LOGGER.warning('A backup exists {}'.format(backup_path))
         LOGGER.debug('No file to load')
         return False
 
