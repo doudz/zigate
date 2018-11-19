@@ -6,12 +6,12 @@ ZiGate responses Tests
 import unittest
 import os
 import tempfile
-from zigate import core
+from zigate import ZiGate
 
 
 class TestCore(unittest.TestCase):
     def setUp(self):
-        self.zigate = core.ZiGate(auto_start=False)
+        self.zigate = ZiGate(auto_start=False)
         self.test_dir = tempfile.mkdtemp()
 
     def test_persistent(self):
