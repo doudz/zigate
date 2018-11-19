@@ -1,44 +1,30 @@
-{
-	"endpoints": [
-		{
-			"endpoint": 1,
-			"clusters": [
-				 {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "temperature",
-                            "unit": "\u00b0C"
-                        }
-                    ],
-                    "cluster": 1026
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "pressure",
-                            "unit": "mb"
-                        },
-                        {
-                            "attribute": 16,
-                            "name": "pressure2",
-                            "unit": "mb"
-                        }
-                    ],
-                    "cluster": 1027
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "humidity",
-                            "unit": "%"
-                        }
-                    ],
-                    "cluster": 1029
-                }
-            ]
-        }
-    ]
-}
+[
+    {
+    	"endpoint": 1,
+    	"cluster": 1026,
+        "attribute": 0,
+        "name": "temperature",
+        "unit": "\u00b0C"
+    },
+    {
+    	"endpoint": 1,
+    	"cluster": 1027,
+        "attribute": 0,
+        "name": "pressure",
+        "unit": "mb"
+    },
+    {
+    	"endpoint": 1,
+    	"cluster": 1027,
+        "attribute": 16,
+        "name": "pressure2",
+        "unit": "mb"
+	},
+    {
+    	"endpoint": 1,
+    	"cluster": 1029,
+        "attribute": 0,
+        "name": "humidity",
+        "unit": "%"
+    }
+]
