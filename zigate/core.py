@@ -1486,7 +1486,7 @@ class Device(object):
     def ieee(self):
         ieee = self.info.get('ieee')
         if ieee is None:
-            LOGGER.error('IEEE is missing for {}, please pair it again !'.format(self))
+            LOGGER.error('IEEE is missing for {}, please pair it again !'.format(self.addr))
         return ieee
 
     @property
