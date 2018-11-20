@@ -330,6 +330,26 @@ class R8031(R8030):
 
 
 @register_response
+class R8040(Response):
+    msg = 0x8040
+    type = 'Network Address response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('ieee', 'Q'),
+                     ('addr', 'H'),
+                     ('count', 'B'),
+                     ('index', 'B'),
+                     ('devices', OrderedDict([('addr', 'H')]))
+                     ])
+
+
+@register_response
+class R8041(R8040):
+    msg = 0x8041
+    type = 'IEEE Address response'
+
+
+@register_response
 class R8042(Response):
     msg = 0x8042
     type = 'Node descriptor'

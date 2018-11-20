@@ -815,6 +815,20 @@ class ZiGate(object):
             return self.unbind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
         LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
 
+    def network_address_request(self, ieee):
+        ''' network address request '''
+        target_addr = self.__addr('0000')
+        ieee = self.__addr(ieee)
+        data = struct.pack('!HQBB', target_addr, ieee, 0, 0)
+        return self.send_data(0x0040, data)
+
+    def ieee_address_request(self, addr):
+        ''' ieee address request '''
+        target_addr = self.__addr('0000')
+        addr = self.__addr(addr)
+        data = struct.pack('!HHBB', target_addr, addr, 0, 0)
+        return self.send_data(0x0041, data)
+
     def node_descriptor_request(self, addr):
         ''' node descriptor request '''
         return self.send_data(0x0042, addr)
