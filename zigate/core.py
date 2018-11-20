@@ -122,6 +122,7 @@ class ZiGate(object):
                  auto_save=True):
         self._devices = {}
         self._groups = {}
+        self._scenes = {}
         self._path = path
         self._version = None
         self._port = port
@@ -192,7 +193,8 @@ class ZiGate(object):
             return
         try:
             data = {'devices': list(self._devices.values()),
-                    'groups': self._groups
+                    'groups': self._groups,
+                    'scenes': self._scenes
                     }
             with open(self._path, 'w') as fp:
                 json.dump(data, fp, cls=DeviceEncoder,
@@ -219,6 +221,7 @@ class ZiGate(object):
                 for k, v in groups:
                     groups[k] = set([tuple(r) for r in v])
                 self._groups = groups
+                self._scenes = data.get('scenes', {})
                 devices = data.get('devices', [])
                 for data in devices:
                     device = Device.from_json(data, self)
