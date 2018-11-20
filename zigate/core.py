@@ -1484,7 +1484,10 @@ class Device(object):
 
     @property
     def ieee(self):
-        return self.info['ieee']
+        ieee = self.info.get('ieee')
+        if ieee is None:
+            LOGGER.error('IEEE is missing for {}, please pair it again !'.format(self))
+        return ieee
 
     @property
     def rssi(self):
