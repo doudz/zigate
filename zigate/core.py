@@ -200,6 +200,8 @@ class ZiGate(object):
         except Exception:
             LOGGER.error('Failed to save persistent file {}'.format(self._path))
             LOGGER.error(traceback.format_exc())
+            LOGGER.error('Restoring backup...')
+            copyfile(backup_path, self._path)
         self._save_lock.release()
 
     def load_state(self, path=None):
