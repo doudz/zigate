@@ -820,14 +820,18 @@ class ZiGate(object):
         target_addr = self.__addr('0000')
         ieee = self.__addr(ieee)
         data = struct.pack('!HQBB', target_addr, ieee, 0, 0)
-        return self.send_data(0x0040, data)
+        r = self.send_data(0x0040, data, wait_response=0x8040)
+        if r:
+            return r.data['addr']
 
     def ieee_address_request(self, addr):
         ''' ieee address request '''
         target_addr = self.__addr('0000')
         addr = self.__addr(addr)
         data = struct.pack('!HHBB', target_addr, addr, 0, 0)
-        return self.send_data(0x0041, data)
+        r = self.send_data(0x0041, data, wait_response=0x8041)
+        if r:
+            return r.data['ieee']
 
     def node_descriptor_request(self, addr):
         ''' node descriptor request '''
