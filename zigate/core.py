@@ -494,12 +494,15 @@ class ZiGate(object):
         '''
         tag a device as missing
         '''
+        last_24h = datetime.datetime.now()-datetime.timedelta(hours=24)
+        last_24h = last_24h.strftime('%Y-%m-%d %H:%M:%S')
         if addr in self._devices:
-            self._devices[addr].missing = True
-            LOGGER.warning('The device {} is missing'.format(addr))
-            dispatch_signal(ZIGATE_DEVICE_UPDATED,
-                            self, **{'zigate': self,
-                                     'device': self._devices[addr]})
+            if self._devices[addr].last_seen and self._devices[addr].last_seen < last_24h:
+                self._devices[addr].missing = True
+                LOGGER.warning('The device {} is missing'.format(addr))
+                dispatch_signal(ZIGATE_DEVICE_UPDATED,
+                                self, **{'zigate': self,
+                                         'device': self._devices[addr]})
 
     def get_missing(self):
         '''
@@ -1503,6 +1506,10 @@ class Device(object):
     @rssi.setter
     def rssi(self, value):
         self.info['rssi'] = value
+
+    @property
+    def last_seen(self):
+        return self.info.get('last_seen')
 
     @property
     def battery_percent(self):
