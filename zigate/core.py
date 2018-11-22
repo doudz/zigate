@@ -494,7 +494,7 @@ class ZiGate(object):
         '''
         tag a device as missing
         '''
-        last_24h = datetime.datetime.now()-datetime.timedelta(hours=24)
+        last_24h = datetime.datetime.now() - datetime.timedelta(hours=24)
         last_24h = last_24h.strftime('%Y-%m-%d %H:%M:%S')
         if addr in self._devices:
             if self._devices[addr].last_seen and self._devices[addr].last_seen < last_24h:
