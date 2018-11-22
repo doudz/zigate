@@ -138,7 +138,8 @@ class ZiGate(object):
         self._started = False
 
         self._packets = queue.Queue()
-        self._event_thread = threading.Thread(target=self._event_loop)
+        self._event_thread = threading.Thread(target=self._event_loop,
+                                              name='ZiGate-Event Loop')
         self._event_thread.setDaemon(True)
         self._event_thread.start()
 
@@ -1302,7 +1303,8 @@ class ZiGate(object):
         from .mqtt_broker import MQTT_Broker
         broker = MQTT_Broker(self, host, username, password)
         broker.connect()
-        self.broker_thread = threading.Thread(target=broker.client.loop_forever)
+        self.broker_thread = threading.Thread(target=broker.client.loop_forever,
+                                              name='ZiGate-MQTT')
         self.broker_thread.start()
 
 

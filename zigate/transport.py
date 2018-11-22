@@ -37,7 +37,8 @@ class ThreadSerialConnection(object):
         self._running = True
         self.reconnect()
 #         self.serial = self.initSerial()
-        self.thread = threading.Thread(target=self.listen)
+        self.thread = threading.Thread(target=self.listen,
+                                       name='ZiGate-Listen')
         self.thread.setDaemon(True)
         self.thread.start()
 
@@ -77,7 +78,10 @@ class ThreadSerialConnection(object):
             startpos = self._buffer.find(b'\x01')
             raw_message = self._buffer[startpos:endpos + 1]
 #             print(raw_message)
-            threading.Thread(target=self.packet_received, args=(raw_message,)).start()
+            threading.Thread(target=self.packet_received,
+                             args=(raw_message,),
+                             name='ZiGate-Packet Received'
+                             ).start()
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
 
