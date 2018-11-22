@@ -274,8 +274,8 @@ class ZiGate(object):
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
 
-        LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
         if version['version'] >= '3.0f':
+            LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
             self.setTime()
         self.get_devices_list(True)
         self.need_refresh()
