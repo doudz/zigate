@@ -15,7 +15,7 @@ import socket
 import select
 from pydispatch import dispatcher
 import sys
-from .const import ZIGATE_PACKET_RECEIVED, ZIGATE_FAILED_TO_CONNECT
+from .const import ZIGATE_FAILED_TO_CONNECT
 
 LOGGER = logging.getLogger('zigate')
 
