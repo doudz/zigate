@@ -34,9 +34,9 @@ class ThreadSerialConnection(object):
         self._port = port
         self.device = device
         self.queue = queue.Queue()
+        self.received = queue.Queue()
         self._running = True
         self.reconnect()
-#         self.serial = self.initSerial()
         self.thread = threading.Thread(target=self.listen,
                                        name='ZiGate-Listen')
         self.thread.setDaemon(True)
@@ -64,9 +64,6 @@ class ThreadSerialConnection(object):
                     delay *= 2
         return self.serial
 
-    def packet_received(self, raw_message):
-        dispatcher.send(ZIGATE_PACKET_RECEIVED, packet=raw_message)
-
     def read_data(self, data):
         '''
         Read ZiGate output and split messages
@@ -77,11 +74,7 @@ class ThreadSerialConnection(object):
         while endpos != -1:
             startpos = self._buffer.find(b'\x01')
             raw_message = self._buffer[startpos:endpos + 1]
-#             print(raw_message)
-            threading.Thread(target=self.packet_received,
-                             args=(raw_message,),
-                             name='ZiGate-Packet Received'
-                             ).start()
+            self.received.put(raw_message)
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
 

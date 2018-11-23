@@ -137,15 +137,13 @@ class ZiGate(object):
         self._ieee = None
         self._started = False
 
-        self._packets = queue.Queue()
         self._event_thread = threading.Thread(target=self._event_loop,
                                               name='ZiGate-Event Loop')
         self._event_thread.setDaemon(True)
         self._event_thread.start()
 
-        dispatcher.connect(self._packet_received, ZIGATE_PACKET_RECEIVED)
         dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
-#         dispatcher.connect(self.decode_data, ZIGATE_PACKET_RECEIVED)
+
         if auto_start:
             self.autoStart()
             if auto_save:
@@ -153,14 +151,12 @@ class ZiGate(object):
 
     def _event_loop(self):
         while True:
-            if not self._packets.empty():
-                packet = self._packets.get()
+            if self.connection and not self.connection.received.empty():
+                packet = self.connection.received.get()
+                dispatch_signal(ZIGATE_PACKET_RECEIVED, self, packet=packet)
                 self.decode_data(packet)
             else:
                 sleep(SLEEP_INTERVAL)
-
-    def _packet_received(self, packet):
-        self._packets.put(packet)
 
     def setup_connection(self):
         self.connection = ThreadSerialConnection(self, self._port)
