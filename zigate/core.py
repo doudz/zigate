@@ -1020,6 +1020,81 @@ class ZiGate(object):
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
         return self.send_data(0x0071, data)
 
+    def view_scene(self, addr, endpoint, group, scene):
+        '''
+        View scene
+        '''
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
+        return self.send_data(0x00A0, data)
+
+    def add_scene(self, addr, endpoint, group, scene, name, transition=0):
+        '''
+        Add scene
+        '''
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
+        return self.send_data(0x00A1, data)
+
+    def remove_scene(self, addr, endpoint, group, scene):
+        '''
+        Remove scene
+        '''
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
+        return self.send_data(0x00A2, data)
+
+    def remove_all_scenes(self, addr, endpoint, group):
+        '''
+        Remove all scenes
+        '''
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        data = struct.pack('!BHBBH', 2, addr, 1, endpoint, group)
+        return self.send_data(0x00A3, data)
+
+    def store_scene(self, addr, endpoint, group, scene):
+        '''
+        Store scene
+        '''
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
+        return self.send_data(0x00A4, data)
+
+    def recall_scene(self, addr, endpoint, group, scene):
+        '''
+        Store scene
+        '''
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
+        return self.send_data(0x00A5, data)
+
+    def scene_membership_request(self, addr, endpoint, group):
+        '''
+        Scene Membership request
+        '''
+        addr = self.__addr(addr)
+        group = self.__addr(group)
+        data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group)
+        return self.send_data(0x00A6, data)
+
+    def copy_scene(self, addr, endpoint, from_group, from_scene, to_group, to_scene):
+        '''
+        Copy scene
+        '''
+        addr = self.__addr(addr)
+        from_group = self.__addr(from_group)
+        to_group = self.__addr(to_group)
+        data = struct.pack('!BHBBBHBHB', 2, addr, 1, endpoint, 0,
+                           from_group, from_scene,
+                           to_group, to_scene)
+        return self.send_data(0x00A9, data)
+
     def initiate_touchlink(self):
         '''
         Initiate Touchlink
