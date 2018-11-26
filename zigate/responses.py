@@ -482,6 +482,27 @@ class R8045(Response):
 
 
 @register_response
+class R8046(Response):
+    msg = 0x8046
+    type = 'Match Descriptor response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H'),
+                     ('match_count', 'B'),
+                     ('matches', OrderedDict([('match', 'B')]))
+                     ])
+
+
+@register_response
+class R8047(Response):
+    msg = 0x8047
+    type = 'Management Leave indication'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ])
+
+
+@register_response
 class R8048(Response):
     msg = 0x8048
     type = 'Leave indication'
@@ -709,6 +730,16 @@ class R8120(Response):
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
                      ('status', 'B'),
+                     ])
+
+
+@register_response
+class R8140(Response):
+    msg = 0x8140
+    type = 'Attribute Discovery response'
+    s = OrderedDict([('complete', 'B'),
+                     ('attribute_type', 'B'),
+                     ('attribute_id', 'H'),
                      ])
 
 
