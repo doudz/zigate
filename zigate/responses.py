@@ -580,6 +580,72 @@ class R8063(R8061):
 
 
 @register_response
+class R80A0(Response):
+    msg = 0x80A0
+    type = 'View Scene response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
+                     ('scene', 'B'),
+                     ('transition', 'H'),
+                     ])
+
+
+@register_response
+class R80A1(Response):
+    msg = 0x80A1
+    type = 'Add Scene response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
+                     ('scene', 'B'),
+                     ])
+
+
+@register_response
+class R80A2(R80A1):
+    msg = 0x80A2
+    type = 'Remove Scene response'
+
+
+@register_response
+class R80A3(Response):
+    msg = 0x80A3
+    type = 'Remove all Scenes response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
+                     ])
+
+
+@register_response
+class R80A4(R80A1):
+    msg = 0x80A4
+    type = 'Store Scene response'
+
+
+@register_response
+class R80A6(Response):
+    msg = 0x80A6
+    type = 'Scene membership response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('capacity', 'B'),
+                     ('group', 'H'),
+                     ('scene_count', 'B'),
+                     ('scenes', OrderedDict([('scene', 'B')]))
+                     ])
+
+
+@register_response
 class R8100(Response):
     msg = 0x8100
     type = 'Read Attribute response'
