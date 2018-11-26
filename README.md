@@ -12,8 +12,8 @@ ZiGate is an universal gateway compatible with a lot of ZigBee device (like Xiao
 
 Current coverage :
 
-* Commands : 40 / 53
-* Responses : 35 / 40
+* Commands 54 / 92
+* Responses 45 / 51
 
 ## Getting Started
 
