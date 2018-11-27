@@ -1173,7 +1173,7 @@ class ZiGate(object):
         Attribute discovery request
         '''
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBHBBBHB', 2, addr, 1, endpoint, cluster,
+        data = struct.pack('!BHBBHHBBHB', 2, addr, 1, endpoint, cluster,
                            0, direction, manufacturer_specific,
                            manufacturer_id, 255)
         self.send_data(0x0140, data)
