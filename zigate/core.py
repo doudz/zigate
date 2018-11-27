@@ -439,7 +439,7 @@ class ZiGate(object):
                         attrs = list(cluster.attributes_def.keys())
                         for i in range(0, len(attrs), 8):
                             self.read_attribute_request(addr, endpoint, c,
-                                                        attrs[i:i+8])
+                                                        attrs[i: i + 8])
         elif response.msg == 0x8045:  # endpoint list
             addr = response['addr']
             for endpoint in response['endpoints']:
