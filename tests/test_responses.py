@@ -29,6 +29,15 @@ class TestResponses(unittest.TestCase):
                                           ('rssi', 255)]),
                              )
 
+    def test_response_8140(self):
+        msg_data = b'\x01\x10\x00\x12'
+        r = responses.R8140(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('complete', 1),
+                                          ('attribute_type', 16),
+                                          ('attribute_id', 18),
+                                          ('rssi', 255)]))
+
 
 if __name__ == '__main__':
     unittest.main()
