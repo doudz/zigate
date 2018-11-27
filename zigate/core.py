@@ -1536,6 +1536,8 @@ class Device(object):
                     endpoint['clusters'][cluster.cluster_id] = cluster
         if 'power_source' in d.info:  # old version
             d.info['power_type'] = d.info.pop('power_source')
+        if 'manufacturer' in d.info:  # old version
+            d.info['manufacturer_code'] = d.info.pop('manufacturer')
         d._avoid_duplicate()
         return d
 
