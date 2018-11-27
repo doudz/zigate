@@ -356,7 +356,7 @@ class R8042(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('status', 'B'),
                      ('addr', 'H'),
-                     ('manufacturer', 'H'),
+                     ('manufacturer_code', 'H'),
                      ('max_rx', 'H'),
                      ('max_tx', 'H'),
                      ('server_mask', 'H'),
