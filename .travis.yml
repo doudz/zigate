@@ -21,6 +21,7 @@ matrix:
       script:
         - tox
     - python: 3.7
+      dist: xenial
       env: TOXENV=py37
       install:
         - pip install -e ".[dev]"
