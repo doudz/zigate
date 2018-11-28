@@ -11,17 +11,12 @@ class TestResponses(unittest.TestCase):
     def test_cluster_0012(self):
         # xiaomi cube status
         endpoint = {'device': 24321}
-        data = {
-                "attributes": [
-                    {
-                        "attribute": 85,
-                        "data": 4,
-                        "expire": 2,
-                        "expire_value": "",
-                        "name": "movement",
-                        "value": ""
-                    }
-                ],
+        data = {"attributes": [{"attribute": 85,
+                                "data": 4,
+                                "expire": 2,
+                                "expire_value": "",
+                                "name": "movement",
+                                "value": ""}],
                 "cluster": 18
                 }
         c = clusters.C0012.from_json(data, endpoint)
@@ -33,17 +28,12 @@ class TestResponses(unittest.TestCase):
 
         # xiaomi lumi.remote.b1acn01
         endpoint = {'device': 259}
-        data = {
-                "attributes": [
-                    {
-                        "attribute": 85,
-                        "data": 4,
-                        "expire": 2,
-                        "expire_value": "",
-                        "name": "movement",
-                        "value": ""
-                    }
-                ],
+        data = {"attributes": [{"attribute": 85,
+                                "data": 4,
+                                "expire": 2,
+                                "expire_value": "",
+                                "name": "movement",
+                                "value": ""}],
                 "cluster": 18
                 }
         c = clusters.C0012.from_json(data, endpoint)
