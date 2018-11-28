@@ -20,7 +20,12 @@ matrix:
         - pip install -e ".[dev]"
       script:
         - tox
-
+    - python: 3.7
+      env: TOXENV=py37
+      install:
+        - pip install -e ".[dev]"
+      script:
+        - tox
     - language: markdown
       script:
         - gem install mdl
