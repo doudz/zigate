@@ -1,5 +1,5 @@
 '''
-ZiGate responses Tests
+ZiGate core Tests
 -------------------------
 '''
 

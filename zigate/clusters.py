@@ -53,9 +53,9 @@ def register_cluster(o):
     return o
 
 
-def get_cluster(cluster_id):
+def get_cluster(cluster_id, endpoint=None):
     cls_cluster = CLUSTERS.get(cluster_id, Cluster)
-    cluster = cls_cluster()
+    cluster = cls_cluster(endpoint)
     if type(cluster) == Cluster:
         cluster.cluster_id = cluster_id
     return cluster
@@ -72,8 +72,9 @@ class Cluster(object):
     type = 'Unknown cluster'
     attributes_def = {}
 
-    def __init__(self):
+    def __init__(self, endpoint=None):
         self.attributes = {}
+        self._endpoint = endpoint
 
     def update(self, data):
         attribute_id = data['attribute']
@@ -85,6 +86,12 @@ class Cluster(object):
         attribute.update(data)
         attr_def = self.attributes_def.get(attribute_id)
         if attr_def:
+            # remove unwanted key from old conf
+            for k in list(attribute.keys()):
+                if k in ('attribute', 'data'):
+                    continue
+                if k not in attr_def:
+                    del attribute[k]
             attribute.update(attr_def)
             try:
                 attribute['value'] = eval(attribute['value'],
@@ -111,10 +118,10 @@ class Cluster(object):
                 }
 
     @staticmethod
-    def from_json(data):
+    def from_json(data, endpoint=None):
         cluster_id = data['cluster']
         cluster = CLUSTERS.get(cluster_id, Cluster)
-        cluster = cluster()
+        cluster = cluster(endpoint)
         if type(cluster) == Cluster:
             cluster.cluster_id = cluster_id
         for attribute in data['attributes']:
@@ -268,9 +275,18 @@ def cube_decode(value):
 class C0012(Cluster):
     cluster_id = 0x0012
     type = 'Multistate input (Xiaomi cube: Movement)'
-    attributes_def = {0x0055: {'name': 'movement', 'value': 'cube_decode(value)',
+    attributes_def = {0x0055: {'name': 'movement',
+                               'value': 'cube_decode(value)',
                                'expire': 2, 'expire_value': ''},
                       }
+
+    def __init__(self, endpoint=None):
+        Cluster.__init__(self, endpoint=endpoint)
+        if self._endpoint['device'] == 0x0103:  # lumi.remote.b1acn01
+            self.attributes_def = {0x0055: {'name': 'multiclick',
+                                            'value': 'value',
+                                            'expire': 2},
+                                   }
 
 
 def vibration_decode(value):
