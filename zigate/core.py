@@ -668,6 +668,13 @@ class ZiGate(object):
         self._devices = {}
         return self.send_data(0x0012)
 
+    def factory_reset(self):
+        '''
+        ZLO/ZLL "Factory New" Reset
+        '''
+        self._devices = {}
+        return self.send_data(0x0013)
+
     def is_permitting_join(self):
         '''
         check if zigate is permitting join
@@ -711,6 +718,13 @@ class ZiGate(object):
         convenient function to stop permit_join
         '''
         return self.permit_join(0)
+
+    def set_expended_panid(self, panid):
+        '''
+        Set Expended PANID
+        '''
+        data = struct.pack('!Q', panid)
+        return self.send_data(0x0020, data)
 
     def set_channel(self, channels=None):
         '''
@@ -758,6 +772,14 @@ class ZiGate(object):
             zigate_ieee = self.__addr(self.ieee)
             data = struct.pack('!QQ', zigate_ieee, ieee)
             return self.send_data(0x0026, data)
+
+    def enable_permissions_controlled_joins(self, enable=True):
+        '''
+        Enable Permissions Controlled Joins
+        '''
+        enable = 1 if enable else 2
+        data = struct.pack('!B', enable)
+        return self.send_data(0x0027, data)
 
     def _bind_unbind(self, cmd, ieee, endpoint, cluster,
                      dst_addr=None, dst_endpoint=1):
