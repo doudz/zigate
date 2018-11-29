@@ -214,7 +214,9 @@ client.publish('zigate/command', payload)
 ```
 
 # zigate-flasher
+
 Python tool to flash your Zigate (Jennic JN5168)
+
 Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
 https://github.com/tjikkun/zigate-flasher
 
