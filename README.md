@@ -213,7 +213,7 @@ payload = '{"function": "action_onoff", "args": ["522a", 1, 0]}'
 client.publish('zigate/command', payload)
 ```
 
-## zigate-flasher
+## Flasher
 
 Python tool to flash your Zigate (Jennic JN5168)
 
