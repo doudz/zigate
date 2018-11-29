@@ -33,7 +33,7 @@ pip3 install zigate[mqtt]
 
 ### Usage
 
-```python
+```
 # if you want logging
 import logging
 logging.basicConfig()
