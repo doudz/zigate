@@ -14,8 +14,6 @@ import functools
 import itertools
 import logging
 import struct
-import sys
-import time
 from operator import xor
 
 import serial
@@ -79,7 +77,6 @@ class Response:
                 self.type, self.data.hex(), self.chksum)
 
 
-
 def register(type_):
     assert type_ not in _responses, 'Duplicate response type 0x%02x' % type_
 
@@ -88,7 +85,6 @@ def register(type_):
         return func
 
     return decorator
-
 
 
 def prepare(type_, data):
@@ -100,7 +96,7 @@ def prepare(type_, data):
             data), 0)
 
     message = struct.pack('!BB%dsB' % len(data), length, type_, data, checksum)
-    #print('Prepared command 0x%s' % message.hex())
+    # print('Prepared command 0x%s' % message.hex())
     return message
 
 
@@ -115,28 +111,33 @@ def read_response(ser):
 
 def _unpack_raw_message(length, decoded):
     if len(decoded) != length or length < 2:
-        print ("Unpack failed, length: %d, msg %s" % (length, decoded.hex()))
+        print("Unpack failed, length: %d, msg %s" % (length, decoded.hex()))
         return False
     type_, data, chksum = \
-            struct.unpack('!B%dsB' % (length - 2), decoded)
+        struct.unpack('!B%dsB' % (length - 2), decoded)
     return _responses.get(type_, Response)(type_, data, chksum)
+
 
 @Command(0x07)
 def req_flash_erase():
     pass
+
 
 @Command(0x09, raw=True)
 def req_flash_write(addr, data):
     msg = struct.pack('<L%ds' % len(data), addr, data)
     return msg
 
+
 @Command(0x0b, '<LH')
 def req_flash_read(addr, length):
     return (addr, length)
 
+
 @Command(0x1f, '<LH')
 def req_ram_read(addr, length):
     return (addr, length)
+
 
 @Command(0x25)
 def req_flash_id():
@@ -145,10 +146,10 @@ def req_flash_id():
 
 @Command(0x27, '!B')
 def req_change_baudrate(rate):
-    #print(serial.Serial.BAUDRATES)
+    # print(serial.Serial.BAUDRATES)
     clockspeed = 1000000
     divisor = round(clockspeed / rate)
-    #print(divisor)
+    # print(divisor)
     return divisor
 
 
@@ -156,11 +157,10 @@ def req_change_baudrate(rate):
 def req_select_flash_type(type_, custom_jump=0):
     return (type_, custom_jump)
 
+
 @Command(0x32)
 def req_chip_id():
     pass
-
-
 
 
 @register(0x26)
@@ -250,7 +250,8 @@ def select_flash(ser, flash_type):
 
 
 def write_flash_to_file(ser, filename):
-    flash_start = cur = ZIGATE_FLASH_START
+    # flash_start = cur = ZIGATE_FLASH_START
+    cur = ZIGATE_FLASH_START
     flash_end = ZIGATE_FLASH_END
 
     print('reading old flash to %s' % filename)
@@ -277,7 +278,8 @@ def write_file_to_flash(ser, filename):
             print('Erasing flash failed')
             raise SystemExit(1)
 
-        flash_start = cur = ZIGATE_FLASH_START
+        # flash_start = cur = ZIGATE_FLASH_START
+        cur = ZIGATE_FLASH_START
         flash_end = ZIGATE_FLASH_END
 
         bin_ver = fd.read(4)
@@ -301,7 +303,7 @@ def main():
     ports_available = [port for (port, _, _) in sorted(comports())]
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--serialport', choices=ports_available,
-            help='Serial port, e.g. /dev/ttyUSB0', required=True)
+                        help='Serial port, e.g. /dev/ttyUSB0', required=True)
     parser.add_argument('-w', '--write', help='Firmware bin to flash onto the chip')
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
     args = parser.parse_args()
