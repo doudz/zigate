@@ -212,3 +212,25 @@ client.publish('zigate/command', payload)
 payload = '{"function": "action_onoff", "args": ["522a", 1, 0]}'
 client.publish('zigate/command', payload)
 ```
+
+# zigate-flasher
+Python tool to flash your Zigate (Jennic JN5168)
+Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
+https://github.com/tjikkun/zigate-flasher
+
+## Usage
+```
+usage: python -m zigate.flasher [-h] -p PORT [-w WRITE] [-s SAVE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p PORT, --serialport PORT
+                        Serial port, e.g. /dev/ttyUSB0
+  -w WRITE, --write WRITE
+                        Firmware bin to flash onto the chip
+  -s SAVE, --save SAVE  File to save the currently loaded firmware to
+
+
+
+
+
