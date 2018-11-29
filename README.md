@@ -213,14 +213,14 @@ payload = '{"function": "action_onoff", "args": ["522a", 1, 0]}'
 client.publish('zigate/command', payload)
 ```
 
-# zigate-flasher
+## zigate-flasher
 
 Python tool to flash your Zigate (Jennic JN5168)
 
 Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
 [Original repo](https://github.com/tjikkun/zigate-flasher)
 
-## Usage
+### Flasher Usage
 
 ```
 usage: python -m zigate.flasher [-h] -p PORT [-w WRITE] [-s SAVE]

@@ -73,8 +73,9 @@ class Response:
         return self.status == 0
 
     def __str__(self):
-        return 'Response(type=0x%02x, data=0x%s, checksum=0x%02x)' % (
-                self.type, self.data.hex(), self.chksum)
+        return 'Response(type=0x%02x, data=0x%s, checksum=0x%02x)' % (self.type,
+                                                                      self.data.hex(),
+                                                                      self.chksum)
 
 
 def register(type_):
@@ -90,10 +91,10 @@ def register(type_):
 def prepare(type_, data):
     length = len(data) + 2
 
-    checksum = functools.reduce(xor, itertools.chain(
-            type_.to_bytes(2, 'big'),
-            length.to_bytes(2, 'big'),
-            data), 0)
+    checksum = functools.reduce(xor,
+                                itertools.chain(type_.to_bytes(2, 'big'),
+                                                length.to_bytes(2, 'big'),
+                                                data), 0)
 
     message = struct.pack('!BB%dsB' % len(data), length, type_, data, checksum)
     # print('Prepared command 0x%s' % message.hex())
@@ -238,7 +239,7 @@ def get_mac(ser):
     if res.data == bytes.fromhex('ffffffffffffffff'):
         ser.write(req_ram_read(0x01001580, 8))
         res = read_response(ser)
-    return ':'.join(''.join(x) for x in zip(*[iter(res.data.hex())]*2))
+    return ':'.join(''.join(x) for x in zip(*[iter(res.data.hex())] * 2))
 
 
 def select_flash(ser, flash_type):
@@ -308,7 +309,7 @@ def main():
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
     args = parser.parse_args()
     try:
-        ser = serial.Serial(args.serialport,  38400, timeout=5)
+        ser = serial.Serial(args.serialport, 38400, timeout=5)
     except serial.SerialException:
         logger.exception("Could not open serial device %s", args.serialport)
         raise SystemExit(1)
