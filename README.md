@@ -6,7 +6,7 @@
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Percentage of issues still open")
 
 Python library for [ZiGate](http://zigate.fr/).
-This library manage communication between python and zigate key, both USB and WiFi key are supported (wifi is almost untested).
+This library manage communication between python and zigate key, both USB and WiFi key are supported.
 
 ZiGate is an universal gateway compatible with a lot of ZigBee device (like Xiaomi, Philipps Hue, Ikea, etc).
 
@@ -33,7 +33,7 @@ pip3 install zigate[mqtt]
 
 ### Usage
 
-```
+```python
 # if you want logging
 import logging
 logging.basicConfig()
