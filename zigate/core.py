@@ -1135,6 +1135,36 @@ class ZiGate(object):
         '''
         return self.send_data(0x00D2)
 
+    def identify_trigger_effect(self, addr, endpoint, effect="blink"):
+        '''
+        identify_trigger_effect
+
+        effects available:
+        - blink: Light is switched on and then off (once)
+        - breathe: Light is switched on and off by smoothly increasing and then
+                   decreasing its brightness over a one-second period, and then this is repeated 15 times
+        - okay: Colour light goes green for one second. Monochrome light flashes twice in one second.
+        - channel_change: Colour light goes orange for 8 seconds. Monochrome light switches to
+                          maximum brightness for 0.5 s and then to minimum brightness for 7.5 s
+        - finish_effect: Current stage of effect is completed and then identification mode is
+                         terminated (e.g. for the Breathe effect, only the current one-second cycle will be completed)
+        - Stop effect: Current effect and identification mode are terminated as soon as possible
+        '''
+        effects = {
+            'blink': 0x00,
+            'breathe': 0x01,
+            'okay': 0x02,
+            'channel_change': 0x0b,
+            'finish_effect': 0xfe,
+            'stop_effect': 0xff
+        }
+        addr = self.__addr(addr)
+        if effect not in effects.keys():
+            effect = 'blink'
+        effect_variant = 0  # Current Zigbee standard doesn't provide any variant
+        data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effects[effect], effect_variant)
+        return self.send_data(0x00E0, data)
+
     def read_attribute_request(self, addr, endpoint, cluster, attribute,
                                direction=0, manufacturer_specific=0, manufacturer_id=0):
         '''
