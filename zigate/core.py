@@ -1418,6 +1418,24 @@ class ZiGate(object):
                            temperature, transition)
         self.send_data(0x00C0, data)
 
+    @register_actions(ACTIONS_TEMPERATURE)
+    def actions_move_temperature_rate(self, addr, endpoint, mode, rate, min_temperature, max_temperature):
+        '''
+        move colour temperature in specified rate towards given min or max value
+        Available modes:
+         - 0: Stop
+         - 1: Increase
+         - 3: Decrease
+        rate: how many temperature units are moved in one second
+        min_temperature: Minium temperature where decreasing stops
+        max_temperature: Maxium temperature where increasing stops
+        '''
+        min_temperature = int(1000000 // min_temperature)
+        max_temperature = int(1000000 // max_temperature)
+        addr = self.__addr(addr)
+        data = struct.pack('!BHBBBHHH', 2, addr, 1, endpoint, mode, rate, min_temperature, max_temperature)
+        self.send_data(0x00C1, data)
+
     @register_actions(ACTIONS_LOCK)
     def action_lock(self, addr, endpoint, lock):
         '''
