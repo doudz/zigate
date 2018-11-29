@@ -218,9 +218,10 @@ client.publish('zigate/command', payload)
 Python tool to flash your Zigate (Jennic JN5168)
 
 Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
-https://github.com/tjikkun/zigate-flasher
+[Original repo](https://github.com/tjikkun/zigate-flasher)
 
 ## Usage
+
 ```
 usage: python -m zigate.flasher [-h] -p PORT [-w WRITE] [-s SAVE]
 
