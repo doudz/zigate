@@ -216,10 +216,10 @@ class C0008(Cluster):
 class C000c(Cluster):
     cluster_id = 0x000c
     type = 'Analog input (Xiaomi cube: Rotation)'
-    attributes_def = {0x0055: {'name': 'rotation_angle?', 'value': 'value',
-                               'expire': 2},
-                      0xff05: {'name': 'rotation', 'value': 'value',
-                               'expire': 2},
+    attributes_def = {0x0055: {'name': 'rotation', 'value': 'value',
+                               'unit': '°', 'expire': 2},
+                      0xff05: {'name': 'rotation_time', 'value': 'value',
+                               'unit': 'ms', 'expire': 2},
                       }
 
 
