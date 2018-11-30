@@ -432,9 +432,9 @@ class ZiGate(object):
                 for c in response['in_clusters']:
                     cluster = CLUSTERS.get(c)
                     if cluster:
-                        self.attribute_discovery_request(addr,
-                                                         endpoint,
-                                                         cluster)
+                        # self.attribute_discovery_request(addr,
+                        #                                 endpoint,
+                        #                                 cluster)
                         # some devices don't answer if more than 8 attributes asked
                         attrs = list(cluster.attributes_def.keys())
                         for i in range(0, len(attrs), 8):
