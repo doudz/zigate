@@ -410,6 +410,8 @@ class ZiGate(object):
                 self._tag_missing(addr)
 #                 self._remove_device(addr)
             for d in response['devices']:
+                if d['ieee'] == '0000000000000000':
+                    continue
                 device = Device(dict(d), self)
                 self._set_device(device)
         elif response.msg == 0x8042:  # node descriptor
