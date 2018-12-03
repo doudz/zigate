@@ -1627,11 +1627,9 @@ class Device(object):
         return r
 
     def __str__(self):
-        name = ''
-        typ = self.get_property('type')
-        if typ:
-            name = typ['value']
-        return 'Device {} ({}) {}'.format(name, self.addr, self.ieee)
+        name = self.get_property_value('type', '')
+        manufacturer = self.get_property_value('manufacturer', 'Device')
+        return '{} {} ({}) {}'.format(manufacturer, name, self.addr, self.ieee)
 
     def __repr__(self):
         return self.__str__()
