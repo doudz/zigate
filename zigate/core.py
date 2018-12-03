@@ -1631,7 +1631,7 @@ class Device(object):
         typ = self.get_property('type')
         if typ:
             name = typ['value']
-        return 'Device {} {}-{}'.format(name, self.addr, self.ieee)
+        return 'Device {} ({}) {}'.format(name, self.addr, self.ieee)
 
     def __repr__(self):
         return self.__str__()
