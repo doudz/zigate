@@ -445,10 +445,11 @@ class ZiGate(object):
             for endpoint in response['endpoints']:
                 self.simple_descriptor_request(addr, endpoint['endpoint'])
         elif response.msg == 0x8048:  # leave
+            device = self.get_device_from_ieee(response['ieee'])
             if response['rejoin_status'] == 1:
+                device.missing = True
                 self.permit_join()
             else:
-                device = self.get_device_from_ieee(response['ieee'])
                 if device:
                     self._remove_device(device.addr)
         elif response.msg in (0x8100, 0x8102, 0x8110, 0x8401):  # attribute report or IAS Zone status change
