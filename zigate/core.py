@@ -929,6 +929,20 @@ class ZiGate(object):
 #         self.power_descriptor_request(addr)
         self.active_endpoint_request(addr)
 
+    def discover_device(self, addr):
+        '''
+        starts discovery process
+        '''
+        # discovery steps
+        # step 1 active endpoint request
+        # step 2 simple description request
+        # step 3 get type (cluster 0x0000, attribute 0x0005)
+        # step 4 if unknow type => step 5 attribute discovery else step 6
+        # step 5 attribute discovery request then step 7
+        # step 6 load config template
+        # step 7 create actions, bind and report if needed
+        self.active_endpoint_request(addr)
+
     def _generate_addr(self):
         addr = None
         while not addr or addr in self._devices:
