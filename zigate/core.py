@@ -1700,6 +1700,29 @@ class Device(object):
     def rssi_percent(self):
         return round(100 * self.rssi / 255)
 
+    @property
+    def type(self):
+        typ = self.get_value('type')
+        if typ is None:
+            for endpoint in self.endpoints:
+                if 0 in self.endpoints[endpoint]['in_clusters']:
+                    self._zigate.read_attribute_request(self.addr,
+                                                        endpoint,
+                                                        0x0000,
+                                                        0x0005
+                                                        )
+                    break
+            # wait for type
+            t1 = time()
+            while self.get_value('type') is None:
+                time.sleep(0.1)
+                t2 = time()
+                if t2 - t1 > 3:
+                    LOGGER.warning('No response waiting for type')
+                    return
+            typ = self.get_value('type')
+        return typ
+
     def refresh_device(self):
         self._zigate.refresh_device(self.addr)
 
