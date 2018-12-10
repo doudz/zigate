@@ -428,6 +428,8 @@ class ZiGate(object):
                 ep.update(response.cleaned_data())
                 ep['in_clusters'] = response['in_clusters']
                 ep['out_clusters'] = response['out_clusters']
+                typ = d.type
+                LOGGER.debug('Found type {}'.format(typ))
                 d._create_actions()
                 d._bind_report(endpoint)
                 # ask for various general information
