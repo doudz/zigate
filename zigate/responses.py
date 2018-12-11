@@ -8,7 +8,7 @@
 import struct
 from collections import OrderedDict
 from binascii import hexlify
-from const import DATA_TYPE
+from .const import DATA_TYPE
 
 RESPONSES = {}
 
