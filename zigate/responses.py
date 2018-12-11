@@ -567,6 +567,8 @@ class R8060(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
                      ])
 
 
