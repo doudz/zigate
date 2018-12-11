@@ -42,3 +42,19 @@ ACTIONS_COLOR = 'color'
 ACTIONS_TEMPERATURE = 'temperature'
 ACTIONS_HUE = 'hue'
 ACTIONS_LOCK = 'lock'
+
+DATA_TYPE = {0x00: None,
+             0x10: '?',  # bool
+             0x18: 'b',
+             0x20: 'B',
+             0x21: 'H',
+             0x22: 'I',
+             0x23: 'I',
+             0x28: 'b',
+             0x29: 'h',
+             0x2a: 'i',
+             0x30: 'b',
+             0x39: 'f',
+             0x41: 's',
+             0x42: 's',
+             }
