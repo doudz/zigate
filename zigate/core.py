@@ -23,7 +23,7 @@ from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
                     ZIGATE_DEVICE_UPDATED, ZIGATE_DEVICE_RENAMED,
                     ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH,
-                    ZIGATE_RESPONSE_RECEIVED)
+                    ZIGATE_RESPONSE_RECEIVED, DATA_TYPE)
 
 from .clusters import (CLUSTERS, Cluster, get_cluster)
 import functools
@@ -1202,20 +1202,27 @@ class ZiGate(object):
                            manufacturer_id, length, *attribute)
         self.send_data(0x0100, data)
 
-    def write_attribute_request(self, addr, endpoint, cluster, attribute,
+    def write_attribute_request(self, addr, endpoint, cluster, attributes,
                                 direction=0, manufacturer_specific=0, manufacturer_id=0):
         '''
         Write Attribute request
-        attribute can be a unique int or a list of int
+        attribute could be a tuple of (attribute_id, attribute_type, data)
+        or a list of tuple (attribute_id, attribute_type, data)
         '''
         addr = self.__addr(addr)
-        if not isinstance(attribute, list):
-            attribute = [attribute]
-        length = len(attribute)
-        data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1,
+        fmt = ''
+        if not isinstance(attributes, list):
+            attributes = [attributes]
+        attributes_data = []
+        for attribute_tuple in attributes:
+            data_type = DATA_TYPE[attribute_tuple[1]]
+            fmt += 'HB' + data_type
+            attributes_data += attribute_tuple
+        length = len(attributes)
+        data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1,
                            endpoint, cluster,
                            direction, manufacturer_specific,
-                           manufacturer_id, length, *attribute)
+                           manufacturer_id, length, *attributes_data)
         self.send_data(0x0110, data)
 
     def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type,
