@@ -386,13 +386,6 @@ class C0403(Cluster):
                                'unit': 'mb'},
                       }
 
-    def update(self, data):
-        added, attribute = Cluster.update(self, data)
-        # ignore erroneous value
-        if abs(attribute['value']) > 100:
-            return
-        return added, attribute
-
 
 @register_cluster
 class C0405(Cluster):
@@ -401,6 +394,13 @@ class C0405(Cluster):
     attributes_def = {0x0000: {'name': 'humidity', 'value': 'value/100.',
                                'unit': '%'},
                       }
+
+    def update(self, data):
+        added, attribute = Cluster.update(self, data)
+        # ignore erroneous value
+        if abs(attribute['value']) > 100:
+            return
+        return added, attribute
 
 
 @register_cluster
