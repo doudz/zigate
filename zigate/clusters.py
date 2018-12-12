@@ -315,8 +315,6 @@ class C0101(Cluster):
                                'expire': 2, 'expire_value': ''},
                       0x0503: {'name': 'rotation', 'value': 'value',
                                'expire': 2, 'expire_value': ''},
-                      0x0505: {'name': 'unknown', 'value': 'value',
-                               'expire': 2, 'expire_value': ''}
                       }
 
 
@@ -370,6 +368,13 @@ class C0402(Cluster):
                                'unit': '°C'},
                       }
 
+    def update(self, data):
+        added, attribute = Cluster.update(self, data)
+        # ignore erroneous value
+        if abs(attribute['value']) > 80:
+            return
+        return added, attribute
+
 
 @register_cluster
 class C0403(Cluster):
@@ -380,6 +385,13 @@ class C0403(Cluster):
                       0x0010: {'name': 'pressure2', 'value': 'value/10.',
                                'unit': 'mb'},
                       }
+
+    def update(self, data):
+        added, attribute = Cluster.update(self, data)
+        # ignore erroneous value
+        if abs(attribute['value']) > 100:
+            return
+        return added, attribute
 
 
 @register_cluster
