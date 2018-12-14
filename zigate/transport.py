@@ -43,8 +43,9 @@ class BaseTransport(object):
         endpos = self._buffer.find(b'\x03')
         while endpos != -1:
             startpos = self._buffer.find(b'\x01')
-            raw_message = self._buffer[startpos:endpos + 1]
-            self.received.put(raw_message)
+            if startpos != -1 and startpos < endpos:
+                raw_message = self._buffer[startpos:endpos + 1]
+                self.received.put(raw_message)
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
 

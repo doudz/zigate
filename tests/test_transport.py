@@ -48,6 +48,11 @@ class TestTransport(unittest.TestCase):
         connection.read_data(data)
         self.assertEqual(0, connection.received.qsize())
 
+        data = b'123\x03'
+        connection.read_data(data)
+        self.assertEqual(1, connection.received.qsize())
+        self.assertEqual(b'\x011456123\x03', connection.received.get())
+
 
 if __name__ == '__main__':
     unittest.main()
