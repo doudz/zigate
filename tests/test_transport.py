@@ -12,28 +12,41 @@ class TestTransport(unittest.TestCase):
         connection = transport.BaseTransport()
         data = b'\x01123\x03'
         connection.read_data(data)
-        self.assertEqual(data, connection.received.get())
-        print(connection._buffer)
-        data = b'123\x03'
-        connection.read_data(data)
-#         self.assertEqual(data, connection.received.get())
-        print(connection._buffer)
+        self.assertEqual(1, connection.received.qsize())
+        self.assertEqual(b'\x01123\x03', connection.received.get())
+
         data = b'\x01123'
         connection.read_data(data)
-#         self.assertEqual(data, connection.received.get())
-        print(connection._buffer)
+        self.assertEqual(0, connection.received.qsize())
+
+        data = b'123\x03'
+        connection.read_data(data)
+        self.assertEqual(1, connection.received.qsize())
+        self.assertEqual(b'\x01123123\x03', connection.received.get())
+
+        data = b'123\x03'
+        connection.read_data(data)
+        self.assertEqual(0, connection.received.qsize())
+
+        data = b'123\x03\x01123\x03'
+        connection.read_data(data)
+        self.assertEqual(1, connection.received.qsize())
+        self.assertEqual(b'\x01123\x03', connection.received.get())
+
         data = b'123\x01123\x03'
         connection.read_data(data)
-#         self.assertEqual(data, connection.received.get())
-        print(connection._buffer)
-        data = b'123\x03123456'
+        self.assertEqual(1, connection.received.qsize())
+        self.assertEqual(b'\x01123\x03', connection.received.get())
+
+        data = b'\x01123\x03123\x03\x01123\x03\x011'
         connection.read_data(data)
-#         self.assertEqual(data, connection.received.get())
-        print(connection._buffer)
+        self.assertEqual(2, connection.received.qsize())
+        self.assertEqual(b'\x01123\x03', connection.received.get())
+        self.assertEqual(b'\x01123\x03', connection.received.get())
+
         data = b'456'
         connection.read_data(data)
-#         self.assertEqual(data, connection.received.get())
-        print(connection._buffer)
+        self.assertEqual(0, connection.received.qsize())
 
 
 if __name__ == '__main__':
