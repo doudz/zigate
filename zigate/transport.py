@@ -46,6 +46,8 @@ class BaseTransport(object):
             if startpos != -1 and startpos < endpos:
                 raw_message = self._buffer[startpos:endpos + 1]
                 self.received.put(raw_message)
+            else:
+                LOGGER.error('Malformed packet received, ignore it')
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
 
