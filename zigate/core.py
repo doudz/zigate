@@ -372,9 +372,13 @@ class ZiGate(object):
         '''
         Decode raw packet message
         '''
-        decoded = self.zigate_decode(packet[1:-1])
-        msg_type, length, checksum, value, rssi = \
-            struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
+        try:
+            decoded = self.zigate_decode(packet[1:-1])
+            msg_type, length, checksum, value, rssi = \
+                struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
+        except Exception:
+            LOGGER.error('Failed to decode packet : {}'.format(hexlify(packet)))
+            return
         if length != len(value) + 1:  # add rssi length
             LOGGER.error('Bad length {} != {} : {}'.format(length,
                                                            len(value) + 1,
