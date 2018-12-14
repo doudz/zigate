@@ -456,7 +456,6 @@ class ZiGate(object):
             device = self.get_device_from_ieee(response['ieee'])
             if response['rejoin_status'] == 1:
                 device.missing = True
-                self.permit_join()
             else:
                 if device:
                     self._remove_device(device.addr)
