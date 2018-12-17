@@ -1341,7 +1341,7 @@ class ZiGate(object):
 
         # Get requested bytes from ota file
         self._ota['transfered'] = request['file_offset']
-        end_position = request['file_offset']+request['max_data_size']
+        end_position = request['file_offset'] + request['max_data_size']
         ota_data_to_send = self._ota['image']['data'][request['file_offset']:end_position]
         data_size = len(ota_data_to_send)
         ota_data_to_send = struct.unpack('<{}B'.format(data_size), ota_data_to_send)
@@ -1354,7 +1354,7 @@ class ZiGate(object):
                            request['file_offset'], self._ota['image']['header']['image_version'],
                            self._ota['image']['header']['image_type'], self._ota['image']['header']['manufacturer_code'],
                            data_size, *ota_data_to_send)
-        response = self.send_data(0x0502, data, wait_status=False)
+        self.send_data(0x0502, data, wait_status=False)
 
     def _ota_handle_upgrade_end_request(self, request):
         if self._ota['active'] is True:
@@ -1390,7 +1390,7 @@ class ZiGate(object):
             image_size = len(self._ota['image']['data'])
             time_passed = (datetime.datetime.now() - self._ota['starttime']).seconds
             try:
-                time_remaining = int((image_size/self._ota['transfered'])*time_passed) - time_passed
+                time_remaining = int((image_size / self._ota['transfered']) * time_passed) - time_passed
             except ZeroDivisionError:
                 time_remaining = -1
             message = 'OTA upgrade address {addr}: {sent:>{width}}/{total:>{width}} {percentage:.3%}'.format(
@@ -1443,7 +1443,6 @@ class ZiGate(object):
                            source_endpoint, destination_endpoint, 0,
                            image_version, image_type, manufacturer_code, query_jitter)
         self.send_data(0x0505, data)
-
 
     def attribute_discovery_request(self, addr, endpoint, cluster,
                                     direction=0, manufacturer_specific=0,
