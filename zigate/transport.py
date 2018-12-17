@@ -42,7 +42,7 @@ class BaseTransport(object):
 #         print(self._buffer)
         endpos = self._buffer.find(b'\x03')
         while endpos != -1:
-            startpos = self._buffer.find(b'\x01')
+            startpos = self._buffer.rfind(b'\x01', 0, endpos)
             if startpos != -1 and startpos < endpos:
                 raw_message = self._buffer[startpos:endpos + 1]
                 self.received.put(raw_message)
