@@ -143,16 +143,7 @@ class ZiGate(object):
 
         dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
 
-        self._ota = {
-            'image': {
-                'header': None,
-                'data': None,
-            },
-            'active': False,
-            'starttime': False,
-            'transfered': 0,
-            'addr': None
-        }
+        self._ota_reset_local_variables()
 
         if auto_start:
             self.autoStart()
