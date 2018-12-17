@@ -143,6 +143,17 @@ class ZiGate(object):
 
         dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
 
+        self._ota = {
+            'image': {
+                'header': None,
+                'data': None,
+            },
+            'active': False,
+            'starttime': False,
+            'transfered': 0,
+            'addr': None
+        }
+
         if auto_start:
             self.autoStart()
             if auto_save:
@@ -328,7 +339,7 @@ class ZiGate(object):
             raise Exception('Not connected to zigate')
         self.connection.send(data)
 
-    def send_data(self, cmd, data="", wait_response=None):
+    def send_data(self, cmd, data="", wait_response=None, wait_status=True):
         '''
         send data through ZiGate
         '''
@@ -362,11 +373,13 @@ class ZiGate(object):
         LOGGER.debug('Encoded Msg to send {}'.format(hexlify(encoded_output)))
 
         self.send_to_transport(encoded_output)
-        status = self._wait_status(cmd)
-        if wait_response and status is not None:
-            r = self._wait_response(wait_response)
-            return r
-        return status
+        if wait_status:
+            status = self._wait_status(cmd)
+            if wait_response and status is not None:
+                r = self._wait_response(wait_response)
+                return r
+            return status
+        return False
 
     def decode_data(self, packet):
         '''
@@ -475,6 +488,12 @@ class ZiGate(object):
             LOGGER.debug('Device Announce')
             device = Device(response.data, self)
             self._set_device(device)
+        elif response.msg == 0x8501:  # OTA image block request
+            LOGGER.debug('Client is requesting ota image data')
+            self._ota_send_image_data(response)
+        elif response.msg == 0x8503:  # OTA Upgrade end request
+            LOGGER.debug('Client ended ota process')
+            self._ota_handle_upgrade_end_request(response)
 #         else:
 #             LOGGER.debug('Do nothing special for response {}'.format(response))
 
@@ -1220,6 +1239,211 @@ class ZiGate(object):
                            attribute_type, attribute_id, min_interval,
                            max_interval, timeout, change)
         self.send_data(0x0120, data, 0x8120)
+
+    def ota_load_image(self, path_to_file):
+        # Check that ota process is not active
+        if self._ota['active'] is True:
+            LOGGER.error('Cannot load image while OTA process is active.')
+            self.get_ota_status()
+            return
+
+        # Try reading file from user provided path
+        try:
+            with open(path_to_file, 'rb') as f:
+                ota_file_content = f.read()
+        except OSError as err:
+            LOGGER.error('{path}: {error}'.format(path=path_to_file, error=err))
+            return False
+
+        # Ensure that file has 69 bytes so it can contain header
+        if len(ota_file_content) < 69:
+            LOGGER.error('OTA file is too short')
+            return False
+
+        # Read header data
+        try:
+            header_data = list(struct.unpack('<LHHHHHLH32BLBQHH', ota_file_content[:69]))
+        except struct.error:
+            LOGGER.exception('Header is not correct')
+            return False
+
+        # Fix header str
+        # First replace null characters from header str to spaces
+        for i in range(8, 40):
+            if header_data[i] == 0x00:
+                header_data[i] = 0x20
+        # Reconstruct header data
+        header_data = header_data[0:8] + [header_data[8:40]] + header_data[40:]
+        # Convert header data to dict
+        header_headers = [
+            'file_id', 'header_version', 'header_length', 'header_fctl', 'manufacturer_code', 'image_type',
+            'image_version', 'stack_version', 'header_str', 'size', 'security_cred_version', 'upgrade_file_dest',
+            'min_hw_version', 'max_hw_version'
+        ]
+        header = dict(zip(header_headers, header_data))
+
+        # Check that size from header corresponds to file size
+        if header['size'] != len(ota_file_content):
+            LOGGER.error('Header size({header}) and file size({file}) does not match'.format(
+                header=header['size'], file=len(ota_file_content)
+            ))
+
+        destination_address_mode = 0x02
+        destination_address = 0x0000
+        data = struct.pack('!BHlHHHHHLH32BLBQHH', destination_address_mode, destination_address,
+                           *header_data[0:8], *header_data[8], *header_data[9:])
+        response = self.send_data(0x0500, data)
+
+        # If response is success place header and file content to variable
+        if response == 0:
+            LOGGER.info('OTA header loaded to server successfully.')
+            self._ota_reset_local_variables()
+            self._ota['image']['header'] = header
+            self._ota['image']['data'] = ota_file_content
+        else:
+            LOGGER.warning('Something wrong with ota file header.')
+
+    def _ota_send_image_data(self, request):
+        errors = False
+        # Ensure that image is loaded using ota_load_image
+        if self._ota['image']['header'] is None:
+            LOGGER.error('No header found. Load image using ota_load_image(\'path_to_ota_image\')')
+            errors = True
+        if self._ota['image']['data'] is None:
+            LOGGER.error('No data found. Load image using ota_load_image(\'path_to_ota_ota\')')
+            errors = True
+        if errors:
+            return
+
+        # Compare received image data to loaded image
+        errors = False
+        if request['image_version'] != self._ota['image']['header']['image_version']:
+            LOGGER.error('Image versions do not match. Make sure you have correct image loaded.')
+            errors = True
+        if request['image_type'] != self._ota['image']['header']['image_type']:
+            LOGGER.error('Image types do not match. Make sure you have correct image loaded.')
+            errors = True
+        if request['manufacturer_code'] != self._ota['image']['header']['manufacturer_code']:
+            LOGGER.error('Manufacturer codes do not match. Make sure you have correct image loaded.')
+            errors = True
+        if errors:
+            return
+
+        # Mark ota process started
+        if self._ota['starttime'] is False and self._ota['active'] is False:
+            self._ota['starttime'] = datetime.datetime.now()
+            self._ota['active'] = True
+            self._ota['transfered'] = 0
+            self._ota['addr'] = request['addr']
+
+        source_endpoint = 0x01
+        ota_status = 0x00  # Success. Using value 0x01 would make client to request data again later
+
+        # Get requested bytes from ota file
+        self._ota['transfered'] = request['file_offset']
+        end_position = request['file_offset']+request['max_data_size']
+        ota_data_to_send = self._ota['image']['data'][request['file_offset']:end_position]
+        data_size = len(ota_data_to_send)
+        ota_data_to_send = struct.unpack('<{}B'.format(data_size), ota_data_to_send)
+
+        # Giving user feedback of ota process
+        self.get_ota_status(debug=True)
+
+        data = struct.pack('!BHBBBBLLHHB{}B'.format(data_size), request['address_mode'], self.__addr(request['addr']),
+                           source_endpoint, request['endpoint'], request['sequence'], ota_status,
+                           request['file_offset'], self._ota['image']['header']['image_version'],
+                           self._ota['image']['header']['image_type'], self._ota['image']['header']['manufacturer_code'],
+                           data_size, *ota_data_to_send)
+        response = self.send_data(0x0502, data, wait_status=False)
+
+    def _ota_handle_upgrade_end_request(self, request):
+        if self._ota['active'] is True:
+            # Handle error statuses
+            if request['status'] == 0x00:
+                LOGGER.info('OTA image upload finnished successfully in {seconds}s.'.format(
+                    seconds=(datetime.datetime.now() - self._ota['starttime']).seconds))
+            elif request['status'] == 0x95:
+                LOGGER.warning('OTA aborted by client')
+            elif request['status'] == 0x96:
+                LOGGER.warning('OTA image upload successfully, but image verification failed.')
+            elif request['status'] == 0x99:
+                LOGGER.warning('OTA image uploaded successfully, but client needs more images for update.')
+            elif request['status'] != 0x00:
+                LOGGER.warning('Some unexpected OTA status {}'.format(request['status']))
+            # Reset local ota variables
+            self._ota_reset_local_variables()
+
+    def _ota_reset_local_variables(self):
+        self._ota = {
+            'image': {
+                'header': None,
+                'data': None,
+            },
+            'active': False,
+            'starttime': False,
+            'transfered': 0,
+            'addr': None
+        }
+
+    def get_ota_status(self, debug=False):
+        if self._ota['active']:
+            image_size = len(self._ota['image']['data'])
+            time_passed = (datetime.datetime.now() - self._ota['starttime']).seconds
+            try:
+                time_remaining = int((image_size/self._ota['transfered'])*time_passed) - time_passed
+            except ZeroDivisionError:
+                time_remaining = -1
+            message = 'OTA upgrade address {addr}: {sent:>{width}}/{total:>{width}} {percentage:.3%}'.format(
+                addr=self._ota['addr'], sent=self._ota['transfered'], total=image_size,
+                percentage=self._ota['transfered']/image_size, width=len(str(image_size)))
+            message += ' time elapsed: {passed}s Time remaining estimate: {remaining}s'.format(
+                passed=time_passed, remaining=time_remaining
+            )
+        else:
+            message = "OTA process is not active"
+        if debug:
+            LOGGER.debug(message)
+        else:
+            LOGGER.info(message)
+
+    def ota_image_notify(self, addr, destination_endpoint=0x01, payload_type=0):
+        """
+        Send image available notification to client. This will start ota process
+
+        :param addr:
+        :param destination_endpoint:
+        :param payload_type: 0, 1, 2, 3
+        :type payload_type: int
+        :return:
+        """
+        # Get required data from ota header
+        if self._ota['image']['header'] is None:
+            LOGGER.warning('Cannot read ota header. No ota file loaded.')
+            return False
+        image_version = self._ota['image']['header']['image_version']
+        image_type = self._ota['image']['header']['image_type']
+        manufacturer_code = self._ota['image']['header']['manufacturer_code']
+
+        source_endpoint = 0x01
+        destination_address_mode = 0x02  # uint16
+        destination_address = self.__addr(addr)
+        query_jitter = 100
+
+        if payload_type == 0:
+            image_version = 0xFFFFFFFF
+            image_type = 0xFFFF
+            manufacturer_code = 0xFFFF
+        elif payload_type == 1:
+            image_version = 0xFFFFFFFF
+            image_type = 0xFFFF
+        elif payload_type == 2:
+            image_version = 0xFFFFFFFF
+
+        data = struct.pack('!BHBBBLHHB', destination_address_mode, destination_address,
+                           source_endpoint, destination_endpoint, 0,
+                           image_version, image_type, manufacturer_code, query_jitter)
+        self.send_data(0x0505, data)
+
 
     def attribute_discovery_request(self, addr, endpoint, cluster,
                                     direction=0, manufacturer_specific=0,
