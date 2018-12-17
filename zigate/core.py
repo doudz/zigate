@@ -834,8 +834,10 @@ class ZiGate(object):
         convenient function to use addr instead of ieee
         '''
         if addr in self._devices:
-            ieee = self._devices[addr]['ieee']
-            return self.bind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
+            ieee = self._devices[addr].ieee
+            if ieee:
+                return self.bind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
+            LOGGER.error('Failed to bind, addr {}, IEEE is missing'.format(addr))
         LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
 
     def unbind(self, ieee, endpoint, cluster, dst_addr=None, dst_endpoint=1):
@@ -1596,19 +1598,19 @@ class Device(object):
             if endpoint['device'] in ACTUATORS:  # light
                 if 0x0006 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0006')
-                    self._zigate.bind(self.ieee, endpoint_id, 0x0006)
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
                     self._zigate.reporting_request(self.addr, endpoint_id,
                                                    0x0006, 0x0000, 0x10)  # TODO: auto select data type
                 if 0x0008 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0008')
-                    self._zigate.bind(self.ieee, endpoint_id, 0x0008)
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
                     self._zigate.reporting_request(self.addr, endpoint_id,
                                                    0x0008, 0x0000, 0x20)
                 # TODO : auto select data type
                 # TODO : check if the following is needed
                 if 0x0300 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0300')
-                    self._zigate.bind(self.ieee, endpoint_id, 0x0300)
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
                     for i in range(9):  # all color informations
                         self._zigate.reporting_request(self.addr, endpoint_id,
                                                        0x0300, i, 0x20)
