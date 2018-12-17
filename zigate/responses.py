@@ -784,7 +784,6 @@ class R8501(Response):
                      ('max_data_size', 'B'),
                      ('field_control', 'B')
                      ])
-    format = {'addr': '{:04x}'}
 
 
 @register_response
@@ -801,7 +800,6 @@ class R8503(Response):
                      ('manufacture_code', 'H'),
                      ('status', 'B')
                      ])
-    format = {'addr': '{:04x}'}
 
 
 @register_response
