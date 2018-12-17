@@ -1273,14 +1273,14 @@ class ZiGate(object):
             if header_data[i] == 0x00:
                 header_data[i] = 0x20
         # Reconstruct header data
-        header_data = header_data[0:8] + [header_data[8:40]] + header_data[40:]
+        header_data_compact = header_data[0:8] + [header_data[8:40]] + header_data[40:]
         # Convert header data to dict
         header_headers = [
             'file_id', 'header_version', 'header_length', 'header_fctl', 'manufacturer_code', 'image_type',
             'image_version', 'stack_version', 'header_str', 'size', 'security_cred_version', 'upgrade_file_dest',
             'min_hw_version', 'max_hw_version'
         ]
-        header = dict(zip(header_headers, header_data))
+        header = dict(zip(header_headers, header_data_compact))
 
         # Check that size from header corresponds to file size
         if header['size'] != len(ota_file_content):
@@ -1290,8 +1290,7 @@ class ZiGate(object):
 
         destination_address_mode = 0x02
         destination_address = 0x0000
-        data = struct.pack('!BHlHHHHHLH32BLBQHH', destination_address_mode, destination_address,
-                           *header_data[0:8], *header_data[8], *header_data[9:])
+        data = struct.pack('!BHlHHHHHLH32BLBQHH', destination_address_mode, destination_address, *header_data)
         response = self.send_data(0x0500, data)
 
         # If response is success place header and file content to variable
