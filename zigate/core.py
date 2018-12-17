@@ -1395,7 +1395,7 @@ class ZiGate(object):
                 time_remaining = -1
             message = 'OTA upgrade address {addr}: {sent:>{width}}/{total:>{width}} {percentage:.3%}'.format(
                 addr=self._ota['addr'], sent=self._ota['transfered'], total=image_size,
-                percentage=self._ota['transfered']/image_size, width=len(str(image_size)))
+                percentage=self._ota['transfered'] / image_size, width=len(str(image_size)))
             message += ' time elapsed: {passed}s Time remaining estimate: {remaining}s'.format(
                 passed=time_passed, remaining=time_remaining
             )
