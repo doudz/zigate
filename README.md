@@ -222,7 +222,7 @@ Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
 
 ### Flasher Usage
 
-```
+```bash
 usage: python -m zigate.flasher [-h] -p PORT [-w WRITE] [-s SAVE]
 
 optional arguments:
@@ -232,7 +232,7 @@ optional arguments:
   -w WRITE, --write WRITE
                         Firmware bin to flash onto the chip
   -s SAVE, --save SAVE  File to save the currently loaded firmware to
-
+```
 
 
 
