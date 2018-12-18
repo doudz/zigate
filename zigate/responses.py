@@ -755,6 +755,42 @@ class R8401(Response):
 
 
 @register_response
+class R8501(Response):
+    msg = 0x8501
+    type = 'OTA image block request'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('node_address', 'Q'),
+                     ('file_offset', 'L'),
+                     ('image_version', 'L'),
+                     ('image_type', 'H'),
+                     ('manufacturer_code', 'H'),
+                     ('block_request_delay', 'H'),
+                     ('max_data_size', 'B'),
+                     ('field_control', 'B')
+                     ])
+
+
+@register_response
+class R8503(Response):
+    msg = 0x8503
+    type = 'OTA upgrade end request'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('file_version', 'L'),
+                     ('image_type', 'H'),
+                     ('manufacture_code', 'H'),
+                     ('status', 'B')
+                     ])
+
+
+@register_response
 class R8701(Response):
     msg = 0x8701
     type = 'Route Discovery Confirmation'
