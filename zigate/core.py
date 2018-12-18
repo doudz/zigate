@@ -1376,7 +1376,8 @@ class ZiGate(object):
         data = struct.pack('!BHBBBBLLHHB{}B'.format(data_size), request['address_mode'], self.__addr(request['addr']),
                            source_endpoint, request['endpoint'], request['sequence'], ota_status,
                            request['file_offset'], self._ota['image']['header']['image_version'],
-                           self._ota['image']['header']['image_type'], self._ota['image']['header']['manufacturer_code'],
+                           self._ota['image']['header']['image_type'],
+                           self._ota['image']['header']['manufacturer_code'],
                            data_size, *ota_data_to_send)
         self.send_data(0x0502, data, wait_status=False)
 

@@ -172,7 +172,10 @@ class ReadFlashIDResponse(Response):
         self.manufacturer_id, self.device_id = struct.unpack('!BB', self.data)
 
     def __str__(self):
-        return 'ReadFlashIDResponse %d (ok=%s, manufacturer_id=0x%02x, device_id=0x%02x)' % (self.status, self.ok, self.manufacturer_id, self.device_id)
+        return 'ReadFlashIDResponse %d (ok=%s, manufacturer_id=0x%02x, device_id=0x%02x)' % (self.status,
+                                                                                             self.ok,
+                                                                                             self.manufacturer_id,
+                                                                                             self.device_id)
 
 
 @register(0x28)
