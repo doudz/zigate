@@ -295,7 +295,7 @@ def vibration_decode(value):
     '''
     if value == '' or value is None:
         return value
-    events = {0x0001: 'take',
+    events = {0x0001: 'touched',
               0x0002: 'tilt',
               0x0003: 'drop',
               }
