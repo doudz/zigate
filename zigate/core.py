@@ -1203,7 +1203,7 @@ class ZiGate(object):
         return self.send_data(0x00E0, data)
 
     def read_attribute_request(self, addr, endpoint, cluster, attribute,
-                               direction=0, manufacturer_specific=0, manufacturer_id=0):
+                               direction=0, manufacturer_code=0):
         '''
         Read Attribute request
         attribute can be a unique int or a list of int
@@ -1212,13 +1212,14 @@ class ZiGate(object):
         if not isinstance(attribute, list):
             attribute = [attribute]
         length = len(attribute)
+        manufacturer_specific = manufacturer_code != 0
         data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1, endpoint, cluster,
                            direction, manufacturer_specific,
-                           manufacturer_id, length, *attribute)
+                           manufacturer_code, length, *attribute)
         self.send_data(0x0100, data)
 
     def write_attribute_request(self, addr, endpoint, cluster, attributes,
-                                direction=0, manufacturer_specific=0, manufacturer_id=0):
+                                direction=0, manufacturer_code=0):
         '''
         Write Attribute request
         attribute could be a tuple of (attribute_id, attribute_type, data)
@@ -1234,14 +1235,15 @@ class ZiGate(object):
             fmt += 'HB' + data_type
             attributes_data += attribute_tuple
         length = len(attributes)
+        manufacturer_specific = manufacturer_code != 0
         data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1,
                            endpoint, cluster,
                            direction, manufacturer_specific,
-                           manufacturer_id, length, *attributes_data)
+                           manufacturer_code, length, *attributes_data)
         self.send_data(0x0110, data)
 
     def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type,
-                          direction=0, manufacturer_specific=0, manufacturer_id=0):
+                          direction=0, manufacturer_code=0):
         '''
         Configure reporting request
         for now support only one attribute
@@ -1258,9 +1260,10 @@ class ZiGate(object):
         max_interval = 0
         timeout = 0
         change = 0
+        manufacturer_specific = manufacturer_code != 0
         data = struct.pack('!BHBBHBBHBBBHHHHB', 2, addr, 1, endpoint, cluster,
                            direction, manufacturer_specific,
-                           manufacturer_id, length, attribute_direction,
+                           manufacturer_code, length, attribute_direction,
                            attribute_type, attribute_id, min_interval,
                            max_interval, timeout, change)
         self.send_data(0x0120, data, 0x8120)
@@ -1470,15 +1473,15 @@ class ZiGate(object):
         self.send_data(0x0505, data)
 
     def attribute_discovery_request(self, addr, endpoint, cluster,
-                                    direction=0, manufacturer_specific=0,
-                                    manufacturer_id=0):
+                                    direction=0, manufacturer_code=0):
         '''
         Attribute discovery request
         '''
         addr = self.__addr(addr)
+        manufacturer_specific = manufacturer_code != 0
         data = struct.pack('!BHBBHHBBHB', 2, addr, 1, endpoint, cluster,
                            0, direction, manufacturer_specific,
-                           manufacturer_id, 255)
+                           manufacturer_code, 255)
         self.send_data(0x0140, data)
 
     def available_actions(self, addr, endpoint=None):
