@@ -8,23 +8,9 @@
 import struct
 from collections import OrderedDict
 from binascii import hexlify
+from .const import DATA_TYPE
 
 RESPONSES = {}
-
-DATA_TYPE = {0x00: None,
-             0x10: '?',  # bool
-             0x18: 'b',
-             0x20: 'B',
-             0x21: 'H',
-             0x22: 'I',
-             0x28: 'b',
-             0x29: 'h',
-             0x2a: 'i',
-             0x30: 'b',
-             0x39: 'f',
-             0x41: 's',
-             0x42: 's',
-             }
 
 
 def register_response(o):
@@ -566,6 +552,8 @@ class R8060(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
                      ])
 
 
@@ -764,6 +752,42 @@ class R8401(Response):
 
     def cleaned_data(self):
         return self._filter_data(['addr', 'zone_status', 'zone_id'])
+
+
+@register_response
+class R8501(Response):
+    msg = 0x8501
+    type = 'OTA image block request'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('node_address', 'Q'),
+                     ('file_offset', 'L'),
+                     ('image_version', 'L'),
+                     ('image_type', 'H'),
+                     ('manufacturer_code', 'H'),
+                     ('block_request_delay', 'H'),
+                     ('max_data_size', 'B'),
+                     ('field_control', 'B')
+                     ])
+
+
+@register_response
+class R8503(Response):
+    msg = 0x8503
+    type = 'OTA upgrade end request'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('file_version', 'L'),
+                     ('image_type', 'H'),
+                     ('manufacture_code', 'H'),
+                     ('status', 'B')
+                     ])
 
 
 @register_response

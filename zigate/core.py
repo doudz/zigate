@@ -23,7 +23,7 @@ from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
                     ZIGATE_DEVICE_UPDATED, ZIGATE_DEVICE_RENAMED,
                     ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH,
-                    ZIGATE_RESPONSE_RECEIVED)
+                    ZIGATE_RESPONSE_RECEIVED, DATA_TYPE)
 
 from .clusters import (CLUSTERS, Cluster, get_cluster)
 import functools
@@ -142,6 +142,8 @@ class ZiGate(object):
         self._event_thread.start()
 
         dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
+
+        self._ota_reset_local_variables()
 
         if auto_start:
             self.autoStart()
@@ -328,7 +330,7 @@ class ZiGate(object):
             raise Exception('Not connected to zigate')
         self.connection.send(data)
 
-    def send_data(self, cmd, data="", wait_response=None):
+    def send_data(self, cmd, data="", wait_response=None, wait_status=True):
         '''
         send data through ZiGate
         '''
@@ -362,19 +364,25 @@ class ZiGate(object):
         LOGGER.debug('Encoded Msg to send {}'.format(hexlify(encoded_output)))
 
         self.send_to_transport(encoded_output)
-        status = self._wait_status(cmd)
-        if wait_response and status is not None:
-            r = self._wait_response(wait_response)
-            return r
-        return status
+        if wait_status:
+            status = self._wait_status(cmd)
+            if wait_response and status is not None:
+                r = self._wait_response(wait_response)
+                return r
+            return status
+        return False
 
     def decode_data(self, packet):
         '''
         Decode raw packet message
         '''
-        decoded = self.zigate_decode(packet[1:-1])
-        msg_type, length, checksum, value, rssi = \
-            struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
+        try:
+            decoded = self.zigate_decode(packet[1:-1])
+            msg_type, length, checksum, value, rssi = \
+                struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
+        except Exception:
+            LOGGER.error('Failed to decode packet : {}'.format(hexlify(packet)))
+            return
         if length != len(value) + 1:  # add rssi length
             LOGGER.error('Bad length {} != {} : {}'.format(length,
                                                            len(value) + 1,
@@ -410,6 +418,8 @@ class ZiGate(object):
                 self._tag_missing(addr)
 #                 self._remove_device(addr)
             for d in response['devices']:
+                if d['ieee'] == '0000000000000000':
+                    continue
                 device = Device(dict(d), self)
                 self._set_device(device)
         elif response.msg == 0x8042:  # node descriptor
@@ -426,6 +436,8 @@ class ZiGate(object):
                 ep.update(response.cleaned_data())
                 ep['in_clusters'] = response['in_clusters']
                 ep['out_clusters'] = response['out_clusters']
+                typ = d.type
+                LOGGER.debug('Found type {}'.format(typ))
                 d._create_actions()
                 d._bind_report(endpoint)
                 # ask for various general information
@@ -446,8 +458,11 @@ class ZiGate(object):
                 self.simple_descriptor_request(addr, endpoint['endpoint'])
         elif response.msg == 0x8048:  # leave
             device = self.get_device_from_ieee(response['ieee'])
-            if device:
-                self._remove_device(device.addr)
+            if response['rejoin_status'] == 1:
+                device.missing = True
+            else:
+                if device:
+                    self._remove_device(device.addr)
         elif response.msg in (0x8100, 0x8102, 0x8110, 0x8401):  # attribute report or IAS Zone status change
             if response['status'] != 0:
                 LOGGER.debug('Receive Bad status')
@@ -475,6 +490,12 @@ class ZiGate(object):
             LOGGER.debug('Device Announce')
             device = Device(response.data, self)
             self._set_device(device)
+        elif response.msg == 0x8501:  # OTA image block request
+            LOGGER.debug('Client is requesting ota image data')
+            self._ota_send_image_data(response)
+        elif response.msg == 0x8503:  # OTA Upgrade end request
+            LOGGER.debug('Client ended ota process')
+            self._ota_handle_upgrade_end_request(response)
 #         else:
 #             LOGGER.debug('Do nothing special for response {}'.format(response))
 
@@ -823,8 +844,10 @@ class ZiGate(object):
         convenient function to use addr instead of ieee
         '''
         if addr in self._devices:
-            ieee = self._devices[addr]['ieee']
-            return self.bind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
+            ieee = self._devices[addr].ieee
+            if ieee:
+                return self.bind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
+            LOGGER.error('Failed to bind, addr {}, IEEE is missing'.format(addr))
         LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
 
     def unbind(self, ieee, endpoint, cluster, dst_addr=None, dst_endpoint=1):
@@ -921,6 +944,20 @@ class ZiGate(object):
         '''
         self.node_descriptor_request(addr)
 #         self.power_descriptor_request(addr)
+        self.active_endpoint_request(addr)
+
+    def discover_device(self, addr):
+        '''
+        starts discovery process
+        '''
+        # discovery steps
+        # step 1 active endpoint request
+        # step 2 simple description request
+        # step 3 get type (cluster 0x0000, attribute 0x0005)
+        # step 4 if unknow type => step 5 attribute discovery else step 6
+        # step 5 attribute discovery request then step 7
+        # step 6 load config template
+        # step 7 create actions, bind and report if needed
         self.active_endpoint_request(addr)
 
     def _generate_addr(self):
@@ -1180,20 +1217,27 @@ class ZiGate(object):
                            manufacturer_id, length, *attribute)
         self.send_data(0x0100, data)
 
-    def write_attribute_request(self, addr, endpoint, cluster, attribute,
+    def write_attribute_request(self, addr, endpoint, cluster, attributes,
                                 direction=0, manufacturer_specific=0, manufacturer_id=0):
         '''
         Write Attribute request
-        attribute can be a unique int or a list of int
+        attribute could be a tuple of (attribute_id, attribute_type, data)
+        or a list of tuple (attribute_id, attribute_type, data)
         '''
         addr = self.__addr(addr)
-        if not isinstance(attribute, list):
-            attribute = [attribute]
-        length = len(attribute)
-        data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1,
+        fmt = ''
+        if not isinstance(attributes, list):
+            attributes = [attributes]
+        attributes_data = []
+        for attribute_tuple in attributes:
+            data_type = DATA_TYPE[attribute_tuple[1]]
+            fmt += 'HB' + data_type
+            attributes_data += attribute_tuple
+        length = len(attributes)
+        data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1,
                            endpoint, cluster,
                            direction, manufacturer_specific,
-                           manufacturer_id, length, *attribute)
+                           manufacturer_id, length, *attributes_data)
         self.send_data(0x0110, data)
 
     def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type,
@@ -1220,6 +1264,210 @@ class ZiGate(object):
                            attribute_type, attribute_id, min_interval,
                            max_interval, timeout, change)
         self.send_data(0x0120, data, 0x8120)
+
+    def ota_load_image(self, path_to_file):
+        # Check that ota process is not active
+        if self._ota['active'] is True:
+            LOGGER.error('Cannot load image while OTA process is active.')
+            self.get_ota_status()
+            return
+
+        # Try reading file from user provided path
+        try:
+            with open(path_to_file, 'rb') as f:
+                ota_file_content = f.read()
+        except OSError as err:
+            LOGGER.error('{path}: {error}'.format(path=path_to_file, error=err))
+            return False
+
+        # Ensure that file has 69 bytes so it can contain header
+        if len(ota_file_content) < 69:
+            LOGGER.error('OTA file is too short')
+            return False
+
+        # Read header data
+        try:
+            header_data = list(struct.unpack('<LHHHHHLH32BLBQHH', ota_file_content[:69]))
+        except struct.error:
+            LOGGER.exception('Header is not correct')
+            return False
+
+        # Fix header str
+        # First replace null characters from header str to spaces
+        for i in range(8, 40):
+            if header_data[i] == 0x00:
+                header_data[i] = 0x20
+        # Reconstruct header data
+        header_data_compact = header_data[0:8] + [header_data[8:40]] + header_data[40:]
+        # Convert header data to dict
+        header_headers = [
+            'file_id', 'header_version', 'header_length', 'header_fctl', 'manufacturer_code', 'image_type',
+            'image_version', 'stack_version', 'header_str', 'size', 'security_cred_version', 'upgrade_file_dest',
+            'min_hw_version', 'max_hw_version'
+        ]
+        header = dict(zip(header_headers, header_data_compact))
+
+        # Check that size from header corresponds to file size
+        if header['size'] != len(ota_file_content):
+            LOGGER.error('Header size({header}) and file size({file}) does not match'.format(
+                header=header['size'], file=len(ota_file_content)
+            ))
+
+        destination_address_mode = 0x02
+        destination_address = 0x0000
+        data = struct.pack('!BHlHHHHHLH32BLBQHH', destination_address_mode, destination_address, *header_data)
+        response = self.send_data(0x0500, data)
+
+        # If response is success place header and file content to variable
+        if response == 0:
+            LOGGER.info('OTA header loaded to server successfully.')
+            self._ota_reset_local_variables()
+            self._ota['image']['header'] = header
+            self._ota['image']['data'] = ota_file_content
+        else:
+            LOGGER.warning('Something wrong with ota file header.')
+
+    def _ota_send_image_data(self, request):
+        errors = False
+        # Ensure that image is loaded using ota_load_image
+        if self._ota['image']['header'] is None:
+            LOGGER.error('No header found. Load image using ota_load_image(\'path_to_ota_image\')')
+            errors = True
+        if self._ota['image']['data'] is None:
+            LOGGER.error('No data found. Load image using ota_load_image(\'path_to_ota_ota\')')
+            errors = True
+        if errors:
+            return
+
+        # Compare received image data to loaded image
+        errors = False
+        if request['image_version'] != self._ota['image']['header']['image_version']:
+            LOGGER.error('Image versions do not match. Make sure you have correct image loaded.')
+            errors = True
+        if request['image_type'] != self._ota['image']['header']['image_type']:
+            LOGGER.error('Image types do not match. Make sure you have correct image loaded.')
+            errors = True
+        if request['manufacturer_code'] != self._ota['image']['header']['manufacturer_code']:
+            LOGGER.error('Manufacturer codes do not match. Make sure you have correct image loaded.')
+            errors = True
+        if errors:
+            return
+
+        # Mark ota process started
+        if self._ota['starttime'] is False and self._ota['active'] is False:
+            self._ota['starttime'] = datetime.datetime.now()
+            self._ota['active'] = True
+            self._ota['transfered'] = 0
+            self._ota['addr'] = request['addr']
+
+        source_endpoint = 0x01
+        ota_status = 0x00  # Success. Using value 0x01 would make client to request data again later
+
+        # Get requested bytes from ota file
+        self._ota['transfered'] = request['file_offset']
+        end_position = request['file_offset'] + request['max_data_size']
+        ota_data_to_send = self._ota['image']['data'][request['file_offset']:end_position]
+        data_size = len(ota_data_to_send)
+        ota_data_to_send = struct.unpack('<{}B'.format(data_size), ota_data_to_send)
+
+        # Giving user feedback of ota process
+        self.get_ota_status(debug=True)
+
+        data = struct.pack('!BHBBBBLLHHB{}B'.format(data_size), request['address_mode'], self.__addr(request['addr']),
+                           source_endpoint, request['endpoint'], request['sequence'], ota_status,
+                           request['file_offset'], self._ota['image']['header']['image_version'],
+                           self._ota['image']['header']['image_type'],
+                           self._ota['image']['header']['manufacturer_code'],
+                           data_size, *ota_data_to_send)
+        self.send_data(0x0502, data, wait_status=False)
+
+    def _ota_handle_upgrade_end_request(self, request):
+        if self._ota['active'] is True:
+            # Handle error statuses
+            if request['status'] == 0x00:
+                LOGGER.info('OTA image upload finnished successfully in {seconds}s.'.format(
+                    seconds=(datetime.datetime.now() - self._ota['starttime']).seconds))
+            elif request['status'] == 0x95:
+                LOGGER.warning('OTA aborted by client')
+            elif request['status'] == 0x96:
+                LOGGER.warning('OTA image upload successfully, but image verification failed.')
+            elif request['status'] == 0x99:
+                LOGGER.warning('OTA image uploaded successfully, but client needs more images for update.')
+            elif request['status'] != 0x00:
+                LOGGER.warning('Some unexpected OTA status {}'.format(request['status']))
+            # Reset local ota variables
+            self._ota_reset_local_variables()
+
+    def _ota_reset_local_variables(self):
+        self._ota = {
+            'image': {
+                'header': None,
+                'data': None,
+            },
+            'active': False,
+            'starttime': False,
+            'transfered': 0,
+            'addr': None
+        }
+
+    def get_ota_status(self, debug=False):
+        if self._ota['active']:
+            image_size = len(self._ota['image']['data'])
+            time_passed = (datetime.datetime.now() - self._ota['starttime']).seconds
+            try:
+                time_remaining = int((image_size / self._ota['transfered']) * time_passed) - time_passed
+            except ZeroDivisionError:
+                time_remaining = -1
+            message = 'OTA upgrade address {addr}: {sent:>{width}}/{total:>{width}} {percentage:.3%}'.format(
+                addr=self._ota['addr'], sent=self._ota['transfered'], total=image_size,
+                percentage=self._ota['transfered'] / image_size, width=len(str(image_size)))
+            message += ' time elapsed: {passed}s Time remaining estimate: {remaining}s'.format(
+                passed=time_passed, remaining=time_remaining
+            )
+        else:
+            message = "OTA process is not active"
+        if debug:
+            LOGGER.debug(message)
+        else:
+            LOGGER.info(message)
+
+    def ota_image_notify(self, addr, destination_endpoint=0x01, payload_type=0):
+        """
+        Send image available notification to client. This will start ota process
+
+        :param addr:
+        :param destination_endpoint:
+        :param payload_type: 0, 1, 2, 3
+        :type payload_type: int
+        :return:
+        """
+        # Get required data from ota header
+        if self._ota['image']['header'] is None:
+            LOGGER.warning('Cannot read ota header. No ota file loaded.')
+            return False
+        image_version = self._ota['image']['header']['image_version']
+        image_type = self._ota['image']['header']['image_type']
+        manufacturer_code = self._ota['image']['header']['manufacturer_code']
+
+        source_endpoint = 0x01
+        destination_address_mode = 0x02  # uint16
+        destination_address = self.__addr(addr)
+        query_jitter = 100
+
+        if payload_type == 0:
+            image_version = 0xFFFFFFFF
+            image_type = 0xFFFF
+            manufacturer_code = 0xFFFF
+        elif payload_type == 1:
+            image_version = 0xFFFFFFFF
+            image_type = 0xFFFF
+        elif payload_type == 2:
+            image_version = 0xFFFFFFFF
+
+        data = struct.pack('!BHBBBLHHB', destination_address_mode, destination_address,
+                           source_endpoint, destination_endpoint, 0,
+                           image_version, image_type, manufacturer_code, query_jitter)
+        self.send_data(0x0505, data)
 
     def attribute_discovery_request(self, addr, endpoint, cluster,
                                     direction=0, manufacturer_specific=0,
@@ -1564,19 +1812,19 @@ class Device(object):
             if endpoint['device'] in ACTUATORS:  # light
                 if 0x0006 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0006')
-                    self._zigate.bind(self.ieee, endpoint_id, 0x0006)
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
                     self._zigate.reporting_request(self.addr, endpoint_id,
                                                    0x0006, 0x0000, 0x10)  # TODO: auto select data type
                 if 0x0008 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0008')
-                    self._zigate.bind(self.ieee, endpoint_id, 0x0008)
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
                     self._zigate.reporting_request(self.addr, endpoint_id,
                                                    0x0008, 0x0000, 0x20)
                 # TODO : auto select data type
                 # TODO : check if the following is needed
                 if 0x0300 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0300')
-                    self._zigate.bind(self.ieee, endpoint_id, 0x0300)
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
                     for i in range(9):  # all color informations
                         self._zigate.reporting_request(self.addr, endpoint_id,
                                                        0x0300, i, 0x20)
@@ -1627,11 +1875,9 @@ class Device(object):
         return r
 
     def __str__(self):
-        name = ''
-        typ = self.get_property('type')
-        if typ:
-            name = typ['value']
-        return 'Device {} ({}) {}'.format(self.ieee, self.addr, name)
+        name = self.get_property_value('type', '')
+        manufacturer = self.get_property_value('manufacturer', 'Device')
+        return '{} {} ({}) {}'.format(manufacturer, name, self.addr, self.ieee)
 
     def __repr__(self):
         return self.__str__()
@@ -1681,6 +1927,29 @@ class Device(object):
     @property
     def rssi_percent(self):
         return round(100 * self.rssi / 255)
+
+    @property
+    def type(self):
+        typ = self.get_value('type')
+        if typ is None:
+            for endpoint in self.endpoints:
+                if 0 in self.endpoints[endpoint]['in_clusters']:
+                    self._zigate.read_attribute_request(self.addr,
+                                                        endpoint,
+                                                        0x0000,
+                                                        0x0005
+                                                        )
+                    break
+            # wait for type
+            t1 = time()
+            while self.get_value('type') is None:
+                time.sleep(0.1)
+                t2 = time()
+                if t2 - t1 > 3:
+                    LOGGER.warning('No response waiting for type')
+                    return
+            typ = self.get_value('type')
+        return typ
 
     def refresh_device(self):
         self._zigate.refresh_device(self.addr)

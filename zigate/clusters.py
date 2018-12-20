@@ -295,7 +295,7 @@ def vibration_decode(value):
     '''
     if value == '' or value is None:
         return value
-    events = {0x0001: 'take',
+    events = {0x0001: 'touched',
               0x0002: 'tilt',
               0x0003: 'drop',
               }
@@ -315,8 +315,6 @@ class C0101(Cluster):
                                'expire': 2, 'expire_value': ''},
                       0x0503: {'name': 'rotation', 'value': 'value',
                                'expire': 2, 'expire_value': ''},
-                      0x0505: {'name': 'unknown', 'value': 'value',
-                               'expire': 2, 'expire_value': ''}
                       }
 
 
@@ -370,6 +368,13 @@ class C0402(Cluster):
                                'unit': '°C'},
                       }
 
+    def update(self, data):
+        added, attribute = Cluster.update(self, data)
+        # ignore erroneous value
+        if abs(attribute['value']) > 80:
+            return
+        return added, attribute
+
 
 @register_cluster
 class C0403(Cluster):
@@ -389,6 +394,13 @@ class C0405(Cluster):
     attributes_def = {0x0000: {'name': 'humidity', 'value': 'value/100.',
                                'unit': '%'},
                       }
+
+    def update(self, data):
+        added, attribute = Cluster.update(self, data)
+        # ignore erroneous value
+        if abs(attribute['value']) > 100:
+            return
+        return added, attribute
 
 
 @register_cluster

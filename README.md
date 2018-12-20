@@ -4,6 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/zigate.svg)](https://pypi.python.org/pypi/zigate)
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Percentage of issues still open")
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/sebramage)
 
 Python library for [ZiGate](http://zigate.fr/).
 This library manage communication between python and zigate key, both USB and WiFi key are supported.
@@ -93,8 +94,24 @@ True
  # call action on devices
  z.action_onoff('b8ce', 1, zigate.ON)
 
- or from devices
+ # or from devices
  z.devices[1].action_onoff(zigate.ON)
+
+ # OTA process
+ # Load image and send headers to ZiGate
+ z.ota_load_image('path/to/ota/image_file.ota')
+ # Tell client that image is available
+ z.ota_image_notify('addr')
+ # It will take client usually couple seconds to query headers
+ # from server. Upgrade process start automatically if correct
+ # headers are loaded to ZiGate. If you have logging level debug
+ # enabled you will get automatically progress updates.
+ # Manually check ota status - logging level INFO
+ z.get_ota_status()
+ # Whole upgrade process time depends on device and ota image size
+ # Upgrading ikea bulb took ~15 minutes
+ # Upgrading ikea remote took ~45 minutes
+
 ```
 
 ### Callback

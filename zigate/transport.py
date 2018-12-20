@@ -28,13 +28,35 @@ class ZIGATE_CANNOT_CONNECT(Exception):
     pass
 
 
-class ThreadSerialConnection(object):
-    def __init__(self, device, port=None):
+class BaseTransport(object):
+    def __init__(self):
         self._buffer = b''
-        self._port = port
-        self.device = device
         self.queue = queue.Queue()
         self.received = queue.Queue()
+
+    def read_data(self, data):
+        '''
+        Read ZiGate output and split messages
+        '''
+        self._buffer += data
+#         print(self._buffer)
+        endpos = self._buffer.find(b'\x03')
+        while endpos != -1:
+            startpos = self._buffer.rfind(b'\x01', 0, endpos)
+            if startpos != -1 and startpos < endpos:
+                raw_message = self._buffer[startpos:endpos + 1]
+                self.received.put(raw_message)
+            else:
+                LOGGER.error('Malformed packet received, ignore it')
+            self._buffer = self._buffer[endpos + 1:]
+            endpos = self._buffer.find(b'\x03')
+
+
+class ThreadSerialConnection(BaseTransport):
+    def __init__(self, device, port=None):
+        BaseTransport.__init__(self)
+        self._port = port
+        self.device = device
         self._running = True
         self.reconnect()
         self.thread = threading.Thread(target=self.listen,
@@ -63,20 +85,6 @@ class ThreadSerialConnection(object):
                 if delay < 60:
                     delay *= 2
         return self.serial
-
-    def read_data(self, data):
-        '''
-        Read ZiGate output and split messages
-        '''
-        self._buffer += data
-#         print(self._buffer)
-        endpos = self._buffer.find(b'\x03')
-        while endpos != -1:
-            startpos = self._buffer.find(b'\x01')
-            raw_message = self._buffer[startpos:endpos + 1]
-            self.received.put(raw_message)
-            self._buffer = self._buffer[endpos + 1:]
-            endpos = self._buffer.find(b'\x03')
 
     def listen(self):
         while self._running:
