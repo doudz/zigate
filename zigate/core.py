@@ -135,6 +135,7 @@ class ZiGate(object):
         self._addr = None
         self._ieee = None
         self._started = False
+        self._no_response_count = 0
 
         self._event_thread = threading.Thread(target=self._event_loop,
                                               name='ZiGate-Event Loop')
@@ -612,8 +613,10 @@ class ZiGate(object):
             sleep(0.01)
             t2 = time()
             if t2 - t1 > 3:  # no response timeout
-                LOGGER.warning('No response after command 0x{:04x}'.format(cmd))
+                self._no_response_count += 1
+                LOGGER.warning('No response after command 0x{:04x} ({})'.format(cmd, self._no_response_count))
                 return
+        self._no_response_count = 0
         LOGGER.debug('STATUS code to command 0x{:04x}:{}'.format(cmd, self._last_status.get(cmd)))
         return self._last_status.get(cmd)
 
