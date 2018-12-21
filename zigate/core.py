@@ -1154,7 +1154,7 @@ class ZiGate(object):
         '''
         addr = self.__addr(addr)
         group = self.__addr(group)
-        data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group)
+        data = struct.pack('!BHBBH', 2, addr, 1, endpoint, group)
         return self.send_data(0x00A6, data)
 
     def copy_scene(self, addr, endpoint, from_group, from_scene, to_group, to_scene):
