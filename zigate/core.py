@@ -470,6 +470,12 @@ class ZiGate(object):
             else:
                 if device:
                     self._remove_device(device.addr)
+        elif response.msg == 0x8062:  # Get group membership response
+            if len(response['groups']) > 0:
+                for group_addr in response['groups'][0].values():
+                    if group_addr not in self._groups:
+                        self._groups[group_addr] = set()
+                    self._groups[group_addr].add((response['addr'], response['endpoint']))
         elif response.msg in (0x8100, 0x8102, 0x8110, 0x8401):  # attribute report or IAS Zone status change
             if response['status'] != 0:
                 LOGGER.debug('Receive Bad status')
