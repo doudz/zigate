@@ -76,6 +76,10 @@ class Response(object):
             if isinstance(v, OrderedDict):
                 keys.remove(k)
                 rest = len(msg_data) - struct.calcsize(fmt)
+                # If there is no data for rest of keys that means there is no data for this key
+                if rest == 0:
+                    self.data[k] = []
+                    continue
                 subfmt = '!' + ''.join(v.values())
                 count = rest // struct.calcsize(subfmt)
                 submsg_data = msg_data[-rest:]
