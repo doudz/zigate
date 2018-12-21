@@ -13,7 +13,7 @@ TEMPLATES = {
                         {
                             "attributes": [
                                 {
-                                    "attribute": 65281,
+                                    "attribute": 0xff01,
                                     "name": "battery",
                                     "unit": "V",
                                 }
@@ -30,20 +30,20 @@ TEMPLATES = {
                             "cluster": 6
                         }
                     ],
-                    "device": 24321,
+                    "device": 0x5f01,
                     "endpoint": 1,
                     "in_clusters": [
-                        0,
-                        3,
-                        65535,
-                        6
+                        0x0000,
+                        0x0003,
+                        0x0006,
+                        0xffff
                     ],
                     "out_clusters": [
-                        0,
-                        4,
-                        65535
+                        0x0000,
+                        0x0004,
+                        0xffff
                     ],
-                    "profile": 260
+                    "profile": 0x0104
                 }
             ],
             "info": {
