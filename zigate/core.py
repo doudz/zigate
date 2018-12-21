@@ -118,7 +118,8 @@ class ZiGate(object):
 
     def __init__(self, port='auto', path='~/.zigate.json',
                  auto_start=True,
-                 auto_save=True):
+                 auto_save=True,
+                 channel=None):
         self._devices = {}
         self._groups = {}
         self._scenes = {}
@@ -135,6 +136,7 @@ class ZiGate(object):
         self._addr = None
         self._ieee = None
         self._started = False
+        self._no_response_count = 0
 
         self._event_thread = threading.Thread(target=self._event_loop,
                                               name='ZiGate-Event Loop')
@@ -146,7 +148,7 @@ class ZiGate(object):
         self._ota_reset_local_variables()
 
         if auto_start:
-            self.autoStart()
+            self.autoStart(channel)
             if auto_save:
                 self.start_auto_save()
 
@@ -245,7 +247,7 @@ class ZiGate(object):
     def __del__(self):
         self.close()
 
-    def autoStart(self):
+    def autoStart(self, channel=None):
         '''
         Auto Start sequence:
             - Load persistent file
@@ -260,7 +262,7 @@ class ZiGate(object):
         self.load_state()
         self.setup_connection()
         version = self.get_version()
-        self.set_channel()
+        self.set_channel(channel)
         self.set_type(TYPE_COORDINATOR)
         LOGGER.debug('Check network state')
         self.start_network()
@@ -394,7 +396,12 @@ class ZiGate(object):
                                                         computed_checksum))
             return
         LOGGER.debug('Received response 0x{:04x}: {}'.format(msg_type, hexlify(value)))
-        response = RESPONSES.get(msg_type, Response)(value, rssi)
+        try:
+            response = RESPONSES.get(msg_type, Response)(value, rssi)
+        except Exception:
+            LOGGER.error('Error decoding response 0x{:04x}: {}'.format(msg_type, hexlify(value)))
+            LOGGER.error(traceback.format_exc())
+            return
         if msg_type != response.msg:
             LOGGER.warning('Unknown response 0x{:04x}'.format(msg_type))
         LOGGER.debug(response)
@@ -612,8 +619,10 @@ class ZiGate(object):
             sleep(0.01)
             t2 = time()
             if t2 - t1 > 3:  # no response timeout
-                LOGGER.warning('No response after command 0x{:04x}'.format(cmd))
+                self._no_response_count += 1
+                LOGGER.warning('No response after command 0x{:04x} ({})'.format(cmd, self._no_response_count))
                 return
+        self._no_response_count = 0
         LOGGER.debug('STATUS code to command 0x{:04x}:{}'.format(cmd, self._last_status.get(cmd)))
         return self._last_status.get(cmd)
 
@@ -1711,11 +1720,13 @@ class ZiGate(object):
 class ZiGateWiFi(ZiGate):
     def __init__(self, host, port=None, path='~/.zigate.json',
                  auto_start=True,
-                 auto_save=True):
+                 auto_save=True,
+                 channel=None):
         self._host = host
         ZiGate.__init__(self, port=port, path=path,
                         auto_start=auto_start,
-                        auto_save=auto_save
+                        auto_save=auto_save,
+                        channel=channel
                         )
 
     def setup_connection(self):

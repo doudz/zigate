@@ -38,6 +38,7 @@ class BaseTransport(object):
         '''
         Read ZiGate output and split messages
         '''
+        LOGGER.debug('Raw packet received, {}'.format(data))
         self._buffer += data
 #         print(self._buffer)
         endpos = self._buffer.find(b'\x03')
