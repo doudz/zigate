@@ -313,8 +313,8 @@ class C0101(Cluster):
                       0x0002: {'name': 'enabled', 'value': 'bool(value)'},
                       0x0055: {'name': 'movement', 'value': 'vibration_decode(value)',
                                'expire': 2, 'expire_value': ''},
-                      0x0503: {'name': 'rotation', 'value': 'value',
-                               'expire': 2, 'expire_value': 0},
+                      0x0503: {'name': 'rotation', 'value': 'round(value, 2)',
+                               'unit': '°', 'expire': 2, 'expire_value': 0},
                       }
 
 
