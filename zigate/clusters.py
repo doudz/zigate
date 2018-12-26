@@ -93,17 +93,23 @@ class Cluster(object):
                 if k not in attr_def:
                     del attribute[k]
             attribute.update(attr_def)
-            try:
-                attribute['value'] = eval(attribute['value'],
-                                          globals(),
-                                          {'value': attribute['data'],
-                                           'self': self})
-            except Exception:
-                LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
-                                                                     attribute['data']
-                                                                     ))
-                LOGGER.error(traceback.format_exc())
+            if attribute.get('data') is None:
+                attribute_type = attribute.get('type')
                 attribute['value'] = None
+                if attribute_type:
+                    attribute['value'] = attribute_type()
+            else:
+                try:
+                    attribute['value'] = eval(attribute['value'],
+                                              globals(),
+                                              {'value': attribute['data'],
+                                               'self': self})
+                except Exception:
+                    LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
+                                                                         attribute['data']
+                                                                         ))
+                    LOGGER.error(traceback.format_exc())
+                    attribute['value'] = None
         return (added, attribute)
 
     def __str__(self):
@@ -167,7 +173,7 @@ class C0000(Cluster):
                       }
 
     def update(self, data):
-        if data['attribute'] == 0xff01 and not data['data'].startswith('0121'):
+        if data['attribute'] == 0xff01 and not data.get('data', '').startswith('0121'):
             return
         return Cluster.update(self, data)
 
@@ -368,13 +374,6 @@ class C0402(Cluster):
                                'unit': '°C', 'type': float},
                       }
 
-    def update(self, data):
-        added, attribute = Cluster.update(self, data)
-        # ignore erroneous value
-        if abs(attribute['value']) > 80:
-            return
-        return added, attribute
-
 
 @register_cluster
 class C0403(Cluster):
@@ -394,13 +393,6 @@ class C0405(Cluster):
     attributes_def = {0x0000: {'name': 'humidity', 'value': 'value/100.',
                                'unit': '%', 'type': float},
                       }
-
-    def update(self, data):
-        added, attribute = Cluster.update(self, data)
-        # ignore erroneous value
-        if abs(attribute['value']) > 100:
-            return
-        return added, attribute
 
 
 @register_cluster

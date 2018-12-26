@@ -4,6 +4,7 @@
 # For the full copyright and license information, please view the LICENSE
 # file that was distributed with this source code.
 #
+import os
 
 # event signal
 ZIGATE_DEVICE_ADDED = 'ZIGATE_DEVICE_ADDED'
@@ -58,3 +59,5 @@ DATA_TYPE = {0x00: None,
              0x41: 's',
              0x42: 's',
              }
+
+BASE_PATH = os.path.dirname(__file__)

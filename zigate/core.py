@@ -23,7 +23,7 @@ from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
                     ZIGATE_DEVICE_UPDATED, ZIGATE_DEVICE_RENAMED,
                     ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH,
-                    ZIGATE_RESPONSE_RECEIVED, DATA_TYPE)
+                    ZIGATE_RESPONSE_RECEIVED, DATA_TYPE, BASE_PATH)
 
 from .clusters import (CLUSTERS, Cluster, get_cluster)
 import functools
@@ -1988,7 +1988,7 @@ class Device(object):
             # wait for type
             t1 = time()
             while self.get_value('type') is None:
-                time.sleep(0.1)
+                sleep(0.1)
                 t2 = time()
                 if t2 - t1 > 3:
                     LOGGER.warning('No response waiting for type')
@@ -2282,3 +2282,26 @@ class Device(object):
                                           attribute['attribute'])
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
+
+    def load_template(self):
+        typ = self.type
+        if not typ:
+            LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
+            return
+        path = os.path.join(BASE_PATH, 'templates', typ+'.json')
+        success = False
+        if os.path.exists(path):
+            try:
+                with open(path) as fp:
+                    template = json.load(fp)
+                    device = Device.from_json(template)
+                    self.update(device)
+#                     print(device)
+                    success = True
+            except Exception:
+                LOGGER.error('Failed to load template for {}'.format(typ))
+                LOGGER.error(traceback.format_exc())
+        else:
+            LOGGER.warning('No template found for {}'.format(typ))
+        return success
+
