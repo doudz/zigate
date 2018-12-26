@@ -16,7 +16,7 @@ class TestCore(unittest.TestCase):
         data = json.dumps(device, cls=core.DeviceEncoder)
         self.assertEqual(data,
                          ('{"addr": "1234", "info": {"addr": "1234", "ieee": "0123456789abcdef", '
-                          '"rssi": 255, "last_seen": "'+last_seen+'"}, "endpoints": [{"endpoint": 1, '
+                          '"rssi": 255, "last_seen": "' + last_seen + '"}, "endpoints": [{"endpoint": 1, '
                           '"clusters": [{"cluster": 0, "attributes": [{"attribute": 5, "data": "test", '
                           '"name": "type", "value": "test", "type": "str"}]}], "profile": 0, "device": 0, '
                           '"in_clusters": [], "out_clusters": []}]}'))

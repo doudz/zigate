@@ -198,8 +198,8 @@ class C0001(Cluster):
 class C0006(Cluster):
     cluster_id = 0x0006
     type = 'General: On/Off'
-    attributes_def = {0x0000: {'name': 'onoff', 'value': 'value'},
-                      0x8000: {'name': 'multiclick', 'value': 'value',
+    attributes_def = {0x0000: {'name': 'onoff', 'value': 'value', 'type': bool},
+                      0x8000: {'name': 'multiclick', 'value': 'value', 'type': int,
                                'expire': 2},
                       }
 
@@ -208,7 +208,7 @@ class C0006(Cluster):
 class C0008(Cluster):
     cluster_id = 0x0008
     type = 'General: Level control'
-    attributes_def = {0x0000: {'name': 'current_level', 'value': 'int(value*100/254)'},
+    attributes_def = {0x0000: {'name': 'current_level', 'value': 'int(value*100/254)', 'type': int},
                       }
 
 
@@ -217,9 +217,9 @@ class C000c(Cluster):
     cluster_id = 0x000c
     type = 'Analog input (Xiaomi cube: Rotation)'
     attributes_def = {0x0055: {'name': 'rotation', 'value': 'round(value, 2)',
-                               'unit': '°', 'expire': 2},
+                               'unit': '°', 'expire': 2, 'type': float},
                       0xff05: {'name': 'rotation_time', 'value': 'value',
-                               'unit': 'ms', 'expire': 2},
+                               'unit': 'ms', 'expire': 2, 'type': int},
                       }
 
 
@@ -277,7 +277,7 @@ class C0012(Cluster):
     type = 'Multistate input (Xiaomi cube: Movement)'
     attributes_def = {0x0055: {'name': 'movement',
                                'value': 'cube_decode(value)',
-                               'expire': 2, 'expire_value': ''},
+                               'expire': 2, 'expire_value': '', 'type': str},
                       }
 
     def __init__(self, endpoint=None):
@@ -285,7 +285,7 @@ class C0012(Cluster):
         if self._endpoint['device'] == 0x0103:  # lumi.remote.b1acn01
             self.attributes_def = {0x0055: {'name': 'multiclick',
                                             'value': 'value',
-                                            'expire': 2},
+                                            'expire': 2, 'type': int},
                                    }
 
 
@@ -312,9 +312,9 @@ class C0101(Cluster):
                       0x0001: {'name': 'locktype', 'value': 'value'},
                       0x0002: {'name': 'enabled', 'value': 'bool(value)'},
                       0x0055: {'name': 'movement', 'value': 'vibration_decode(value)',
-                               'expire': 2, 'expire_value': ''},
+                               'expire': 2, 'expire_value': '', 'type': str},
                       0x0503: {'name': 'rotation', 'value': 'round(value, 2)',
-                               'unit': '°', 'expire': 2, 'expire_value': 0},
+                               'unit': '°', 'expire': 2, 'expire_value': 0, 'type': float},
                       }
 
 
@@ -365,7 +365,7 @@ class C0402(Cluster):
     cluster_id = 0x0402
     type = 'Measurement: Temperature'
     attributes_def = {0x0000: {'name': 'temperature', 'value': 'value/100.',
-                               'unit': '°C'},
+                               'unit': '°C', 'type': float},
                       }
 
     def update(self, data):
@@ -381,9 +381,9 @@ class C0403(Cluster):
     cluster_id = 0x0403
     type = 'Measurement: Atmospheric Pressure'
     attributes_def = {0x0000: {'name': 'pressure', 'value': 'value',
-                               'unit': 'mb'},
+                               'unit': 'mb', 'type': int},
                       0x0010: {'name': 'pressure2', 'value': 'value/10.',
-                               'unit': 'mb'},
+                               'unit': 'mb', 'type': float},
                       }
 
 
@@ -392,7 +392,7 @@ class C0405(Cluster):
     cluster_id = 0x0405
     type = 'Measurement: Humidity'
     attributes_def = {0x0000: {'name': 'humidity', 'value': 'value/100.',
-                               'unit': '%'},
+                               'unit': '%', 'type': float},
                       }
 
     def update(self, data):
@@ -408,7 +408,7 @@ class C0406(Cluster):
     cluster_id = 0x0406
     type = 'Measurement: Occupancy Sensing'
     attributes_def = {0x0000: {'name': 'presence', 'value': 'bool(value)',
-                               'expire': 10},
+                               'expire': 10, 'type': bool},
                       }
 
 

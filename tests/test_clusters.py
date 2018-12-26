@@ -71,7 +71,8 @@ class TestResponses(unittest.TestCase):
                          )
         jdata = json.dumps(c, cls=core.DeviceEncoder)
         self.assertEqual(jdata,
-                         '{"cluster": 0, "attributes": [{"attribute": 5, "data": "test.test", "name": "type", "value": "test.test", "type": "str"}]}')
+                         ('{"cluster": 0, "attributes": [{"attribute": 5, "data": "test.test", '
+                          '"name": "type", "value": "test.test", "type": "str"}]}'))
 
 
 if __name__ == '__main__':

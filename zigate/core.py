@@ -1789,6 +1789,7 @@ class Device(object):
         self.endpoints = {}
         self._expire_timer = {}
         self.missing = False
+        self.genericType = ''
 
     def available_actions(self, endpoint_id=None):
         '''
@@ -1875,6 +1876,7 @@ class Device(object):
     def from_json(data, zigate_instance=None):
         d = Device(zigate_instance=zigate_instance)
         d.info = data.get('info', {})
+        d.genericType = data.get('generictype', '')
         for ep in data.get('endpoints', []):
             if 'attributes' in ep:  # old version
                 LOGGER.debug('Old version found, convert it')
@@ -1911,6 +1913,7 @@ class Device(object):
                             'in_clusters': v['in_clusters'],
                             'out_clusters': v['out_clusters']
                             } for k, v in self.endpoints.items()],
+             'generictype': self.genericType
              }
         if properties:
             r['properties'] = list(self.properties)
