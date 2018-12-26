@@ -1,7 +1,7 @@
 # Include docs
 include *.md
 include LICENSE
-include zigate/templates
+recursive-include zigate *.json
 prune .editorconfig
 prune *.rb
 prune build_upload.sh
