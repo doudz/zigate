@@ -71,10 +71,10 @@ class TestResponses(unittest.TestCase):
                          {5: {'attribute': 5, 'data': 'test.test',
                               'name': 'type', 'value': 'test.test', 'type': str}}
                          )
-        jdata = json.dumps(c, cls=core.DeviceEncoder)
+        jdata = json.dumps(c, cls=core.DeviceEncoder, sort_keys=True)
         self.assertEqual(jdata,
-                         ('{"cluster": 0, "attributes": [{"attribute": 5, "data": "test.test", '
-                          '"name": "type", "value": "test.test", "type": "str"}]}'))
+                         ('{"attributes": [{"attribute": 5, "data": "test.test", "name": "type", '
+                          '"type": "str", "value": "test.test"}], "cluster": 0}'))
 
 
 if __name__ == '__main__':

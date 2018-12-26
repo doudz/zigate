@@ -13,13 +13,14 @@ class TestCore(unittest.TestCase):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'test'})
         last_seen = device.info['last_seen']
-        data = json.dumps(device, cls=core.DeviceEncoder)
+        data = json.dumps(device, cls=core.DeviceEncoder, sort_keys=True)
+        self.maxDiff = None
         self.assertEqual(data,
-                         ('{"addr": "1234", "info": {"addr": "1234", "ieee": "0123456789abcdef", '
-                          '"rssi": 255, "last_seen": "' + last_seen + '"}, "endpoints": [{"endpoint": 1, '
-                          '"clusters": [{"cluster": 0, "attributes": [{"attribute": 5, "data": "test", '
-                          '"name": "type", "value": "test", "type": "str"}]}], "profile": 0, "device": 0, '
-                          '"in_clusters": [], "out_clusters": []}], "generictype": ""}'))
+                         ('{"addr": "1234", "endpoints": [{"clusters": [{"attributes": [{"attribute": 5, "data": '
+                          '"test", "name": "type", "type": "str", "value": "test"}], "cluster": 0}], "device": 0, '
+                          '"endpoint": 1, "in_clusters": [], "out_clusters": [], "profile": 0}], "generictype": "", '
+                          '"info": {"addr": "1234", "ieee": "0123456789abcdef", "last_seen": "' + last_seen + '", '
+                          '"rssi": 255}}'))
 
     def test_template(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
