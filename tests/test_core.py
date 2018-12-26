@@ -92,8 +92,7 @@ class TestCore(unittest.TestCase):
                               })
         self.zigate.remove_group('1234', 1)
         self.assertDictEqual(self.zigate.groups,
-                             {
-                              '4567': {('0123', 1)},
+                             {'4567': {('0123', 1)},
                               })
 
 
