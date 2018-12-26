@@ -62,7 +62,6 @@ class TestResponses(unittest.TestCase):
                                           ('capacity', 16),
                                           ('group_count', 0),
                                           ('rssi', 255)]))
-        print(r)
 
 
 if __name__ == '__main__':
