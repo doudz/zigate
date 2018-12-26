@@ -1,6 +1,7 @@
 # Include docs
 include *.md
 include LICENSE
+include templates
 prune .editorconfig
 prune *.rb
 prune build_upload.sh
