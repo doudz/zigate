@@ -4,7 +4,8 @@ ZiGate clusters Tests
 '''
 
 import unittest
-from zigate import clusters
+from zigate import clusters, core
+import json
 
 
 class TestResponses(unittest.TestCase):
@@ -42,6 +43,35 @@ class TestResponses(unittest.TestCase):
                                'expire': 2,
                                'name': 'multiclick', 'value': 4}}
                          )
+
+        endpoint = {'device': 1}
+        data = {"attributes": [{"attribute": 5,
+                                "data": 'test.test',
+                                "name": "type",
+                                "value": "test.test"}],
+                "cluster": 0
+                }
+        c = clusters.C0000.from_json(data, endpoint)
+        self.assertEqual(c.attributes,
+                         {5: {'attribute': 5, 'data': 'test.test',
+                              'name': 'type', 'value': 'test.test', 'type': str}}
+                         )
+        endpoint = {'device': 1}
+        data = {"attributes": [{"attribute": 5,
+                                "data": 'test.test',
+                                "name": "type",
+                                "value": "test.test",
+                                'type': 'str'}],
+                "cluster": 0
+                }
+        c = clusters.C0000.from_json(data, endpoint)
+        self.assertEqual(c.attributes,
+                         {5: {'attribute': 5, 'data': 'test.test',
+                              'name': 'type', 'value': 'test.test', 'type': str}}
+                         )
+        jdata = json.dumps(c, cls=core.DeviceEncoder)
+        self.assertEqual(jdata,
+                         '{"cluster": 0, "attributes": [{"attribute": 5, "data": "test.test", "name": "type", "value": "test.test", "type": "str"}]}')
 
 
 if __name__ == '__main__':

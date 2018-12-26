@@ -1776,6 +1776,8 @@ class DeviceEncoder(json.JSONEncoder):
             return hexlify(obj).decode()
         elif isinstance(obj, set):
             return list(obj)
+        elif isinstance(obj, type):
+            return obj.__name__
         return json.JSONEncoder.default(self, obj)
 
 

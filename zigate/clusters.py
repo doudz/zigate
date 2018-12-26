@@ -156,7 +156,7 @@ class C0000(Cluster):
                       0x0003: {'name': 'hardware_version', 'value': 'value'},
                       0x0004: {'name': 'manufacturer',
                                'value': 'clean_str(value)'},
-                      0x0005: {'name': 'type', 'value': 'clean_str(value)'},
+                      0x0005: {'name': 'type', 'value': 'clean_str(value)', 'type': str},
                       0x0006: {'name': 'datecode', 'value': 'value'},
                       0x0007: {'name': 'power_source', 'value': 'value'},
                       0x0010: {'name': 'description',
