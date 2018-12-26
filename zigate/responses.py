@@ -75,12 +75,14 @@ class Response(object):
         for k, v in self.s.items():
             if isinstance(v, OrderedDict):
                 keys.remove(k)
+                self.data[k] = []
                 rest = len(msg_data) - struct.calcsize(fmt)
+                if rest == 0:
+                    continue
                 subfmt = '!' + ''.join(v.values())
                 count = rest // struct.calcsize(subfmt)
                 submsg_data = msg_data[-rest:]
                 msg_data = msg_data[:-rest]
-                self.data[k] = []
                 for i in range(count):
                     sdata, submsg_data = self.__decode(subfmt,
                                                        v.keys(),
@@ -581,6 +583,10 @@ class R8062(Response):
                      ('group_count', 'B'),
                      ('groups', OrderedDict([('group', 'H')]))
                      ])
+
+    def cleaned_data(self):
+        self.data['groups'] = [g['group'] for g in self.data['groups']]
+        return self.data
 
 
 @register_response

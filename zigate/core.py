@@ -470,6 +470,9 @@ class ZiGate(object):
             else:
                 if device:
                     self._remove_device(device.addr)
+        elif response.msg == 0x8062:  # Get group membership response
+            data = response.cleaned_data()
+            self._sync_group_membership(data['addr'], data['endpoint'], data['groups'])
         elif response.msg in (0x8100, 0x8102, 0x8110, 0x8401):  # attribute report or IAS Zone status change
             if response['status'] != 0:
                 LOGGER.debug('Receive Bad status')
@@ -1000,10 +1003,39 @@ class ZiGate(object):
         r = self.send_data(cmd, data)
         group_addr = self.__haddr(group)
         if r == 0:
-            if group_addr not in self._groups:
-                self._groups[group_addr] = set()
-            self._groups[group_addr].add((self.__haddr(addr), endpoint))
+            self.__add_group(group_addr, self.__haddr(addr), endpoint)
         return group_addr
+
+    def __add_group(self, group, addr, endpoint):
+        if group not in self._groups:
+                self._groups[group] = set()
+        self._groups[group].add((addr, endpoint))
+
+    def __remove_group(self, group, addr, endpoint):
+        '''
+        remove group for specified addr, endpoint
+        if group is None,
+            remove all group for specified addr, endpoint
+        '''
+        if group is None:
+            groups = list(self._groups.keys())
+        else:
+            groups = [group]
+        for group in groups:
+            if (addr, endpoint) in self._groups.get(group, set()):
+                self._groups[group].remove((addr, endpoint))
+            if group in self._groups and len(self._groups[group]) == 0:
+                del self._groups[group]
+
+    def _sync_group_membership(self, addr, endpoint, groups):
+        for group in groups:
+            self.__add_group(group, addr, endpoint)
+        to_remove = []
+        for group in self._groups:
+            if group not in groups:
+                to_remove.append(group)
+        for group in to_remove:
+            self.__remove_group(group, addr, endpoint)
 
     def add_group(self, addr, endpoint, group=None):
         '''
@@ -1056,19 +1088,18 @@ class ZiGate(object):
         addr_mode = 2
         addr = self.__addr(addr)
         src_endpoint = 1
-        if not group:
-            data = struct.pack('!BHBBH', addr_mode, addr,
+        group_addr = group
+        if group is None:
+            data = struct.pack('!BHBB', addr_mode, addr,
                                src_endpoint, endpoint)
-            return self.send_data(0x0064, data)
-        group = self.__addr(group)
-        data = struct.pack('!BHBBH', addr_mode, addr,
-                           src_endpoint, endpoint, group)
-        r = self.send_data(0x0063, data)
+            r = self.send_data(0x0064, data)
+        else:
+            group = self.__addr(group)
+            data = struct.pack('!BHBBH', addr_mode, addr,
+                               src_endpoint, endpoint, group)
+            r = self.send_data(0x0063, data)
         if r == 0:
-            if group:
-                del self._groups[self.__haddr(group)]
-            else:
-                self._groups = {}
+            self.__remove_group(group_addr, self.__haddr(addr), endpoint)
         return r
 
     def identify_device(self, addr, time_sec=10):
@@ -1112,23 +1143,18 @@ class ZiGate(object):
         data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
         return self.send_data(0x00A1, data)
 
-    def remove_scene(self, addr, endpoint, group, scene):
+    def remove_scene(self, addr, endpoint, group, scene=None):
         '''
         Remove scene
+        if scene is not specified, remove all scenes
         '''
         addr = self.__addr(addr)
         group = self.__addr(group)
+        if scene is None:
+            data = struct.pack('!BHBBH', 2, addr, 1, endpoint, group)
+            return self.send_data(0x00A3, data)
         data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
         return self.send_data(0x00A2, data)
-
-    def remove_all_scenes(self, addr, endpoint, group):
-        '''
-        Remove all scenes
-        '''
-        addr = self.__addr(addr)
-        group = self.__addr(group)
-        data = struct.pack('!BHBBH', 2, addr, 1, endpoint, group)
-        return self.send_data(0x00A3, data)
 
     def store_scene(self, addr, endpoint, group, scene):
         '''
@@ -1154,7 +1180,7 @@ class ZiGate(object):
         '''
         addr = self.__addr(addr)
         group = self.__addr(group)
-        data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group)
+        data = struct.pack('!BHBBH', 2, addr, 1, endpoint, group)
         return self.send_data(0x00A6, data)
 
     def copy_scene(self, addr, endpoint, from_group, from_scene, to_group, to_scene):
