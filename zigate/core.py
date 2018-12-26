@@ -2288,7 +2288,7 @@ class Device(object):
         if not typ:
             LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
             return
-        path = os.path.join(BASE_PATH, 'templates', typ+'.json')
+        path = os.path.join(BASE_PATH, 'templates', typ + '.json')
         success = False
         if os.path.exists(path):
             try:
@@ -2304,4 +2304,3 @@ class Device(object):
         else:
             LOGGER.warning('No template found for {}'.format(typ))
         return success
-
