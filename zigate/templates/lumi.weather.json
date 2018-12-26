@@ -91,5 +91,6 @@
         "manufacturer_code": 4151,
         "power_type": 0,
         "server_mask": 0
-    }
+    },
+    "generictype": "sensor"
 }

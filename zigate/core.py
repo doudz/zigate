@@ -2049,6 +2049,7 @@ class Device(object):
         self._lock.acquire()
         self.info.update(device.info)
         self.endpoints.update(device.endpoints)
+        self.genericType = self.genericType or device.genericType
 #         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
         self._lock.release()
 
