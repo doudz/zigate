@@ -19,7 +19,7 @@ class TestCore(unittest.TestCase):
                           '"rssi": 255, "last_seen": "' + last_seen + '"}, "endpoints": [{"endpoint": 1, '
                           '"clusters": [{"cluster": 0, "attributes": [{"attribute": 5, "data": "test", '
                           '"name": "type", "value": "test", "type": "str"}]}], "profile": 0, "device": 0, '
-                          '"in_clusters": [], "out_clusters": []}]}'))
+                          '"in_clusters": [], "out_clusters": []}], "generictype": ""}'))
 
 
 if __name__ == '__main__':

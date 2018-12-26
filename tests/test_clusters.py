@@ -24,7 +24,8 @@ class TestResponses(unittest.TestCase):
         self.assertEqual(c.attributes,
                          {85: {'attribute': 85, 'data': 4,
                                'expire': 2, 'expire_value': '',
-                               'name': 'movement', 'value': 'flip90_84'}}
+                               'name': 'movement', 'value': 'flip90_84',
+                               'type': str}}
                          )
 
         # xiaomi lumi.remote.b1acn01
@@ -41,7 +42,8 @@ class TestResponses(unittest.TestCase):
         self.assertEqual(c.attributes,
                          {85: {'attribute': 85, 'data': 4,
                                'expire': 2,
-                               'name': 'multiclick', 'value': 4}}
+                               'name': 'multiclick', 'value': 4,
+                               'type': int}}
                          )
 
         endpoint = {'device': 1}
