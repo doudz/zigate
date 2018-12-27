@@ -16,7 +16,8 @@ class TestCore(unittest.TestCase):
         data = json.dumps(device, cls=core.DeviceEncoder, sort_keys=True)
         self.maxDiff = None
         self.assertEqual(data,
-                         ('{"addr": "1234", "endpoints": [{"clusters": [{"attributes": [{"attribute": 5, "data": '
+                         ('{"addr": "1234", "discovery": "", "endpoints": [{"clusters": [{"attributes": '
+                          '[{"attribute": 5, "data": '
                           '"test", "name": "type", "type": "str", "value": "test"}], "cluster": 0}], "device": 0, '
                           '"endpoint": 1, "in_clusters": [], "out_clusters": [], "profile": 0}], "generictype": "", '
                           '"info": {"addr": "1234", "ieee": "0123456789abcdef", "last_seen": "' + last_seen + '", '
@@ -37,6 +38,7 @@ class TestCore(unittest.TestCase):
                               )
         self.assertEqual(device.genericType, '')
         self.assertTrue(device.load_template())
+        self.assertEqual(device.discovery, 'templated')
         self.assertEqual(device.genericType, 'sensor')
         self.assertCountEqual(device.properties,
                               [{'attribute': 4, 'data': 'LUMI', 'name': 'manufacturer', 'value': 'LUMI'},
