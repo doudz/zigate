@@ -443,8 +443,6 @@ class ZiGate(object):
                 ep.update(response.cleaned_data())
                 ep['in_clusters'] = response['in_clusters']
                 ep['out_clusters'] = response['out_clusters']
-                typ = d.type
-                LOGGER.debug('Found type {}'.format(typ))
                 d._create_actions()
                 d._bind_report(endpoint)
                 # ask for various general information
@@ -958,23 +956,43 @@ class ZiGate(object):
 #         self.power_descriptor_request(addr)
         self.active_endpoint_request(addr)
 
-    def discover_device(self, addr):
+    def discover_device(self, addr, force=False):
         '''
         starts discovery process
         '''
-        # discovery steps
-        # step 1 active endpoint request
-        # step 2 simple description request
-        # step 3 get type (cluster 0x0000, attribute 0x0005)
-        # step 4 if unknow type => step 5 attribute discovery else step 6
-        # step 5 attribute discovery request then step 7
-        # step 6 load config template
-        # step 7 create actions, bind and report if needed
-        self.active_endpoint_request(addr)
+        device = self.get_device_from_addr(addr)
+        if not device:
+            return
+        if force:
+            device.discovery = ''
+        if device.discovery:
+            return
+        if 'mac_capability' not in device.info:
+            self.node_descriptor_request(addr)
+        if not device.endpoints:
+            self.active_endpoint_request(addr)
+            return
+        for endpoint, values in device.endpoints.items():
+            if not values.get('device'):
+                self.simple_descriptor_request(addr, endpoint)
+                return
+            if not values.get('in_clusters'):
+                self.simple_descriptor_request(addr, endpoint)
+                return
+        typ = device.get_type(False)
+        if not typ:
+            return
+        if not device.load_template():
+            device.discovery = 'auto-discovered'
+            for endpoint, values in device.endpoints.items():
+                for cluster in values.get('in_clusters', []):
+                    self.attribute_discovery_request(addr, endpoint, cluster)
+        else:
+            device.discovery = 'templated'
 
     def _generate_addr(self):
         addr = None
-        while not addr or addr in self._devices:
+        while not addr or addr in self._devices or addr in self._groups:
             addr = random.randint(1, 0xffff)
         return addr
 
@@ -1790,6 +1808,7 @@ class Device(object):
         self._expire_timer = {}
         self.missing = False
         self.genericType = ''
+        self.discovery = ''
 
     def available_actions(self, endpoint_id=None):
         '''
@@ -1973,8 +1992,7 @@ class Device(object):
     def rssi_percent(self):
         return round(100 * self.rssi / 255)
 
-    @property
-    def type(self):
+    def get_type(self, wait=True):
         typ = self.get_value('type')
         if typ is None:
             for endpoint in self.endpoints:
@@ -1985,6 +2003,8 @@ class Device(object):
                                                         0x0005
                                                         )
                     break
+            if not wait:
+                return
             # wait for type
             t1 = time()
             while self.get_value('type') is None:
@@ -2285,7 +2305,7 @@ class Device(object):
             properties.append(attribute['name'])
 
     def load_template(self):
-        typ = self.type
+        typ = self.get_type()
         if not typ:
             LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
             return
