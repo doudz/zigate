@@ -25,7 +25,7 @@ from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH,
                     ZIGATE_RESPONSE_RECEIVED, DATA_TYPE, BASE_PATH)
 
-from .clusters import (CLUSTERS, Cluster, get_cluster)
+from .clusters import (Cluster, get_cluster)
 import functools
 import struct
 import threading
@@ -455,7 +455,6 @@ class ZiGate(object):
 #                         for i in range(0, len(attrs), 8):
 #                             self.read_attribute_request(addr, endpoint, c,
 #                                                         attrs[i: i + 8])
-                            
         elif response.msg == 0x8045:  # endpoint list
             addr = response['addr']
             for endpoint in response['endpoints']:
