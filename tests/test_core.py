@@ -5,6 +5,7 @@ ZiGate core Tests
 
 import unittest
 import os
+import shutil
 import tempfile
 from zigate import ZiGate, responses, transport
 
@@ -14,6 +15,9 @@ class TestCore(unittest.TestCase):
         self.zigate = ZiGate(auto_start=False)
         self.zigate.connection = transport.FakeTransport()
         self.test_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
 
     def test_persistent(self):
         path = os.path.join(self.test_dir, 'test_zigate.json')

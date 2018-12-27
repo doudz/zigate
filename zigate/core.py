@@ -1761,6 +1761,13 @@ class ZiGate(object):
                                               name='ZiGate-MQTT')
         self.broker_thread.start()
 
+    def generate_templates(self, dirname='~'):
+        '''
+        Generate template file for each device
+        '''
+        for device in self._devices.values():
+            device.generate_template(dirname)
+
 
 class ZiGateWiFi(ZiGate):
     def __init__(self, host, port=None, path='~/.zigate.json',
@@ -2315,6 +2322,7 @@ class Device(object):
         if not typ:
             LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
             return
+        typ = typ.replace(' ', '_')
         path = os.path.join(BASE_PATH, 'templates', typ + '.json')
         success = False
         if os.path.exists(path):
@@ -2333,3 +2341,34 @@ class Device(object):
         if success:
             self.discovery = 'templated'
         return success
+
+    def generate_template(self, dirname='~'):
+        '''
+        Generate template file
+        '''
+        typ = self.get_type()
+        if not typ:
+            LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
+            return
+        typ = typ.replace(' ', '_')
+        dirname = os.path.expanduser(dirname)
+        path = os.path.join(dirname, typ + '.json')
+        jdata = json.dumps(self, cls=DeviceEncoder)
+        jdata = json.loads(jdata)
+        del jdata['addr']
+        del jdata['discovery']
+        for key in ('id', 'addr', 'ieee', 'rssi', 'last_seen'):
+            if key in jdata['info']:
+                del jdata['info'][key]
+        for endpoint in jdata.get('endpoints', []):
+            for cluster in endpoint.get('clusters', []):
+                cluster_id = cluster['cluster']
+                for attribute in cluster.get('attributes', []):
+                    if cluster_id == 0 and attribute['attribute'] in (4, 5, 7):
+                        continue
+                    for key in ('data', 'value', 'type'):
+                        if key in attribute:
+                            del attribute[key]
+        with open(path, 'w') as fp:
+            json.dump(jdata, fp, cls=DeviceEncoder,
+                      sort_keys=True, indent=4, separators=(',', ': '))

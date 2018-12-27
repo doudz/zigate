@@ -6,9 +6,17 @@ ZiGate devices Tests
 import unittest
 from zigate import core
 import json
+import tempfile
+import shutil
 
 
 class TestCore(unittest.TestCase):
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
     def test_device_dump(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'test'})
@@ -50,6 +58,8 @@ class TestCore(unittest.TestCase):
                                {'attribute': 16, 'name': 'pressure2', 'unit': 'mb', 'value': 0.0, 'type': float},
                                {'attribute': 0, 'name': 'humidity', 'unit': '%', 'value': 0.0, 'type': float}]
                               )
+
+        device.generate_template(self.test_dir)
 
 
 if __name__ == '__main__':
