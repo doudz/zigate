@@ -63,6 +63,18 @@ class TestResponses(unittest.TestCase):
                                           ('group_count', 0),
                                           ('rssi', 255)]))
 
+    def test_response_8060(self):
+        msg_data = b'\x01\x01\x00\x04\x004\x10'
+        r = responses.R8060(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('sequence', 1),
+                                          ('endpoint', 1),
+                                          ('cluster', 4),
+                                          ('status', 0),
+                                          ('group', '3410'),
+                                          ('rssi', 255)])
+                             )
+
 
 if __name__ == '__main__':
     unittest.main()
