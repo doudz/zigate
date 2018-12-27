@@ -2357,7 +2357,7 @@ class Device(object):
         jdata = json.loads(jdata)
         del jdata['addr']
         del jdata['discovery']
-        for key in ('id', 'addr', 'ieee', 'rssi', 'last_seen'):
+        for key in ('id', 'addr', 'ieee', 'rssi', 'last_seen', 'max_rx', 'max_tx', 'max_buffer'):
             if key in jdata['info']:
                 del jdata['info'][key]
         for endpoint in jdata.get('endpoints', []):
