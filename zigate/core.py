@@ -2364,11 +2364,13 @@ class Device(object):
             for cluster in endpoint.get('clusters', []):
                 cluster_id = cluster['cluster']
                 for attribute in cluster.get('attributes', []):
-                    if cluster_id == 0 and attribute['attribute'] in (4, 5, 7):
-                        continue
-                    for key in ('data', 'value', 'type'):
-                        if key in attribute:
-                            del attribute[key]
+                    keys = list(attribute.keys())
+                    for key in keys:
+                        if key == 'attribute':
+                            continue
+                        if key == 'data' and cluster_id == 0:
+                            continue
+                        del attribute[key]
         with open(path, 'w') as fp:
             json.dump(jdata, fp, cls=DeviceEncoder,
                       sort_keys=True, indent=4, separators=(',', ': '))

@@ -6,27 +6,18 @@
                     "attributes": [
                         {
                             "attribute": 4,
-                            "data": "LUMI",
-                            "name": "manufacturer",
-                            "value": "LUMI"
+                            "data": "LUMI"
                         },
                         {
                             "attribute": 5,
-                            "data": "lumi.weather",
-                            "name": "type",
-                            "type": "str",
-                            "value": "lumi.weather"
+                            "data": "lumi.weather"
                         },
                         {
-                            "attribute": 65281,
-                            "name": "battery",
-                            "unit": "V"
+                            "attribute": 65281
                         },
                         {
                             "attribute": 7,
-                            "data": 3,
-                            "name": "power_source",
-                            "value": 3
+                            "data": 3
                         }
                     ],
                     "cluster": 0
@@ -34,9 +25,7 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 0,
-                            "name": "temperature",
-                            "unit": "\u00b0C"
+                            "attribute": 0
                         }
                     ],
                     "cluster": 1026
@@ -44,14 +33,10 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 0,
-                            "name": "pressure",
-                            "unit": "mb"
+                            "attribute": 0
                         },
                         {
-                            "attribute": 16,
-                            "name": "pressure2",
-                            "unit": "mb"
+                            "attribute": 16
                         },
                         {
                             "attribute": 20
@@ -62,9 +47,7 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 0,
-                            "name": "humidity",
-                            "unit": "%"
+                            "attribute": 0
                         }
                     ],
                     "cluster": 1029
