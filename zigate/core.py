@@ -289,7 +289,8 @@ class ZiGate(object):
             if device.need_refresh():
                 if device.receiver_on_when_idle():
                     LOGGER.debug('Auto refresh device {}'.format(device))
-                    device.refresh_device()
+#                     device.refresh_device()
+                    device.discover_device()
                 else:
                     dispatch_signal(ZIGATE_DEVICE_NEED_REFRESH,
                                     self, **{'zigate': self,
