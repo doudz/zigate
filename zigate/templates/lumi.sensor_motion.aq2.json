@@ -45,7 +45,6 @@
                     "attributes": [
                         {
                             "attribute": 0,
-                            "expire": 10,
                             "name": "presence"
                         }
                     ],
