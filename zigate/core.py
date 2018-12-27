@@ -443,20 +443,19 @@ class ZiGate(object):
                 ep.update(response.cleaned_data())
                 ep['in_clusters'] = response['in_clusters']
                 ep['out_clusters'] = response['out_clusters']
+                self.discover_device(addr)
                 d._create_actions()
-                d._bind_report(endpoint)
-                # ask for various general information
-                for c in response['in_clusters']:
-                    cluster = CLUSTERS.get(c)
-                    if cluster:
-                        # self.attribute_discovery_request(addr,
-                        #                                 endpoint,
-                        #                                 cluster)
-                        # some devices don't answer if more than 8 attributes asked
-                        attrs = list(cluster.attributes_def.keys())
-                        for i in range(0, len(attrs), 8):
-                            self.read_attribute_request(addr, endpoint, c,
-                                                        attrs[i: i + 8])
+#                 d._bind_report(endpoint)
+#                 # ask for various general information
+#                 for c in response['in_clusters']:
+#                     cluster = CLUSTERS.get(c)
+#                     if cluster:
+#                         # some devices don't answer if more than 8 attributes asked
+#                         attrs = list(cluster.attributes_def.keys())
+#                         for i in range(0, len(attrs), 8):
+#                             self.read_attribute_request(addr, endpoint, c,
+#                                                         attrs[i: i + 8])
+                            
         elif response.msg == 0x8045:  # endpoint list
             addr = response['addr']
             for endpoint in response['endpoints']:
@@ -486,6 +485,9 @@ class ZiGate(object):
             changed = device.get_attribute(response['endpoint'],
                                            response['cluster'],
                                            attribute_id, True)
+            if response['cluster'] == 0 and attribute_id == 5:
+                if not device.discovery:
+                    device.load_template()
             if added:
                 dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
                                                                  'device': device,
@@ -585,7 +587,8 @@ class ZiGate(object):
                 self._devices[device.addr] = device
                 dispatch_signal(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
                                                               'device': device})
-            self.refresh_device(device.addr)
+            self.discover_device(device.addr)
+#             self.refresh_device(device.addr)
 
     def get_status_text(self, status_code):
         return STATUS_CODES.get(status_code,
@@ -987,8 +990,6 @@ class ZiGate(object):
             for endpoint, values in device.endpoints.items():
                 for cluster in values.get('in_clusters', []):
                     self.attribute_discovery_request(addr, endpoint, cluster)
-        else:
-            device.discovery = 'templated'
 
     def _generate_addr(self):
         addr = None
@@ -2019,6 +2020,9 @@ class Device(object):
     def refresh_device(self):
         self._zigate.refresh_device(self.addr)
 
+    def discover_device(self):
+        self._zigate.discover_device(self.addr)
+
     def identify_device(self, time_sec=10):
         '''
         send identify command
@@ -2324,4 +2328,6 @@ class Device(object):
                 LOGGER.error(traceback.format_exc())
         else:
             LOGGER.warning('No template found for {}'.format(typ))
+        if success:
+            self.discovery = 'templated'
         return success
