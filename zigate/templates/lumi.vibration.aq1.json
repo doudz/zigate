@@ -12,10 +12,10 @@
                         },
                         {
                             "attribute": 5,
-                            "data": "lumi.weather",
+                            "data": "lumi.vibration.aq1",
                             "name": "type",
                             "type": "str",
-                            "value": "lumi.weather"
+                            "value": "lumi.vibration.aq1"
                         },
                         {
                             "attribute": 65281,
@@ -34,56 +34,56 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 0,
-                            "name": "temperature",
-                            "unit": "\u00b0C"
-                        }
-                    ],
-                    "cluster": 1026
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "pressure",
-                            "unit": "mb"
+                            "attribute": 1283,
+                            "expire": 2,
+                            "expire_value": 0,
+                            "name": "rotation",
+                            "unit": "\u00b0"
                         },
                         {
-                            "attribute": 16,
-                            "name": "pressure2",
-                            "unit": "mb"
+                            "attribute": 85,
+                            "expire": 2,
+                            "expire_value": "",
+                            "name": "movement"
                         },
                         {
-                            "attribute": 20
+                            "attribute": 1288
                         }
                     ],
-                    "cluster": 1027
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "humidity",
-                            "unit": "%"
-                        }
-                    ],
-                    "cluster": 1029
+                    "cluster": 257
                 }
             ],
-            "device": 24321,
+            "device": 10,
             "endpoint": 1,
             "in_clusters": [
                 0,
                 3,
-                65535,
-                1026,
-                1027,
-                1029
+                25,
+                257
             ],
             "out_clusters": [
                 0,
                 4,
-                65535
+                3,
+                5,
+                25,
+                257
+            ],
+            "profile": 260
+        },
+        {
+            "clusters": [],
+            "device": 24322,
+            "endpoint": 2,
+            "in_clusters": [
+                3,
+                18
+            ],
+            "out_clusters": [
+                4,
+                3,
+                5,
+                18
             ],
             "profile": 260
         }

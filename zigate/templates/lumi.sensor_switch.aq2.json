@@ -12,10 +12,10 @@
                         },
                         {
                             "attribute": 5,
-                            "data": "lumi.weather",
+                            "data": "lumi.sensor_switch.aq2",
                             "name": "type",
                             "type": "str",
-                            "value": "lumi.weather"
+                            "value": "lumi.sensor_switch.aq2"
                         },
                         {
                             "attribute": 65281,
@@ -35,50 +35,18 @@
                     "attributes": [
                         {
                             "attribute": 0,
-                            "name": "temperature",
-                            "unit": "\u00b0C"
+                            "name": "onoff"
                         }
                     ],
-                    "cluster": 1026
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "pressure",
-                            "unit": "mb"
-                        },
-                        {
-                            "attribute": 16,
-                            "name": "pressure2",
-                            "unit": "mb"
-                        },
-                        {
-                            "attribute": 20
-                        }
-                    ],
-                    "cluster": 1027
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "humidity",
-                            "unit": "%"
-                        }
-                    ],
-                    "cluster": 1029
+                    "cluster": 6
                 }
             ],
             "device": 24321,
             "endpoint": 1,
             "in_clusters": [
                 0,
-                3,
                 65535,
-                1026,
-                1027,
-                1029
+                6
             ],
             "out_clusters": [
                 0,

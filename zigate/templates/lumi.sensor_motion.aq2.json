@@ -12,10 +12,10 @@
                         },
                         {
                             "attribute": 5,
-                            "data": "lumi.weather",
+                            "data": "lumi.sensor_motion.aq2",
                             "name": "type",
                             "type": "str",
-                            "value": "lumi.weather"
+                            "value": "lumi.sensor_motion.aq2"
                         },
                         {
                             "attribute": 65281,
@@ -35,55 +35,37 @@
                     "attributes": [
                         {
                             "attribute": 0,
-                            "name": "temperature",
-                            "unit": "\u00b0C"
+                            "name": "luminosity",
+                            "unit": "lm"
                         }
                     ],
-                    "cluster": 1026
+                    "cluster": 1024
                 },
                 {
                     "attributes": [
                         {
                             "attribute": 0,
-                            "name": "pressure",
-                            "unit": "mb"
-                        },
-                        {
-                            "attribute": 16,
-                            "name": "pressure2",
-                            "unit": "mb"
-                        },
-                        {
-                            "attribute": 20
+                            "expire": 10,
+                            "name": "presence"
                         }
                     ],
-                    "cluster": 1027
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "humidity",
-                            "unit": "%"
-                        }
-                    ],
-                    "cluster": 1029
+                    "cluster": 1030
                 }
             ],
-            "device": 24321,
+            "device": 263,
             "endpoint": 1,
             "in_clusters": [
                 0,
-                3,
                 65535,
-                1026,
-                1027,
-                1029
+                1030,
+                1024,
+                1280,
+                1,
+                3
             ],
             "out_clusters": [
                 0,
-                4,
-                65535
+                25
             ],
             "profile": 260
         }

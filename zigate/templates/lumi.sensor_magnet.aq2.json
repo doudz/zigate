@@ -12,21 +12,15 @@
                         },
                         {
                             "attribute": 5,
-                            "data": "lumi.weather",
+                            "data": "lumi.sensor_magnet.aq2",
                             "name": "type",
                             "type": "str",
-                            "value": "lumi.weather"
+                            "value": "lumi.sensor_magnet.aq2"
                         },
                         {
                             "attribute": 65281,
                             "name": "battery",
                             "unit": "V"
-                        },
-                        {
-                            "attribute": 7,
-                            "data": 3,
-                            "name": "power_source",
-                            "value": 3
                         }
                     ],
                     "cluster": 0
@@ -35,39 +29,10 @@
                     "attributes": [
                         {
                             "attribute": 0,
-                            "name": "temperature",
-                            "unit": "\u00b0C"
+                            "name": "onoff"
                         }
                     ],
-                    "cluster": 1026
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "pressure",
-                            "unit": "mb"
-                        },
-                        {
-                            "attribute": 16,
-                            "name": "pressure2",
-                            "unit": "mb"
-                        },
-                        {
-                            "attribute": 20
-                        }
-                    ],
-                    "cluster": 1027
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "humidity",
-                            "unit": "%"
-                        }
-                    ],
-                    "cluster": 1029
+                    "cluster": 6
                 }
             ],
             "device": 24321,
@@ -76,9 +41,7 @@
                 0,
                 3,
                 65535,
-                1026,
-                1027,
-                1029
+                6
             ],
             "out_clusters": [
                 0,
@@ -93,7 +56,7 @@
         "bit_field": "0100000000000010",
         "descriptor_capability": "00000000",
         "mac_capability": "10000000",
-        "manufacturer_code": 4151,
+        "manufacturer_code": "1037",
         "power_type": 0,
         "server_mask": 0
     }
