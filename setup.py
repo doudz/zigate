@@ -50,6 +50,7 @@ setup(
 
     keywords='zigate zigbee python3',
     packages=['zigate'],
+    include_package_data=True,
 
     install_requires=[
         'pyserial',
