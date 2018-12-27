@@ -6,6 +6,7 @@ ZiGate devices Tests
 import unittest
 from zigate import core
 import json
+import os
 import tempfile
 import shutil
 
@@ -60,6 +61,19 @@ class TestCore(unittest.TestCase):
                               )
 
         device.generate_template(self.test_dir)
+
+    def test_templates(self):
+        path = os.path.join(core.BASE_PATH, 'templates')
+        files = os.listdir(path)
+        for f in files:
+            success = False
+            try:
+                with open(os.path.join(path, f)) as fp:
+                    json.load(fp)
+                success = True
+            except Exception:
+                pass
+            self.assertTrue(success)
 
 
 if __name__ == '__main__':
