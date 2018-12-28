@@ -2081,10 +2081,30 @@ class Device(object):
         '''
         self._lock.acquire()
         self.info.update(device.info)
-        self.endpoints.update(device.endpoints)
+        self._merge_endpoints(device.endpoints)
         self.genericType = self.genericType or device.genericType
 #         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
         self._lock.release()
+
+    def _merge_endpoints(self, endpoints):
+        for endpoint_id, endpoint in endpoints.items():
+            if endpoint_id not in self.endpoints:
+                self.endpoints[endpoint_id] = endpoint
+            else:
+                myendpoint = self.endpoints[endpoint_id]
+                if 'clusters' not in myendpoint:
+                    myendpoint['clusters'] = {}
+                myendpoint['profile'] = endpoint.get('profile') or myendpoint.get('profile', 0)
+                myendpoint['device'] = endpoint.get('device') or myendpoint.get('device', 0)
+                myendpoint['in_clusters'] = endpoint.get('in_clusters') or myendpoint.get('in_clusters', [])
+                myendpoint['out_clusters'] = endpoint.get('out_clusters') or myendpoint.get('out_clusters', [])
+                for cluster_id, cluster in endpoint['clusters'].items():
+                    if cluster_id not in myendpoint['clusters']:
+                        myendpoint['clusters'][cluster_id] = cluster
+                    else:
+                        mycluster = myendpoint['clusters'][cluster_id]
+                        for attribute in cluster.attributes.values():
+                            mycluster.update(attribute)
 
     def update_info(self, info):
         self._lock.acquire()

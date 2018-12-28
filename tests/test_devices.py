@@ -45,16 +45,21 @@ class TestCore(unittest.TestCase):
                               [{'attribute': 5, 'data': 'lumi.weather',
                                 'name': 'type', 'value': 'lumi.weather', 'type': str}]
                               )
+        device.set_attribute(1, 0x0402, {'attribute': 0, 'rssi': 255, 'data': 1200})
+        self.assertEqual(device.get_property_value('temperature'), 12.0)
+        device.set_attribute(1, 0, {'attribute': 1, 'rssi': 255, 'data': 'test'})
         self.assertEqual(device.genericType, '')
         self.assertTrue(device.load_template())
         self.assertEqual(device.discovery, 'templated')
         self.assertEqual(device.genericType, 'sensor')
         self.assertCountEqual(device.properties,
-                              [{'attribute': 4, 'data': 'LUMI', 'name': 'manufacturer', 'value': 'LUMI'},
+                              [{'attribute': 1, 'data': 'test', 'name': 'application_version', 'value': 'test'},
+                               {'attribute': 4, 'data': 'LUMI', 'name': 'manufacturer', 'value': 'LUMI'},
                                {'attribute': 5, 'data': 'lumi.weather', 'name': 'type', 'value': 'lumi.weather',
                                 'type': str},
                                {'attribute': 7, 'data': 3, 'name': 'power_source', 'value': 3},
-                               {'attribute': 0, 'name': 'temperature', 'unit': '°C', 'value': 0.0, 'type': float},
+                               {'attribute': 0, 'data': 1200, 'name': 'temperature', 'value': 12.0, 'unit': '°C',
+                                'type': float},
                                {'attribute': 0, 'name': 'pressure', 'unit': 'mb', 'value': 0, 'type': int},
                                {'attribute': 16, 'name': 'pressure2', 'unit': 'mb', 'value': 0.0, 'type': float},
                                {'attribute': 0, 'name': 'humidity', 'unit': '%', 'value': 0.0, 'type': float}]
@@ -66,27 +71,27 @@ class TestCore(unittest.TestCase):
         device.generate_template(self.test_dir)
         with open(os.path.join(self.test_dir, 'lumi.weather.json')) as fp:
             jdata = json.load(fp)
-        self.assertEqual(jdata,
-                         {'endpoints': [{'clusters': [{'attributes': [{'attribute': 4, 'data': 'LUMI'},
-                                                                      {'attribute': 5, 'data': 'lumi.weather'},
-                                                                      {'attribute': 7, 'data': 3}], 'cluster': 0},
-                                                      {'attributes': [{'attribute': 0}], 'cluster': 1026},
-                                                      {'attributes': [{'attribute': 0}, {'attribute': 16},
-                                                                      {'attribute': 20}], 'cluster': 1027},
-                                                      {'attributes': [{'attribute': 0}], 'cluster': 1029},
-                                                      {'attributes': [{'attribute': 0, 'inverse': True}],
-                                                       'cluster': 6}],
-                                         'device': 24321, 'endpoint': 1,
-                                         'in_clusters': [0, 3, 65535, 1026, 1027, 1029],
-                                         'out_clusters': [0, 4, 65535], 'profile': 260}],
-                          'generictype': 'sensor',
-                          'info': {'bit_field': '0100000000000010',
-                                   'descriptor_capability': '00000000',
-                                   'mac_capability': '10000000',
-                                   'manufacturer_code': '1037',
-                                   'power_type': 0,
-                                   'server_mask': 0}}
-                         )
+        self.assertCountEqual(jdata,
+                              {'endpoints': [{'clusters': [{'attributes': [{'attribute': 4, 'data': 'LUMI'},
+                                                                           {'attribute': 5, 'data': 'lumi.weather'},
+                                                                           {'attribute': 7, 'data': 3}], 'cluster': 0},
+                                                           {'attributes': [{'attribute': 0}], 'cluster': 1026},
+                                                           {'attributes': [{'attribute': 0}, {'attribute': 16},
+                                                                           {'attribute': 20}], 'cluster': 1027},
+                                                           {'attributes': [{'attribute': 0}], 'cluster': 1029},
+                                                           {'attributes': [{'attribute': 0, 'inverse': True}],
+                                                            'cluster': 6}],
+                                              'device': 24321, 'endpoint': 1,
+                                              'in_clusters': [0, 3, 65535, 1026, 1027, 1029],
+                                              'out_clusters': [0, 4, 65535], 'profile': 260}],
+                               'generictype': 'sensor',
+                               'info': {'bit_field': '0100000000000010',
+                                        'descriptor_capability': '00000000',
+                                        'mac_capability': '10000000',
+                                        'manufacturer_code': '1037',
+                                        'power_type': 0,
+                                        'server_mask': 0}}
+                              )
 
     def test_inverse_bool(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
