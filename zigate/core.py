@@ -292,6 +292,8 @@ class ZiGate(object):
 #                     device.refresh_device()
                     device.discover_device()
                 else:
+                    if not device.discovery:
+                        device.load_template()
                     dispatch_signal(ZIGATE_DEVICE_NEED_REFRESH,
                                     self, **{'zigate': self,
                                              'device': device})
@@ -2284,6 +2286,9 @@ class Device(object):
         '''
         need = False
         LOGGER.debug('Check Need refresh {}'.format(self))
+        if not self.discovery:
+            LOGGER.debug('Need discovery')
+            need = True
         if not self.get_property_value('type'):
             LOGGER.debug('Need refresh : no type')
             need = True
