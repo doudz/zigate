@@ -4,29 +4,13 @@
             "clusters": [
                 {
                     "attributes": [
-                        {
+                    	{
                             "attribute": 4,
                             "data": "LUMI",
-                            "name": "manufacturer",
-                            "value": "LUMI"
                         },
                         {
                             "attribute": 5,
-                            "data": "lumi.sensor_switch.aq2",
-                            "name": "type",
-                            "type": "str",
-                            "value": "lumi.sensor_switch.aq2"
-                        },
-                        {
-                            "attribute": 65281,
-                            "name": "battery",
-                            "unit": "V"
-                        },
-                        {
-                            "attribute": 7,
-                            "data": 3,
-                            "name": "power_source",
-                            "value": 3
+                            "data": "lumi.sensor_switch.aq2"
                         }
                     ],
                     "cluster": 0
@@ -35,8 +19,10 @@
                     "attributes": [
                         {
                             "attribute": 0,
-                            "name": "onoff",
                             "inverse": true
+                        },
+                        {
+                            "attribute": 32768
                         }
                     ],
                     "cluster": 6
@@ -57,7 +43,7 @@
             "profile": 260
         }
     ],
-    "generictype": "sensor",
+    "generictype": "",
     "info": {
         "bit_field": "0100000000000010",
         "descriptor_capability": "00000000",
