@@ -150,12 +150,18 @@ class ZiGate(object):
         self._ota_reset_local_variables()
 
         if adminpanel:
-            start_adminpanel(self)
+            self.start_adminpanel()
 
         if auto_start:
             self.autoStart(channel)
             if auto_save:
                 self.start_auto_save()
+
+    def start_adminpanel(self):
+        '''
+        Start Admin panel in other thread
+        '''
+        start_adminpanel(self)
 
     def _event_loop(self):
         while True:
