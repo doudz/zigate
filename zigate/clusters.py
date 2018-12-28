@@ -88,13 +88,13 @@ class Cluster(object):
         if attr_def:
             # remove unwanted key from old conf
             for k in list(attribute.keys()):
-                if k in ('attribute', 'data'):
+                if k in ('attribute', 'data', 'inverse'):
                     continue
                 if k not in attr_def:
                     del attribute[k]
             attribute.update(attr_def)
+            attribute_type = attribute.get('type')
             if attribute.get('data') is None:
-                attribute_type = attribute.get('type')
                 attribute['value'] = None
                 if attribute_type:
                     attribute['value'] = attribute_type()
@@ -104,12 +104,16 @@ class Cluster(object):
                                               globals(),
                                               {'value': attribute['data'],
                                                'self': self})
+                    if attribute.get('inverse', False) and isinstance(attribute['value'], bool):
+                        attribute['value'] = not attribute['value']
                 except Exception:
                     LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
                                                                          attribute['data']
                                                                          ))
                     LOGGER.error(traceback.format_exc())
                     attribute['value'] = None
+                    if attribute_type:
+                        attribute['value'] = attribute_type()
         return (added, attribute)
 
     def __str__(self):
@@ -320,7 +324,7 @@ class C0101(Cluster):
                       0x0055: {'name': 'movement', 'value': 'vibration_decode(value)',
                                'expire': 2, 'expire_value': '', 'type': str},
                       0x0503: {'name': 'rotation', 'value': 'round(value, 2)',
-                               'unit': '°', 'expire': 2, 'expire_value': 0, 'type': float},
+                               'unit': '°', 'expire': 2, 'type': float},
                       }
 
 

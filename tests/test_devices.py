@@ -60,7 +60,42 @@ class TestCore(unittest.TestCase):
                                {'attribute': 0, 'name': 'humidity', 'unit': '%', 'value': 0.0, 'type': float}]
                               )
 
+        device.set_attribute(1, 6, {'attribute': 0, 'rssi': 255, 'data': False, 'inverse': True})
+        device.set_attribute(1, 0, {'attribute': 1, 'rssi': 255, 'data': 'test'})
+
         device.generate_template(self.test_dir)
+        with open(os.path.join(self.test_dir, 'lumi.weather.json')) as fp:
+            jdata = json.load(fp)
+        self.assertEqual(jdata,
+                         {'endpoints': [{'clusters': [{'attributes': [{'attribute': 4, 'data': 'LUMI'},
+                                                                      {'attribute': 5, 'data': 'lumi.weather'},
+                                                                      {'attribute': 7, 'data': 3}], 'cluster': 0},
+                                                      {'attributes': [{'attribute': 0}], 'cluster': 1026},
+                                                      {'attributes': [{'attribute': 0}, {'attribute': 16},
+                                                                      {'attribute': 20}], 'cluster': 1027},
+                                                      {'attributes': [{'attribute': 0}], 'cluster': 1029},
+                                                      {'attributes': [{'attribute': 0, 'inverse': True}],
+                                                       'cluster': 6}],
+                                         'device': 24321, 'endpoint': 1,
+                                         'in_clusters': [0, 3, 65535, 1026, 1027, 1029],
+                                         'out_clusters': [0, 4, 65535], 'profile': 260}],
+                          'generictype': 'sensor',
+                          'info': {'bit_field': '0100000000000010',
+                                   'descriptor_capability': '00000000',
+                                   'mac_capability': '10000000',
+                                   'manufacturer_code': '1037',
+                                   'power_type': 0,
+                                   'server_mask': 0}}
+                         )
+
+    def test_inverse_bool(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.sensor_switch.aq2'})
+        device.set_attribute(1, 6, {'attribute': 0, 'rssi': 255, 'data': True})
+        self.assertTrue(device.get_property_value('onoff'))
+        device.load_template()
+        device.set_attribute(1, 6, {'attribute': 0, 'rssi': 255, 'data': True})
+        self.assertFalse(device.get_property_value('onoff'))
 
     def test_templates(self):
         path = os.path.join(core.BASE_PATH, 'templates')
@@ -74,6 +109,17 @@ class TestCore(unittest.TestCase):
             except Exception:
                 pass
             self.assertTrue(success)
+
+    def test_reset_attribute(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0x0101, {'attribute': 0x0503, 'rssi': 255, 'data': 12.0})
+        self.assertEqual(device.get_property_value('rotation'), 12.0)
+        device._reset_attribute(1, 0x0101, 0x0503)
+        self.assertEqual(device.get_property_value('rotation'), 0.0)
+        device.set_attribute(1, 0x0101, {'attribute': 0x0503, 'rssi': 255, 'data': 'test'})
+        self.assertEqual(device.get_property_value('rotation'), 0.0)
+        device._reset_attribute(1, 0x0101, 0x0503)
+        self.assertEqual(device.get_property_value('rotation'), 0.0)
 
 
 if __name__ == '__main__':

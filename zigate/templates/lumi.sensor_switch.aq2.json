@@ -35,7 +35,8 @@
                     "attributes": [
                         {
                             "attribute": 0,
-                            "name": "onoff"
+                            "name": "onoff",
+                            "inverse": true
                         }
                     ],
                     "cluster": 6

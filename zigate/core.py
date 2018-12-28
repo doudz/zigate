@@ -2160,6 +2160,8 @@ class Device(object):
         value = attribute['value']
         if 'expire_value' in attribute:
             new_value = attribute['expire_value']
+        elif 'type' in attribute:
+            new_value = attribute['type']()
         else:
             new_value = type(value)()
         attribute['value'] = new_value
@@ -2363,10 +2365,13 @@ class Device(object):
         for endpoint in jdata.get('endpoints', []):
             for cluster in endpoint.get('clusters', []):
                 cluster_id = cluster['cluster']
+                if cluster_id == 0:  # we only keep attribute 4, 5, 7 for cluster 0x0000
+                    cluster['attributes'] = [a for a in cluster.get('attributes', [])
+                                             if a.get('attribute') in (4, 5, 7)]
                 for attribute in cluster.get('attributes', []):
                     keys = list(attribute.keys())
                     for key in keys:
-                        if key == 'attribute':
+                        if key in ('attribute', 'inverse'):
                             continue
                         if key == 'data' and cluster_id == 0:
                             continue
