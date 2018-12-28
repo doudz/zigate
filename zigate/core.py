@@ -33,6 +33,7 @@ import random
 from enum import Enum
 import colorsys
 import datetime
+from .adminpanel import start_adminpanel
 
 
 LOGGER = logging.getLogger('zigate')
@@ -119,7 +120,8 @@ class ZiGate(object):
     def __init__(self, port='auto', path='~/.zigate.json',
                  auto_start=True,
                  auto_save=True,
-                 channel=None):
+                 channel=None,
+                 adminpanel=False):
         self._devices = {}
         self._groups = {}
         self._scenes = {}
@@ -146,6 +148,9 @@ class ZiGate(object):
         dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
 
         self._ota_reset_local_variables()
+
+        if adminpanel:
+            start_adminpanel(self)
 
         if auto_start:
             self.autoStart(channel)
@@ -1773,12 +1778,14 @@ class ZiGateWiFi(ZiGate):
     def __init__(self, host, port=None, path='~/.zigate.json',
                  auto_start=True,
                  auto_save=True,
-                 channel=None):
+                 channel=None,
+                 adminpanel=False):
         self._host = host
         ZiGate.__init__(self, port=port, path=path,
                         auto_start=auto_start,
                         auto_save=auto_save,
-                        channel=channel
+                        channel=channel,
+                        adminpanel=adminpanel
                         )
 
     def setup_connection(self):
