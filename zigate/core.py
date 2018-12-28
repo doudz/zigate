@@ -2333,7 +2333,6 @@ class Device(object):
                     template = json.load(fp)
                     device = Device.from_json(template)
                     self.update(device)
-#                     print(device)
                     success = True
             except Exception:
                 LOGGER.error('Failed to load template for {}'.format(typ))
@@ -2342,6 +2341,9 @@ class Device(object):
             LOGGER.warning('No template found for {}'.format(typ))
         if success:
             self.discovery = 'templated'
+            dispatch_signal(ZIGATE_DEVICE_UPDATED,
+                            self._zigate, **{'zigate': self._zigate,
+                                             'device': self})
         return success
 
     def generate_template(self, dirname='~'):
