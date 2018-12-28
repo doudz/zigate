@@ -54,7 +54,8 @@ setup(
 
     install_requires=[
         'pyserial',
-        'pydispatcher'
+        'pydispatcher',
+        'bottle'
     ],
     extras_require={
         'dev': ['tox'],
