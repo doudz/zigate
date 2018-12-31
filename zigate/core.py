@@ -1330,6 +1330,7 @@ class ZiGate(object):
             LOGGER.error('Header size({header}) and file size({file}) does not match'.format(
                 header=header['size'], file=len(ota_file_content)
             ))
+            return False
 
         destination_address_mode = 0x02
         destination_address = 0x0000
