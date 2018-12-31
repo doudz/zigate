@@ -88,22 +88,32 @@ class Cluster(object):
         if attr_def:
             # remove unwanted key from old conf
             for k in list(attribute.keys()):
-                if k in ('attribute', 'data'):
+                if k in ('attribute', 'data', 'inverse'):
                     continue
                 if k not in attr_def:
                     del attribute[k]
             attribute.update(attr_def)
-            try:
-                attribute['value'] = eval(attribute['value'],
-                                          globals(),
-                                          {'value': attribute['data'],
-                                           'self': self})
-            except Exception:
-                LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
-                                                                     attribute['data']
-                                                                     ))
-                LOGGER.error(traceback.format_exc())
+            attribute_type = attribute.get('type')
+            if attribute.get('data') is None:
                 attribute['value'] = None
+                if attribute_type:
+                    attribute['value'] = attribute_type()
+            else:
+                try:
+                    attribute['value'] = eval(attribute['value'],
+                                              globals(),
+                                              {'value': attribute['data'],
+                                               'self': self})
+                    if attribute.get('inverse', False) and isinstance(attribute['value'], bool):
+                        attribute['value'] = not attribute['value']
+                except Exception:
+                    LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
+                                                                         attribute['data']
+                                                                         ))
+                    LOGGER.error(traceback.format_exc())
+                    attribute['value'] = None
+                    if attribute_type:
+                        attribute['value'] = attribute_type()
         return (added, attribute)
 
     def __str__(self):
@@ -156,7 +166,7 @@ class C0000(Cluster):
                       0x0003: {'name': 'hardware_version', 'value': 'value'},
                       0x0004: {'name': 'manufacturer',
                                'value': 'clean_str(value)'},
-                      0x0005: {'name': 'type', 'value': 'clean_str(value)'},
+                      0x0005: {'name': 'type', 'value': 'clean_str(value)', 'type': str},
                       0x0006: {'name': 'datecode', 'value': 'value'},
                       0x0007: {'name': 'power_source', 'value': 'value'},
                       0x0010: {'name': 'description',
@@ -167,7 +177,7 @@ class C0000(Cluster):
                       }
 
     def update(self, data):
-        if data['attribute'] == 0xff01 and not data['data'].startswith('0121'):
+        if data['attribute'] == 0xff01 and not data.get('data', '').startswith('0121'):
             return
         return Cluster.update(self, data)
 
@@ -198,8 +208,8 @@ class C0001(Cluster):
 class C0006(Cluster):
     cluster_id = 0x0006
     type = 'General: On/Off'
-    attributes_def = {0x0000: {'name': 'onoff', 'value': 'value'},
-                      0x8000: {'name': 'multiclick', 'value': 'value',
+    attributes_def = {0x0000: {'name': 'onoff', 'value': 'value', 'type': bool},
+                      0x8000: {'name': 'multiclick', 'value': 'value', 'type': int,
                                'expire': 2},
                       }
 
@@ -208,7 +218,7 @@ class C0006(Cluster):
 class C0008(Cluster):
     cluster_id = 0x0008
     type = 'General: Level control'
-    attributes_def = {0x0000: {'name': 'current_level', 'value': 'int(value*100/254)'},
+    attributes_def = {0x0000: {'name': 'current_level', 'value': 'int(value*100/254)', 'type': int},
                       }
 
 
@@ -217,9 +227,9 @@ class C000c(Cluster):
     cluster_id = 0x000c
     type = 'Analog input (Xiaomi cube: Rotation)'
     attributes_def = {0x0055: {'name': 'rotation', 'value': 'round(value, 2)',
-                               'unit': '°', 'expire': 2},
+                               'unit': '°', 'expire': 2, 'type': float},
                       0xff05: {'name': 'rotation_time', 'value': 'value',
-                               'unit': 'ms', 'expire': 2},
+                               'unit': 'ms', 'expire': 2, 'type': int},
                       }
 
 
@@ -277,7 +287,7 @@ class C0012(Cluster):
     type = 'Multistate input (Xiaomi cube: Movement)'
     attributes_def = {0x0055: {'name': 'movement',
                                'value': 'cube_decode(value)',
-                               'expire': 2, 'expire_value': ''},
+                               'expire': 2, 'expire_value': '', 'type': str},
                       }
 
     def __init__(self, endpoint=None):
@@ -285,7 +295,7 @@ class C0012(Cluster):
         if self._endpoint['device'] == 0x0103:  # lumi.remote.b1acn01
             self.attributes_def = {0x0055: {'name': 'multiclick',
                                             'value': 'value',
-                                            'expire': 2},
+                                            'expire': 2, 'type': int},
                                    }
 
 
@@ -312,9 +322,9 @@ class C0101(Cluster):
                       0x0001: {'name': 'locktype', 'value': 'value'},
                       0x0002: {'name': 'enabled', 'value': 'bool(value)'},
                       0x0055: {'name': 'movement', 'value': 'vibration_decode(value)',
-                               'expire': 2, 'expire_value': ''},
-                      0x0503: {'name': 'rotation', 'value': 'value',
-                               'expire': 2, 'expire_value': ''},
+                               'expire': 2, 'expire_value': '', 'type': str},
+                      0x0503: {'name': 'rotation', 'value': 'round(value, 2)',
+                               'unit': '°', 'expire': 2, 'type': float},
                       }
 
 
@@ -365,15 +375,8 @@ class C0402(Cluster):
     cluster_id = 0x0402
     type = 'Measurement: Temperature'
     attributes_def = {0x0000: {'name': 'temperature', 'value': 'value/100.',
-                               'unit': '°C'},
+                               'unit': '°C', 'type': float},
                       }
-
-    def update(self, data):
-        added, attribute = Cluster.update(self, data)
-        # ignore erroneous value
-        if abs(attribute['value']) > 80:
-            return
-        return added, attribute
 
 
 @register_cluster
@@ -381,9 +384,9 @@ class C0403(Cluster):
     cluster_id = 0x0403
     type = 'Measurement: Atmospheric Pressure'
     attributes_def = {0x0000: {'name': 'pressure', 'value': 'value',
-                               'unit': 'mb'},
+                               'unit': 'mb', 'type': int},
                       0x0010: {'name': 'pressure2', 'value': 'value/10.',
-                               'unit': 'mb'},
+                               'unit': 'mb', 'type': float},
                       }
 
 
@@ -392,15 +395,8 @@ class C0405(Cluster):
     cluster_id = 0x0405
     type = 'Measurement: Humidity'
     attributes_def = {0x0000: {'name': 'humidity', 'value': 'value/100.',
-                               'unit': '%'},
+                               'unit': '%', 'type': float},
                       }
-
-    def update(self, data):
-        added, attribute = Cluster.update(self, data)
-        # ignore erroneous value
-        if abs(attribute['value']) > 100:
-            return
-        return added, attribute
 
 
 @register_cluster
@@ -408,7 +404,7 @@ class C0406(Cluster):
     cluster_id = 0x0406
     type = 'Measurement: Occupancy Sensing'
     attributes_def = {0x0000: {'name': 'presence', 'value': 'bool(value)',
-                               'expire': 10},
+                               'expire': 10, 'type': bool},
                       }
 
 

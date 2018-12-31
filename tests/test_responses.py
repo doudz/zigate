@@ -38,6 +38,43 @@ class TestResponses(unittest.TestCase):
                                           ('attribute_id', 18),
                                           ('rssi', 255)]))
 
+    def test_response_8062(self):
+        msg_data = b'\x01\x01\x00\x04\x124\x10\x01\x98v'
+        r = responses.R8062(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('groups', ['9876']),
+                                          ('sequence', 1),
+                                          ('endpoint', 1),
+                                          ('cluster', 4),
+                                          ('addr', '1234'),
+                                          ('capacity', 16),
+                                          ('group_count', 1),
+                                          ('rssi', 255)]))
+
+        msg_data = b'\x01\x01\x00\x04\x124\x10\x00'
+        r = responses.R8062(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('groups', []),
+                                          ('sequence', 1),
+                                          ('endpoint', 1),
+                                          ('cluster', 4),
+                                          ('addr', '1234'),
+                                          ('capacity', 16),
+                                          ('group_count', 0),
+                                          ('rssi', 255)]))
+
+    def test_response_8060(self):
+        msg_data = b'\x01\x01\x00\x04\x004\x10'
+        r = responses.R8060(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('sequence', 1),
+                                          ('endpoint', 1),
+                                          ('cluster', 4),
+                                          ('status', 0),
+                                          ('group', '3410'),
+                                          ('rssi', 255)])
+                             )
+
 
 if __name__ == '__main__':
     unittest.main()

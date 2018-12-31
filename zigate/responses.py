@@ -75,16 +75,14 @@ class Response(object):
         for k, v in self.s.items():
             if isinstance(v, OrderedDict):
                 keys.remove(k)
+                self.data[k] = []
                 rest = len(msg_data) - struct.calcsize(fmt)
-                # If there is no data for rest of keys that means there is no data for this key
                 if rest == 0:
-                    self.data[k] = []
                     continue
                 subfmt = '!' + ''.join(v.values())
                 count = rest // struct.calcsize(subfmt)
                 submsg_data = msg_data[-rest:]
                 msg_data = msg_data[:-rest]
-                self.data[k] = []
                 for i in range(count):
                     sdata, submsg_data = self.__decode(subfmt,
                                                        v.keys(),
@@ -357,7 +355,7 @@ class R8042(Response):
                      ('bit_field', 'H')
                      ])
     format = {'addr': '{:04x}',
-              'manufacturer': '{:04x}',
+              'manufacturer_code': '{:04x}',
               'descriptor_capability': '{:08b}',
               'mac_capability': '{:08b}',
               'bit_field': '{:016b}'}
@@ -585,6 +583,10 @@ class R8062(Response):
                      ('group_count', 'B'),
                      ('groups', OrderedDict([('group', 'H')]))
                      ])
+
+    def cleaned_data(self):
+        self.data['groups'] = [g['group'] for g in self.data['groups']]
+        return self.data
 
 
 @register_response
