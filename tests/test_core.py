@@ -103,8 +103,8 @@ class TestCore(unittest.TestCase):
         msg_data = b'\x000\x00\x08\x93-\x03\x03\x00'
         r = responses.R8140(msg_data, 255)
         self.zigate.interpret_response(r)
-        self.assertCountEqual(self.zigate._devices['932d'].attributes,
-                              [{'endpoint': 3, 'cluster': 768, 'attribute': 8,
+        self.assertCountEqual(self.zigate._devices['932d'].get_attributes(),
+                              [{'attribute': 8,
                                 'name': 'colour_mode', 'value': None}])
 
 

@@ -755,6 +755,9 @@ class R8140(Response):
             del self.s['cluster']
         Response.decode(self)
 
+    def cleaned_data(self):
+        return self._filter_data(['attribute'])
+
 
 @register_response
 class R8401(Response):
