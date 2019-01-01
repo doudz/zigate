@@ -33,7 +33,6 @@ import random
 from enum import Enum
 import colorsys
 import datetime
-from .adminpanel import start_adminpanel
 
 
 LOGGER = logging.getLogger('zigate')
@@ -161,6 +160,7 @@ class ZiGate(object):
         '''
         Start Admin panel in other thread
         '''
+        from .adminpanel import start_adminpanel
         start_adminpanel(self)
 
     def _event_loop(self):
