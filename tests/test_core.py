@@ -99,6 +99,14 @@ class TestCore(unittest.TestCase):
                              {'4567': {('0123', 1)},
                               })
 
+    def test_attribute_discovery(self):
+        msg_data = b'\x000\x00\x08\x93-\x03\x03\x00'
+        r = responses.R8140(msg_data, 255)
+        self.zigate.interpret_response(r)
+        self.assertCountEqual(self.zigate._devices['932d'].attributes,
+                              [{'endpoint': 3, 'cluster': 768, 'attribute': 8,
+                                'name': 'colour_mode', 'value': None}])
+
 
 if __name__ == '__main__':
     unittest.main()

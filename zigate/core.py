@@ -511,6 +511,12 @@ class ZiGate(object):
             LOGGER.debug('Device Announce')
             device = Device(response.data, self)
             self._set_device(device)
+        elif response.msg == 0x8140:  # attribute discovery
+            if 'addr' in response:
+                device = self._get_device(response['addr'])
+                r = device.set_attribute(response['endpoint'],
+                                         response['cluster'],
+                                         response.cleaned_data())
         elif response.msg == 0x8501:  # OTA image block request
             LOGGER.debug('Client is requesting ota image data')
             self._ota_send_image_data(response)

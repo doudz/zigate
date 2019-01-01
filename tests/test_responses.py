@@ -34,8 +34,8 @@ class TestResponses(unittest.TestCase):
         r = responses.R8140(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
                              OrderedDict([('complete', 1),
-                                          ('attribute_type', 16),
-                                          ('attribute_id', 18),
+                                          ('data_type', 16),
+                                          ('attribute', 18),
                                           ('rssi', 255)]))
 
     def test_response_8140_30f(self):
@@ -44,8 +44,8 @@ class TestResponses(unittest.TestCase):
         r = responses.R8140(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
                              OrderedDict([('complete', 0),
-                                          ('attribute_type', 48),
-                                          ('attribute_id', 8),
+                                          ('data_type', 48),
+                                          ('attribute', 8),
                                           ('addr', '932d'),
                                           ('endpoint', 3),
                                           ('cluster', 768),

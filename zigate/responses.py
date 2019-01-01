@@ -740,8 +740,8 @@ class R8140(Response):
     msg = 0x8140
     type = 'Attribute Discovery response'
     s = OrderedDict([('complete', 'B'),
-                     ('attribute_type', 'B'),
-                     ('attribute_id', 'H'),
+                     ('data_type', 'B'),
+                     ('attribute', 'H'),
                      ('addr', 'H'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
