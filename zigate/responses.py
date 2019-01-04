@@ -554,9 +554,16 @@ class R8060(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
+                     ('addr', 'H'),
                      ('status', 'B'),
                      ('group', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 7:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -733,9 +740,23 @@ class R8140(Response):
     msg = 0x8140
     type = 'Attribute Discovery response'
     s = OrderedDict([('complete', 'B'),
-                     ('attribute_type', 'B'),
-                     ('attribute_id', 'H'),
+                     ('data_type', 'B'),
+                     ('attribute', 'H'),
+                     ('addr', 'H'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 4:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+            del self.s['endpoint']
+            del self.s['cluster']
+        Response.decode(self)
+
+    def cleaned_data(self):
+        return self._filter_data(['attribute'])
 
 
 @register_response

@@ -33,7 +33,6 @@ import random
 from enum import Enum
 import colorsys
 import datetime
-from .adminpanel import start_adminpanel
 
 
 LOGGER = logging.getLogger('zigate')
@@ -161,6 +160,7 @@ class ZiGate(object):
         '''
         Start Admin panel in other thread
         '''
+        from .adminpanel import start_adminpanel
         start_adminpanel(self)
 
     def _event_loop(self):
@@ -511,6 +511,12 @@ class ZiGate(object):
             LOGGER.debug('Device Announce')
             device = Device(response.data, self)
             self._set_device(device)
+        elif response.msg == 0x8140:  # attribute discovery
+            if 'addr' in response:
+                device = self._get_device(response['addr'])
+                r = device.set_attribute(response['endpoint'],
+                                         response['cluster'],
+                                         response.cleaned_data())
         elif response.msg == 0x8501:  # OTA image block request
             LOGGER.debug('Client is requesting ota image data')
             self._ota_send_image_data(response)
@@ -1380,6 +1386,7 @@ class ZiGate(object):
             LOGGER.error('Header size({header}) and file size({file}) does not match'.format(
                 header=header['size'], file=len(ota_file_content)
             ))
+            return False
 
         destination_address_mode = 0x02
         destination_address = 0x0000
