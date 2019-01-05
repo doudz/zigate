@@ -415,6 +415,9 @@ class C0500(Cluster):
     attributes_def = {255: {'name': 'zone_status', 'value': 'self._decode(value[::-1])'}}
 
     def update(self, data):
+        if 'zone_id' not in data:  # loaded from persistent
+            data['zone_id'] = data['attribute']
+            data['zone_status'] = data['data']
         zone_id = data['zone_id']
         data['attribute'] = zone_id
         data['data'] = data['zone_status']
