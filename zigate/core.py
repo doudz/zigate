@@ -21,8 +21,8 @@ from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
                     ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
-                    ZIGATE_DEVICE_UPDATED, ZIGATE_DEVICE_RENAMED,
-                    ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH,
+                    ZIGATE_DEVICE_UPDATED, ZIGATE_DEVICE_ADDRESS_CHANGED,
+                    ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_DISCOVERY,
                     ZIGATE_RESPONSE_RECEIVED, DATA_TYPE, BASE_PATH)
 
 from .clusters import (Cluster, get_cluster)
@@ -291,22 +291,21 @@ class ZiGate(object):
             LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
             self.setTime()
         self.get_devices_list(True)
-        self.need_refresh()
+        self.need_discovery()
 
-    def need_refresh(self):
+    def need_discovery(self):
         '''
-        scan device which need refresh
-        auto refresh if possible
+        scan device which need discovery
+        auto discovery if possible
         else dispatch signal
         '''
         for device in self.devices:
-            if device.need_refresh():
+            if device.need_discovery():
                 if device.receiver_on_when_idle():
-                    LOGGER.debug('Auto refresh device {}'.format(device))
-#                     device.refresh_device()
+                    LOGGER.debug('Auto discover device {}'.format(device))
                     device.discover_device()
                 else:
-                    dispatch_signal(ZIGATE_DEVICE_NEED_REFRESH,
+                    dispatch_signal(ZIGATE_DEVICE_NEED_DISCOVERY,
                                     self, **{'zigate': self,
                                              'device': device})
 
@@ -599,7 +598,7 @@ class ZiGate(object):
                 d.update(device)
                 self._devices[new_addr] = d
                 del self._devices[old_addr]
-                dispatch_signal(ZIGATE_DEVICE_RENAMED, self,
+                dispatch_signal(ZIGATE_DEVICE_ADDRESS_CHANGED, self,
                                 **{'zigate': self,
                                    'old_addr': old_addr,
                                    'new_addr': new_addr,
@@ -609,7 +608,6 @@ class ZiGate(object):
                 dispatch_signal(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
                                                               'device': device})
             self.discover_device(device.addr)
-#             self.refresh_device(device.addr)
 
     def get_status_text(self, status_code):
         return STATUS_CODES.get(status_code,
@@ -2375,30 +2373,30 @@ class Device(object):
             return mac_capability[-3] == '1'
         return False
 
-    def need_refresh(self):
+    def need_discovery(self):
         '''
-        return True if device need to be refresh
+        return True if device need to be discovered
         because of missing important information
         '''
         need = False
-        LOGGER.debug('Check Need refresh {}'.format(self))
+        LOGGER.debug('Check Need discovery {}'.format(self))
         if not self.discovery:
             self.load_template()
         if not self.get_property_value('type'):
-            LOGGER.debug('Need refresh : no type')
+            LOGGER.debug('Need discovery : no type')
             need = True
         if not self.ieee:
-            LOGGER.debug('Need refresh : no IEEE')
+            LOGGER.debug('Need discovery : no IEEE')
             need = True
         if not self.endpoints:
-            LOGGER.debug('Need refresh : no endpoints')
+            LOGGER.debug('Need discovery : no endpoints')
             need = True
         for endpoint in self.endpoints.values():
             if endpoint.get('device') is None:
-                LOGGER.debug('Need refresh : no device id')
+                LOGGER.debug('Need discovery : no device id')
                 need = True
             if endpoint.get('in_clusters') is None:
-                LOGGER.debug('Need refresh : no clusters list')
+                LOGGER.debug('Need discovery : no clusters list')
                 need = True
         return need
 
