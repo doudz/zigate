@@ -595,8 +595,8 @@ class ZiGate(object):
                 LOGGER.warning('Device already exists with another addr {}, rename it.'.format(d.addr))
                 old_addr = d.addr
                 new_addr = device.addr
-                d.update(device)
                 d.discovery = ''
+                d.update(device)
                 self._devices[new_addr] = d
                 del self._devices[old_addr]
                 dispatch_signal(ZIGATE_DEVICE_RENAMED, self,
@@ -1734,17 +1734,27 @@ class ZiGate(object):
         return self.actions_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def actions_move_temperature(self, addr, endpoint, temperature, transition=0):
+    def actions_move_temperature(self, addr, endpoint, mired, transition=0):
+        '''
+        move colour to temperature
+        mired color temperature
+        transition in second
+        '''
+        addr = self.__addr(addr)
+        data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
+                           mired, transition)
+        self.send_data(0x00C0, data)
+
+    @register_actions(ACTIONS_TEMPERATURE)
+    def actions_move_temperature_kelvin(self, addr, endpoint, temperature, transition=0):
         '''
         move colour to temperature
         temperature unit is kelvin
         transition in second
+        convenient function to use kelvin instead of mired
         '''
         temperature = int(1000000 // temperature)
-        addr = self.__addr(addr)
-        data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
-                           temperature, transition)
-        self.send_data(0x00C0, data)
+        self.actions_move_temperature(addr, endpoint, temperature, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
     def actions_move_temperature_rate(self, addr, endpoint, mode, rate, min_temperature, max_temperature):
