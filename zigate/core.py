@@ -596,6 +596,7 @@ class ZiGate(object):
                 old_addr = d.addr
                 new_addr = device.addr
                 d.update(device)
+                d.discovery = ''
                 self._devices[new_addr] = d
                 del self._devices[old_addr]
                 dispatch_signal(ZIGATE_DEVICE_RENAMED, self,
