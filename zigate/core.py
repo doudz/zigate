@@ -235,9 +235,12 @@ class ZiGate(object):
                 self._scenes = data.get('scenes', {})
                 devices = data.get('devices', [])
                 for data in devices:
-                    device = Device.from_json(data, self)
-                    self._devices[device.addr] = device
-                    device._create_actions()
+                    try:
+                        device = Device.from_json(data, self)
+                        self._devices[device.addr] = device
+                        device._create_actions()
+                    except Exception:
+                        LOGGER.error('Error loading device {}'.format(data))
                 LOGGER.debug('Load success')
                 return True
             except Exception:
