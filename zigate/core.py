@@ -1320,7 +1320,8 @@ class ZiGate(object):
                           direction=0, manufacturer_code=0):
         '''
         Configure reporting request
-        for now support only one attribute
+        attribute could be a tuple of (attribute_id, attribute_type)
+        or a list of tuple (attribute_id, attribute_type)
         '''
         addr = self.__addr(addr)
 #         if not isinstance(attributes, list):
@@ -1871,11 +1872,14 @@ class Device(object):
                         actions[ep_id].append(ACTIONS_LOCK)
                     if 0x0300 in endpoint['in_clusters']:
                         if endpoint['device'] == 0x0210:
+                            actions[ep_id].append(ACTIONS_COLOR)
                             actions[ep_id].append(ACTIONS_HUE)
+                            actions[ep_id].append(ACTIONS_TEMPERATURE)
                         elif endpoint['device'] == 0x0220:
                             actions[ep_id].append(ACTIONS_TEMPERATURE)
                         else:  # 0x0200
                             actions[ep_id].append(ACTIONS_COLOR)
+                            actions[ep_id].append(ACTIONS_HUE)
         return actions
 
     def _create_actions(self):
@@ -1927,12 +1931,6 @@ class Device(object):
                                                        endpoint_id,
                                                        0x0300, 0x0001,
                                                        0x20)
-                    elif endpoint['device'] == 0x0220:
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, 0x0007,
-                                                       0x20)
-                    else:  # 0x0200
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
                                                        0x0300, 0x0003,
@@ -1941,9 +1939,32 @@ class Device(object):
                                                        endpoint_id,
                                                        0x0300, 0x0004,
                                                        0x20)
-#                     for i in range(9):  # all color informations
-#                         self._zigate.reporting_request(self.addr, endpoint_id,
-#                                                        0x0300, i, 0x20)
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0007,
+                                                       0x20)
+                    elif endpoint['device'] == 0x0220:
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0007,
+                                                       0x20)
+                    else:  # 0x0200
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0000,
+                                                       0x20)
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0001,
+                                                       0x20)
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0003,
+                                                       0x20)
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0004,
+                                                       0x20)
 
     @staticmethod
     def from_json(data, zigate_instance=None):
