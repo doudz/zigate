@@ -1918,9 +1918,32 @@ class Device(object):
                 if 0x0300 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0300')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
-                    for i in range(9):  # all color informations
-                        self._zigate.reporting_request(self.addr, endpoint_id,
-                                                       0x0300, i, 0x20)
+                    if endpoint['device'] == 0x0210:
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0000,
+                                                       0x20)
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0001,
+                                                       0x20)
+                    elif endpoint['device'] == 0x0220:
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0007,
+                                                       0x20)
+                    else:  # 0x0200
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0003,
+                                                       0x20)
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, 0x0004,
+                                                       0x20)
+#                     for i in range(9):  # all color informations
+#                         self._zigate.reporting_request(self.addr, endpoint_id,
+#                                                        0x0300, i, 0x20)
 
     @staticmethod
     def from_json(data, zigate_instance=None):
@@ -2384,6 +2407,7 @@ class Device(object):
                 LOGGER.error(traceback.format_exc())
         else:
             LOGGER.warning('No template found for {}'.format(typ))
+        self._bind_report()
         if success:
             self.discovery = 'templated'
             dispatch_signal(ZIGATE_DEVICE_UPDATED,
