@@ -1338,8 +1338,7 @@ class ZiGate(object):
         fmt = ''
         attributes_data = []
         for attribute_tuple in attributes:
-            data_type = DATA_TYPE[attribute_tuple[1]]
-            fmt += 'B' + data_type + 'HHHHB'
+            fmt += 'BBHHHHB'
             attributes_data += [attribute_direction,
                                 attribute_tuple[1],
                                 attribute_tuple[0],
