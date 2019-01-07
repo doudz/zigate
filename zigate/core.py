@@ -490,7 +490,7 @@ class ZiGate(object):
             self._sync_group_membership(data['addr'], data['endpoint'], data['groups'])
         elif response.msg in (0x8100, 0x8102, 0x8110, 0x8401):  # attribute report or IAS Zone status change
             if response['status'] != 0:
-                LOGGER.debug('Receive Bad status')
+                LOGGER.debug('Received Bad status')
                 return
             device = self._get_device(response['addr'])
             device.rssi = response['rssi']
@@ -530,6 +530,8 @@ class ZiGate(object):
         elif response.msg == 0x8503:  # OTA Upgrade end request
             LOGGER.debug('Client ended ota process')
             self._ota_handle_upgrade_end_request(response)
+        elif response.msg == 0x8702:  # APS Data confirm Fail
+            LOGGER.error(response)
 #         else:
 #             LOGGER.debug('Do nothing special for response {}'.format(response))
 
