@@ -277,15 +277,15 @@ class TestCore(unittest.TestCase):
     def test_reporting_request(self):
         self.zigate.reporting_request('1234', 3, 0x0300, (0x0000, 0x20))
         self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
-                         b'0212340103030000000000010020000000000000000000'
+                         b'0212340103030000000000010020000000010e10000000'
                          )
         self.zigate.reporting_request('1234', 3, 0x0300, [(0x0000, 0x20)])
         self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
-                         b'0212340103030000000000010020000000000000000000'
+                         b'0212340103030000000000010020000000010e10000000'
                          )
         self.zigate.reporting_request('1234', 3, 0x0300, [(0x0000, 0x20), (0x0001, 0x20)])
         self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
-                         b'02123401030300000000000200200000000000000000000020000100000000000000'
+                         b'0212340103030000000000020020000000010e100000000020000100010e10000000'
                          )
 
 
