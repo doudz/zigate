@@ -164,9 +164,9 @@ def req_chip_id():
     pass
 
 
-@Command(0x36, '<B')
-def req_eeprom_erase(force=1):
-    pass
+@Command(0x36, 'B')
+def req_eeprom_erase(force=True):  # True means all, False means only PDM
+    return force
 
 
 @register(0x26)
@@ -318,25 +318,12 @@ def write_file_to_flash(ser, filename):
             cur += read_bytes
 
 
-def erase_EEPROM(ser, force=1):
+def erase_EEPROM(ser, force=True):
     ser.write(req_eeprom_erase(force))
     res = read_response(ser)
     if not res or not res.ok:
         print('Erasing EEPROM failed')
         raise SystemExit(1)
-
-#     sData = struct.pack('<BB', 0x36, bForceErase)
-#     sData = struct.pack('B', len(sData) + 1) + sData
-#     sData = sData + mCalcCrc(sData)
-#     ser.write(sData)
-
-
-# def mCalcCrc(self, sData):
-#     iCrc = 0
-#     sStrForm = struct.unpack('B' * len(sData), sData)
-#     for i in range(len(sData)):
-#         iCrc = iCrc ^ sStrForm[i]
-#     return struct.pack('B', iCrc)
 
 
 def main():
@@ -361,7 +348,7 @@ def main():
     flash_type = get_flash_type(ser)
     mac_address = get_mac(ser)
     print('Found MAC-address: %s' % mac_address)
-    if args.write or args.save:
+    if args.write or args.save or args.erase:
         select_flash(ser, flash_type)
 
     if args.save:
