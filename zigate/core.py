@@ -168,7 +168,10 @@ class ZiGate(object):
             if self.connection and not self.connection.received.empty():
                 packet = self.connection.received.get()
                 dispatch_signal(ZIGATE_PACKET_RECEIVED, self, packet=packet)
-                self.decode_data(packet)
+                t = threading.Thread(target=self.decode_data, args=(packet,))
+                t.setDaemon(True)
+                t.start()
+#                 self.decode_data(packet)
             else:
                 sleep(SLEEP_INTERVAL)
 
@@ -1790,6 +1793,7 @@ class ZiGate(object):
         broker.connect()
         self.broker_thread = threading.Thread(target=broker.client.loop_forever,
                                               name='ZiGate-MQTT')
+        self.broker_thread.setDaemon(True)
         self.broker_thread.start()
 
     def generate_templates(self, dirname='~'):
