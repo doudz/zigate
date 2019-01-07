@@ -717,7 +717,7 @@ class ZiGate(object):
         '''
         reset zigate
         '''
-        return self.send_data(0x0011)
+        return self.send_data(0x0011, wait_status=False)
 
     def erase_persistent(self):
         '''
