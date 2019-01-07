@@ -1319,7 +1319,7 @@ class ZiGate(object):
         self.send_data(0x0110, data)
 
     def reporting_request(self, addr, endpoint, cluster, attributes,
-                          direction=0, manufacturer_code=0):
+                          direction=0, manufacturer_code=0, min_interval=1, max_interval=3600):
         '''
         Configure reporting request
         attribute could be a tuple of (attribute_id, attribute_type)
@@ -1331,8 +1331,6 @@ class ZiGate(object):
         length = len(attributes)
 
         attribute_direction = 0
-        min_interval = 0
-        max_interval = 0
         timeout = 0
         change = 0
         fmt = ''
