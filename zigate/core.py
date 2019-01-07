@@ -1959,17 +1959,17 @@ class Device(object):
                                                        0x0300, (0x0001, 0x20))
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
-                                                       0x0300, (0x0003, 0x20))
+                                                       0x0300, (0x0003, 0x21))
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
-                                                       0x0300, (0x0004, 0x20))
+                                                       0x0300, (0x0004, 0x21))
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
-                                                       0x0300, (0x0007, 0x20))
+                                                       0x0300, (0x0007, 0x21))
                     elif endpoint['device'] == 0x0220:
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
-                                                       0x0300, (0x0007, 0x20))
+                                                       0x0300, (0x0007, 0x21))
                     else:  # 0x0200
                         # self._zigate.reporting_request(self.addr,
                         #                               endpoint_id,
@@ -1986,10 +1986,10 @@ class Device(object):
                                                        0x0300, (0x0001, 0x20))
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
-                                                       0x0300, (0x0003, 0x20))
+                                                       0x0300, (0x0003, 0x21))
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
-                                                       0x0300, (0x0004, 0x20))
+                                                       0x0300, (0x0004, 0x21))
 
     @staticmethod
     def from_json(data, zigate_instance=None):
