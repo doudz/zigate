@@ -333,7 +333,7 @@ def main():
                         help='Serial port, e.g. /dev/ttyUSB0', required=True)
     parser.add_argument('-w', '--write', help='Firmware bin to flash onto the chip')
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
-    parser.add_argument('-e', '--erase', help='Erase EEPROM')
+    parser.add_argument('-e', '--erase', help='Erase EEPROM', action='store_true')
     args = parser.parse_args()
     try:
         ser = serial.Serial(args.serialport, 38400, timeout=5)
