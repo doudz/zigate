@@ -1948,9 +1948,9 @@ class Device(object):
                                                        endpoint_id,
                                                        0x0300, [(0x0000, 0x20),
                                                                 (0x0001, 0x20),
-                                                                (0x0003, 0x20),
-                                                                (0x0004, 0x20),
-                                                                (0x0007, 0x20),
+                                                                (0x0003, 0x21),
+                                                                (0x0004, 0x21),
+                                                                (0x0007, 0x21),
                                                                 ])
 #                         self._zigate.reporting_request(self.addr,
 #                                                        endpoint_id,
@@ -1976,8 +1976,8 @@ class Device(object):
                                                        endpoint_id,
                                                        0x0300, [(0x0000, 0x20),
                                                                 (0x0001, 0x20),
-                                                                (0x0003, 0x20),
-                                                                (0x0004, 0x20),
+                                                                (0x0003, 0x21),
+                                                                (0x0004, 0x21),
                                                                 ])
 #                         self._zigate.reporting_request(self.addr,
 #                                                        endpoint_id,
