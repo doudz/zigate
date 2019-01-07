@@ -168,7 +168,8 @@ class ZiGate(object):
             if self.connection and not self.connection.received.empty():
                 packet = self.connection.received.get()
                 dispatch_signal(ZIGATE_PACKET_RECEIVED, self, packet=packet)
-                t = threading.Thread(target=self.decode_data, args=(packet,))
+                t = threading.Thread(target=self.decode_data, args=(packet,),
+                                     name='ZiGate-Decode data')
                 t.setDaemon(True)
                 t.start()
 #                 self.decode_data(packet)
@@ -972,14 +973,12 @@ class ZiGate(object):
 
     def refresh_device(self, addr):
         '''
-        convenient function to refresh device info by calling
-        node descriptor
-        power descriptor
-        active endpoint request
+        convenient function to refresh device attribute
         '''
-        self.node_descriptor_request(addr)
-#         self.power_descriptor_request(addr)
-        self.active_endpoint_request(addr)
+        device = self.get_device_from_addr(addr)
+        if not device:
+            return
+        device.refresh_device()
 
     def discover_device(self, addr, force=False):
         '''
@@ -1143,7 +1142,7 @@ class ZiGate(object):
             self.__remove_group(group_addr, self.__haddr(addr), endpoint)
         return r
 
-    def identify_device(self, addr, time_sec=10):
+    def identify_device(self, addr, time_sec=5):
         '''
         convenient function that automatically find destination endpoint
         '''
@@ -2107,12 +2106,23 @@ class Device(object):
         return typ
 
     def refresh_device(self):
-        self._zigate.refresh_device(self.addr)
+        to_read = {}
+        for attribute in self.attributes:
+            k = (attribute['endpoint'], attribute['cluster'])
+            if k not in to_read:
+                to_read[k] = []
+            to_read[k].append(attribute['attribute'])
+        for k, attributes in to_read.items():
+            endpoint, cluster = k
+            self._zigate.read_attribute_request(self.addr,
+                                                endpoint,
+                                                cluster,
+                                                attributes)
 
     def discover_device(self):
         self._zigate.discover_device(self.addr)
 
-    def identify_device(self, time_sec=10):
+    def identify_device(self, time_sec=5):
         '''
         send identify command
         sec is time in second
