@@ -42,6 +42,7 @@ AUTO_SAVE = 5 * 60  # 5 minutes
 BIND_REPORT_LIGHT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
+WAIT_TIMEOUT = 3
 
 # Device id
 ACTUATORS = [0x0010, 0x0051,
@@ -630,7 +631,7 @@ class ZiGate(object):
         while self._last_response.get(msg_type) is None:
             sleep(0.01)
             t2 = time()
-            if t2 - t1 > 3:  # no response timeout
+            if t2 - t1 > WAIT_TIMEOUT:  # no response timeout
                 LOGGER.warning('No response waiting command 0x{:04x}'.format(msg_type))
                 return
         LOGGER.debug('Stop waiting, got message 0x{:04x}'.format(msg_type))
@@ -645,7 +646,7 @@ class ZiGate(object):
         while self._last_status.get(cmd) is None:
             sleep(0.01)
             t2 = time()
-            if t2 - t1 > 3:  # no response timeout
+            if t2 - t1 > WAIT_TIMEOUT:  # no response timeout
                 self._no_response_count += 1
                 LOGGER.warning('No response after command 0x{:04x} ({})'.format(cmd, self._no_response_count))
                 return
@@ -1317,7 +1318,7 @@ class ZiGate(object):
                            manufacturer_code, length, *attributes_data)
         self.send_data(0x0110, data)
 
-    def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type,
+    def reporting_request(self, addr, endpoint, cluster, attributes,
                           direction=0, manufacturer_code=0):
         '''
         Configure reporting request
@@ -1325,23 +1326,32 @@ class ZiGate(object):
         or a list of tuple (attribute_id, attribute_type)
         '''
         addr = self.__addr(addr)
-#         if not isinstance(attributes, list):
-#             attributes = [attributes]
-#         length = len(attributes)
-        length = 1
+        if not isinstance(attributes, list):
+            attributes = [attributes]
+        length = len(attributes)
+
         attribute_direction = 0
-#         attribute_type = 0
-        attribute_id = attribute
         min_interval = 0
         max_interval = 0
         timeout = 0
         change = 0
+        fmt = ''
+        attributes_data = []
+        for attribute_tuple in attributes:
+            data_type = DATA_TYPE[attribute_tuple[1]]
+            fmt += 'B' + data_type + 'HHHHB'
+            attributes_data += [attribute_direction,
+                                attribute_tuple[1],
+                                attribute_tuple[0],
+                                min_interval,
+                                max_interval,
+                                timeout,
+                                change
+                                ]
         manufacturer_specific = manufacturer_code != 0
-        data = struct.pack('!BHBBHBBHBBBHHHHB', 2, addr, 1, endpoint, cluster,
+        data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1, endpoint, cluster,
                            direction, manufacturer_specific,
-                           manufacturer_code, length, attribute_direction,
-                           attribute_type, attribute_id, min_interval,
-                           max_interval, timeout, change)
+                           manufacturer_code, length, *attributes_data)
         self.send_data(0x0120, data, 0x8120)
 
     def ota_load_image(self, path_to_file):
@@ -1923,60 +1933,64 @@ class Device(object):
                     LOGGER.debug('bind and report for cluster 0x0006')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
                     self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0006, 0x0000, 0x10)  # TODO: auto select data type
+                                                   0x0006, (0x0000, 0x10))  # TODO: auto select data type
                 if 0x0008 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0008')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
                     self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0008, 0x0000, 0x20)
+                                                   0x0008, (0x0000, 0x20))
                 # TODO : auto select data type
-                # TODO : check if the following is needed
                 if 0x0300 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0300')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
                     if endpoint['device'] == 0x0210:
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
-                                                       0x0300, 0x0000,
-                                                       0x20)
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, 0x0001,
-                                                       0x20)
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, 0x0003,
-                                                       0x20)
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, 0x0004,
-                                                       0x20)
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, 0x0007,
-                                                       0x20)
+                                                       0x0300, [(0x0000, 0x20),
+                                                                (0x0001, 0x20),
+                                                                (0x0003, 0x20),
+                                                                (0x0004, 0x20),
+                                                                (0x0007, 0x20),
+                                                                ])
+#                         self._zigate.reporting_request(self.addr,
+#                                                        endpoint_id,
+#                                                        0x0300, (0x0000, 0x20))
+#                         self._zigate.reporting_request(self.addr,
+#                                                        endpoint_id,
+#                                                        0x0300, (0x0001, 0x20))
+#                         self._zigate.reporting_request(self.addr,
+#                                                        endpoint_id,
+#                                                        0x0300, (0x0003, 0x20))
+#                         self._zigate.reporting_request(self.addr,
+#                                                        endpoint_id,
+#                                                        0x0300, (0x0004, 0x20))
+#                         self._zigate.reporting_request(self.addr,
+#                                                        endpoint_id,
+#                                                        0x0300, (0x0007, 0x20))
                     elif endpoint['device'] == 0x0220:
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
-                                                       0x0300, 0x0007,
-                                                       0x20)
+                                                       0x0300, (0x0007, 0x20))
                     else:  # 0x0200
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
-                                                       0x0300, 0x0000,
-                                                       0x20)
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, 0x0001,
-                                                       0x20)
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, 0x0003,
-                                                       0x20)
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, 0x0004,
-                                                       0x20)
+                                                       0x0300, [(0x0000, 0x20),
+                                                                (0x0001, 0x20),
+                                                                (0x0003, 0x20),
+                                                                (0x0004, 0x20),
+                                                                ])
+#                         self._zigate.reporting_request(self.addr,
+#                                                        endpoint_id,
+#                                                        0x0300, (0x0000, 0x20))
+#                         self._zigate.reporting_request(self.addr,
+#                                                        endpoint_id,
+#                                                        0x0300, (0x0001, 0x20))
+#                         self._zigate.reporting_request(self.addr,
+#                                                        endpoint_id,
+#                                                        0x0300, (0x0003, 0x20))
+#                         self._zigate.reporting_request(self.addr,
+#                                                        endpoint_id,
+#                                                        0x0300, (0x0004, 0x20))
 
     @staticmethod
     def from_json(data, zigate_instance=None):

@@ -7,11 +7,13 @@ import unittest
 import os
 import shutil
 import tempfile
-from zigate import ZiGate, responses, transport
+from zigate import ZiGate, responses, transport, core
+from binascii import hexlify
 
 
 class TestCore(unittest.TestCase):
     def setUp(self):
+        core.WAIT_TIMEOUT = 2 * core.SLEEP_INTERVAL  # reduce timeout during test
         self.zigate = ZiGate(auto_start=False)
         self.zigate.connection = transport.FakeTransport()
         self.test_dir = tempfile.mkdtemp()
@@ -271,6 +273,21 @@ class TestCore(unittest.TestCase):
         self.assertCountEqual(self.zigate._devices['932d'].get_attributes(),
                               [{'attribute': 8,
                                 'name': 'colour_mode', 'value': None}])
+
+    def test_reporting_request(self):
+        self.zigate.reporting_request('1234', 3, 0x0300, (0x0000, 0x20))
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'0212340103030000000000010020000000000000000000'
+                         )
+        self.zigate.reporting_request('1234', 3, 0x0300, [(0x0000, 0x20)])
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'0212340103030000000000010020000000000000000000'
+                         )
+        self.zigate.reporting_request('1234', 3, 0x0300, [(0x0000, 0x20), (0x0001, 0x20)])
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'02123401030300000000000200200000000000000000000020000100000000000000'
+                         )
+
 
 
 if __name__ == '__main__':

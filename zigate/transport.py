@@ -65,10 +65,15 @@ class FakeTransport(BaseTransport):
     '''
     Fake transport for test
     '''
+    def __init__(self):
+        BaseTransport.__init__(self)
+        self.sent = []
+
     def is_connected(self):
         return True
 
     def send(self, data):
+        self.sent.append(data)
         # retrieve cmd
         data = self.zigate_decode(data[1:-1])
         cmd = struct.unpack('!H', data[0:2])[0]
@@ -117,6 +122,13 @@ class FakeTransport(BaseTransport):
             else:
                 decoded.append(b)
         return decoded
+
+    def get_last_cmd(self):
+        if not self.sent:
+            return
+        cmd = self.sent[-1]
+        data = self.zigate_decode(cmd[1:-1])[5:]
+        return data
 
 
 class ThreadSerialConnection(BaseTransport):
