@@ -1936,6 +1936,7 @@ class Device(object):
         '''
         if not BIND_REPORT_LIGHT:
             return
+        LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
         if enpoint_id:
             endpoints_list = [(enpoint_id, self.endpoints[enpoint_id])]
         else:
