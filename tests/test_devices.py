@@ -4,7 +4,7 @@ ZiGate devices Tests
 '''
 
 import unittest
-from zigate import core, transport
+from zigate import core
 import json
 import os
 import tempfile

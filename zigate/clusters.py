@@ -332,14 +332,14 @@ class C0101(Cluster):
 class C0300(Cluster):
     cluster_id = 0x0300
     type = 'Lighting: Color Control'
-    attributes_def = {0x0000: {'name': 'current_hue', 'value': 'int(value*360/254)'},
-                      0x0001: {'name': 'current_saturation', 'value': 'int(value*100/254)'},
+    attributes_def = {0x0000: {'name': 'current_hue', 'value': 'int(value*360/254)', 'type': int},
+                      0x0001: {'name': 'current_saturation', 'value': 'int(value*100/254)', 'type': int},
                       0x0002: {'name': 'remaining_time', 'value': 'value'},
-                      0x0003: {'name': 'current_x', 'value': 'value/65536'},
-                      0x0004: {'name': 'current_y', 'value': 'value/65536'},
+                      0x0003: {'name': 'current_x', 'value': 'value/65536', 'type': int},
+                      0x0004: {'name': 'current_y', 'value': 'value/65536', 'type': int},
                       0x0005: {'name': 'drift', 'value': 'value'},
                       0x0006: {'name': 'compensation', 'value': 'value'},
-                      0x0007: {'name': 'colour_temperature', 'value': 'value'},
+                      0x0007: {'name': 'colour_temperature', 'value': 'value', 'type': int},
                       0x0008: {'name': 'colour_mode', 'value': 'value'},
                       0x0010: {'name': 'nb_primaries', 'value': 'value'},
                       0x0011: {'name': 'primary_1_x', 'value': 'value'},

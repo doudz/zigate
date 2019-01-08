@@ -11,9 +11,6 @@
                         {
                             "attribute": 5,
                             "data": "CLA60 RGBW OSRAM"
-                        },
-                        {
-                            "attribute": 7
                         }
                     ],
                     "cluster": 0
