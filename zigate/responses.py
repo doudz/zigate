@@ -304,6 +304,28 @@ class R8024(Response):
 
 
 @register_response
+class R802B(Response):
+    msg = 0x802B
+    type = 'User Descriptor Notify'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H')
+                     ])
+
+
+@register_response
+class R802C(Response):
+    msg = 0x802C
+    type = 'User Descriptor Response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H'),
+                     ('length', 'B'),
+                     ('data', 'rawend')
+                     ])
+
+
+@register_response
 class R8030(Response):
     msg = 0x8030
     type = 'Bind response'
