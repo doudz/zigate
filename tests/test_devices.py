@@ -4,15 +4,25 @@ ZiGate devices Tests
 '''
 
 import unittest
-from zigate import core
+from zigate import core, transport
 import json
 import os
 import tempfile
 import shutil
 
 
+class FakeZiGate(object):
+    def __getattr__(self, *args):
+        return self.dummy
+
+    def dummy(self, *args, **kwargs):
+        pass
+
+
 class TestCore(unittest.TestCase):
     def setUp(self):
+        core.WAIT_TIMEOUT = 2 * core.SLEEP_INTERVAL  # reduce timeout during test
+        self.zigate = FakeZiGate()
         self.test_dir = tempfile.mkdtemp()
 
     def tearDown(self):
@@ -92,6 +102,18 @@ class TestCore(unittest.TestCase):
                                         'power_type': 0,
                                         'server_mask': 0}}
                               )
+        # another test
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        self.assertFalse(device.load_template())
+        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.sensor_wleak.aq1'})
+        self.assertTrue(device.load_template())
+        self.assertEqual(device.discovery, 'templated')
+        self.assertEqual(device.genericType, 'sensor')
+        self.assertDictEqual(device.get_property_value('zone_status'),
+                             {'alarm1': False, 'alarm2': False, 'tamper': False, 'low_battery': False,
+                              'supervision': False, 'restore': False, 'trouble': False, 'ac_fault': False,
+                              'test_mode': False, 'battery_defect': False}
+                             )
 
     def test_inverse_bool(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
@@ -108,11 +130,15 @@ class TestCore(unittest.TestCase):
         for f in files:
             success = False
             try:
+                print('Test template', f)
                 with open(os.path.join(path, f)) as fp:
                     json.load(fp)
+                device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
+                device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': f[:-5]})
+                self.assertTrue(device.load_template())
                 success = True
-            except Exception:
-                pass
+            except Exception as e:
+                print(e)
             self.assertTrue(success)
 
     def test_reset_attribute(self):

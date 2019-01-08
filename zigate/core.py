@@ -1936,13 +1936,13 @@ class Device(object):
         '''
         if not BIND_REPORT_LIGHT:
             return
-        LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
         if enpoint_id:
             endpoints_list = [(enpoint_id, self.endpoints[enpoint_id])]
         else:
             endpoints_list = self.endpoints.items()
         for endpoint_id, endpoint in endpoints_list:
             if endpoint['device'] in ACTUATORS:  # light
+                LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
                 if 0x0006 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0006')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
@@ -2127,7 +2127,7 @@ class Device(object):
             while self.get_value('type') is None:
                 sleep(0.1)
                 t2 = time()
-                if t2 - t1 > 3:
+                if t2 - t1 > WAIT_TIMEOUT:
                     LOGGER.warning('No response waiting for type')
                     return
             typ = self.get_value('type')
@@ -2473,7 +2473,7 @@ class Device(object):
                     template = json.load(fp)
                     device = Device.from_json(template)
                     self.update(device)
-                    success = True
+                success = True
             except Exception:
                 LOGGER.error('Failed to load template for {}'.format(typ))
                 LOGGER.error(traceback.format_exc())

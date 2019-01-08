@@ -4,7 +4,7 @@
             "clusters": [
                 {
                     "attributes": [
-                    	{
+                        {
                             "attribute": 4,
                             "data": "LUMI"
                         },
@@ -43,7 +43,7 @@
             "profile": 260
         }
     ],
-    "generictype": "",
+    "generictype": "sensor",
     "info": {
         "bit_field": "0100000000000010",
         "descriptor_capability": "00000000",

@@ -6,27 +6,15 @@
                     "attributes": [
                         {
                             "attribute": 4,
-                            "data": "LUMI",
-                            "name": "manufacturer",
-                            "value": "LUMI"
+                            "data": "LUMI"
                         },
                         {
                             "attribute": 5,
-                            "data": "lumi.vibration.aq1",
-                            "name": "type",
-                            "type": "str",
-                            "value": "lumi.vibration.aq1"
-                        },
-                        {
-                            "attribute": 65281,
-                            "name": "battery",
-                            "unit": "V"
+                            "data": "lumi.vibration.aq1"
                         },
                         {
                             "attribute": 7,
-                            "data": 3,
-                            "name": "power_source",
-                            "value": 3
+                            "data": 3
                         }
                     ],
                     "cluster": 0
@@ -34,17 +22,10 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 1283,
-                            "expire": 2,
-                            "expire_value": 0,
-                            "name": "rotation",
-                            "unit": "\u00b0"
+                            "attribute": 1283
                         },
                         {
-                            "attribute": 85,
-                            "expire": 2,
-                            "expire_value": "",
-                            "name": "movement"
+                            "attribute": 85
                         },
                         {
                             "attribute": 1288

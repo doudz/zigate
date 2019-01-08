@@ -5,38 +5,7 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 4,
-                            "data": "LUMI",
-                            "name": "manufacturer",
-                            "value": "LUMI"
-                        },
-                        {
-                            "attribute": 5,
-                            "data": "lumi.sensor_motion.aq2",
-                            "name": "type",
-                            "type": "str",
-                            "value": "lumi.sensor_motion.aq2"
-                        },
-                        {
-                            "attribute": 65281,
-                            "name": "battery",
-                            "unit": "V"
-                        },
-                        {
-                            "attribute": 7,
-                            "data": 3,
-                            "name": "power_source",
-                            "value": 3
-                        }
-                    ],
-                    "cluster": 0
-                },
-                {
-                    "attributes": [
-                        {
-                            "attribute": 0,
-                            "name": "luminosity",
-                            "unit": "lm"
+                            "attribute": 0
                         }
                     ],
                     "cluster": 1024
@@ -44,8 +13,24 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 0,
-                            "name": "presence"
+                            "attribute": 4,
+                            "data": "LUMI"
+                        },
+                        {
+                            "attribute": 5,
+                            "data": "lumi.sensor_motion.aq2"
+                        },
+                        {
+                            "attribute": 7,
+                            "data": 3
+                        }
+                    ],
+                    "cluster": 0
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
                         }
                     ],
                     "cluster": 1030

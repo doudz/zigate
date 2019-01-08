@@ -5,12 +5,8 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 4,
-                            "data": "LUMI"
-                        },
-                        {
                             "attribute": 5,
-                            "data": "lumi.sensor_magnet.aq2"
+                            "data": "lumi.sensor_wleak.aq1"
                         }
                     ],
                     "cluster": 0
@@ -18,26 +14,17 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 0
+                            "attribute": 255
                         }
                     ],
-                    "cluster": 6
+                    "cluster": 1280
                 }
             ],
-            "device": 24321,
+            "device": 0,
             "endpoint": 1,
-            "in_clusters": [
-                0,
-                3,
-                65535,
-                6
-            ],
-            "out_clusters": [
-                0,
-                4,
-                65535
-            ],
-            "profile": 260
+            "in_clusters": [],
+            "out_clusters": [],
+            "profile": 0
         }
     ],
     "generictype": "sensor",

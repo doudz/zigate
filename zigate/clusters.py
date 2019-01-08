@@ -417,7 +417,7 @@ class C0500(Cluster):
     def update(self, data):
         if 'zone_id' not in data:  # loaded from persistent
             data['zone_id'] = data['attribute']
-            data['zone_status'] = data['data']
+            data['zone_status'] = data.get('data', '0000000000')
         zone_id = data['zone_id']
         data['attribute'] = zone_id
         data['data'] = data['zone_status']

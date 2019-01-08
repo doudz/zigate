@@ -6,15 +6,14 @@
                     "attributes": [
                         {
                             "attribute": 4,
-                            "data": "LUMI"
+                            "data": "OSRAM"
                         },
                         {
                             "attribute": 5,
-                            "data": "lumi.weather"
+                            "data": "CLA60 RGBW OSRAM"
                         },
                         {
-                            "attribute": 7,
-                            "data": 3
+                            "attribute": 7
                         }
                     ],
                     "cluster": 0
@@ -23,23 +22,29 @@
                     "attributes": [
                         {
                             "attribute": 0
+                        },
+                        {
+                            "attribute": 1
+                        },
+                        {
+                            "attribute": 3
+                        },
+                        {
+                            "attribute": 4
+                        },
+                        {
+                            "attribute": 7
                         }
                     ],
-                    "cluster": 1026
+                    "cluster": 768
                 },
                 {
                     "attributes": [
                         {
                             "attribute": 0
-                        },
-                        {
-                            "attribute": 16
-                        },
-                        {
-                            "attribute": 20
                         }
                     ],
-                    "cluster": 1027
+                    "cluster": 6
                 },
                 {
                     "attributes": [
@@ -47,34 +52,35 @@
                             "attribute": 0
                         }
                     ],
-                    "cluster": 1029
+                    "cluster": 8
                 }
             ],
-            "device": 24321,
-            "endpoint": 1,
+            "device": 528,
+            "endpoint": 3,
             "in_clusters": [
+                4096,
                 0,
                 3,
-                65535,
-                1026,
-                1027,
-                1029
+                4,
+                5,
+                6,
+                8,
+                768,
+                64527
             ],
             "out_clusters": [
-                0,
-                4,
-                65535
+                25
             ],
-            "profile": 260
+            "profile": 49246
         }
     ],
-    "generictype": "sensor",
+    "generictype": "light",
     "info": {
-        "bit_field": "0100000000000010",
-        "descriptor_capability": "00000000",
-        "mac_capability": "10000000",
-        "manufacturer_code": "1037",
-        "power_type": 0,
+        "bit_field": "0100000000000001",
+        "descriptor_capability": "00000011",
+        "mac_capability": "10001110",
+        "manufacturer_code": "bbaa",
+        "power_type": 1,
         "server_mask": 0
     }
 }
