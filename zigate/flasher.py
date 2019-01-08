@@ -165,8 +165,8 @@ def req_chip_id():
 
 
 @Command(0x36, 'B')
-def req_eeprom_erase(force=True):  # True means all, False means only PDM
-    return force
+def req_eeprom_erase(pdm_only=False):
+    return not pdm_only
 
 
 @register(0x26)
@@ -318,8 +318,8 @@ def write_file_to_flash(ser, filename):
             cur += read_bytes
 
 
-def erase_EEPROM(ser, force=True):
-    ser.write(req_eeprom_erase(force))
+def erase_EEPROM(ser, pdm_only=False):
+    ser.write(req_eeprom_erase(pdm_only))
     res = read_response(ser)
     if not res or not res.ok:
         print('Erasing EEPROM failed')
@@ -334,6 +334,7 @@ def main():
     parser.add_argument('-w', '--write', help='Firmware bin to flash onto the chip')
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
     parser.add_argument('-e', '--erase', help='Erase EEPROM', action='store_true')
+    parser.add_argument('--pdm-only', help='Erase PDM only, use it with --erase', action='store_true')
     args = parser.parse_args()
     try:
         ser = serial.Serial(args.serialport, 38400, timeout=5)
@@ -358,7 +359,7 @@ def main():
         write_file_to_flash(ser, args.write)
 
     if args.erase:
-        erase_EEPROM(ser)
+        erase_EEPROM(ser, args.pdm_only)
 
 
 if __name__ == "__main__":

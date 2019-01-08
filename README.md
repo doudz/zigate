@@ -240,15 +240,18 @@ Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
 ### Flasher Usage
 
 ```bash
-usage: python -m zigate.flasher [-h] -p PORT [-w WRITE] [-s SAVE]
+usage: python3 -m zigate.flasher [-h] -p {/dev/ttyUSB0} [-w WRITE] [-s SAVE] [-e] [--pdm-only]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p PORT, --serialport PORT
+  -p {/dev/ttyUSB0}, --serialport {/dev/ttyUSB0}
                         Serial port, e.g. /dev/ttyUSB0
   -w WRITE, --write WRITE
                         Firmware bin to flash onto the chip
   -s SAVE, --save SAVE  File to save the currently loaded firmware to
+  -e, --erase           Erase EEPROM
+  --pdm-only            Erase PDM only, use it with --erase
+
 ```
 
 
