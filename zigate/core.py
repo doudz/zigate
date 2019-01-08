@@ -194,7 +194,10 @@ class ZiGate(object):
 
     def save_state(self, path=None):
         LOGGER.debug('Saving persistent file')
-        self._save_lock.acquire()
+        r = self._save_lock.acquire(True, 5)
+        if not r:
+            LOGGER.error('Failed to acquire Lock to save persistent file')
+            return
         path = path or self._path
         self._path = os.path.expanduser(path)
         backup_path = self._path + '.0'
@@ -515,7 +518,7 @@ class ZiGate(object):
                                                                    'device': device,
                                                                    'attribute': changed})
         elif response.msg == 0x004D:  # device announce
-            LOGGER.debug('Device Announce')
+            LOGGER.debug('Device Announce {}'.format(response))
             device = Device(response.data, self)
             self._set_device(device)
         elif response.msg == 0x8140:  # attribute discovery
@@ -1863,6 +1866,17 @@ class Device(object):
         self.genericType = ''
         self.discovery = ''
 
+    def _lock_acquire(self):
+        r = self._lock.acquire(True, 5)
+        if not r:
+            LOGGER.error('Failed to acquire Lock on device {}'.format(self))
+
+    def _lock_release(self):
+        if not self._lock.locked():
+            LOGGER.error('Device Lock not locked for device {} !'.format(self))
+        else:
+            self._lock.release()
+
     def available_actions(self, endpoint_id=None):
         '''
         Analyse specified endpoint to found available actions
@@ -2182,12 +2196,12 @@ class Device(object):
         '''
         update from other device
         '''
-        self._lock.acquire()
+        self._lock_acquire()
         self.info.update(device.info)
         self._merge_endpoints(device.endpoints)
         self.genericType = self.genericType or device.genericType
 #         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
-        self._lock.release()
+        self._lock_release()
 
     def _merge_endpoints(self, endpoints):
         for endpoint_id, endpoint in endpoints.items():
@@ -2210,12 +2224,12 @@ class Device(object):
                             mycluster.update(attribute)
 
     def update_info(self, info):
-        self._lock.acquire()
+        self._lock_acquire()
         self.info.update(info)
-        self._lock.release()
+        self._lock_release()
 
     def get_endpoint(self, endpoint_id):
-        self._lock.acquire()
+        self._lock_acquire()
         if endpoint_id not in self.endpoints:
             self.endpoints[endpoint_id] = {'clusters': {},
                                            'profile': 0,
@@ -2223,16 +2237,16 @@ class Device(object):
                                            'in_clusters': [],
                                            'out_clusters': [],
                                            }
-        self._lock.release()
+        self._lock_release()
         return self.endpoints[endpoint_id]
 
     def get_cluster(self, endpoint_id, cluster_id):
         endpoint = self.get_endpoint(endpoint_id)
-        self._lock.acquire()
+        self._lock_acquire()
         if cluster_id not in endpoint['clusters']:
             cluster = get_cluster(cluster_id, endpoint)
             endpoint['clusters'][cluster_id] = cluster
-        self._lock.release()
+        self._lock_release()
         return endpoint['clusters'][cluster_id]
 
     def set_attribute(self, endpoint_id, cluster_id, data):
@@ -2243,7 +2257,7 @@ class Device(object):
         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
         self.missing = False
         cluster = self.get_cluster(endpoint_id, cluster_id)
-        self._lock.acquire()
+        self._lock_acquire()
         r = cluster.update(data)
         if r:
             added, attribute = r
@@ -2252,7 +2266,7 @@ class Device(object):
                                        attribute['attribute'],
                                        attribute['expire'])
         self._avoid_duplicate()
-        self._lock.release()
+        self._lock_release()
         if not r:
             return
         return added, attribute['attribute']
