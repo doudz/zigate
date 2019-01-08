@@ -16,7 +16,6 @@ Current coverage :
 * Commands 69 / 91
 * Responses 48 / 52
 
-
 ## Getting Started
 
 ### Installation
