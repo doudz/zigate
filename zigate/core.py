@@ -21,11 +21,11 @@ from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
                     ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
-                    ZIGATE_DEVICE_UPDATED, ZIGATE_DEVICE_RENAMED,
-                    ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_REFRESH,
-                    ZIGATE_RESPONSE_RECEIVED, DATA_TYPE)
+                    ZIGATE_DEVICE_UPDATED, ZIGATE_DEVICE_ADDRESS_CHANGED,
+                    ZIGATE_PACKET_RECEIVED, ZIGATE_DEVICE_NEED_DISCOVERY,
+                    ZIGATE_RESPONSE_RECEIVED, DATA_TYPE, BASE_PATH)
 
-from .clusters import (CLUSTERS, Cluster, get_cluster)
+from .clusters import (Cluster, get_cluster)
 import functools
 import struct
 import threading
@@ -42,6 +42,7 @@ AUTO_SAVE = 5 * 60  # 5 minutes
 BIND_REPORT_LIGHT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
+WAIT_TIMEOUT = 3
 
 # Device id
 ACTUATORS = [0x0010, 0x0051,
@@ -119,7 +120,8 @@ class ZiGate(object):
     def __init__(self, port='auto', path='~/.zigate.json',
                  auto_start=True,
                  auto_save=True,
-                 channel=None):
+                 channel=None,
+                 adminpanel=False):
         self._devices = {}
         self._groups = {}
         self._scenes = {}
@@ -147,17 +149,31 @@ class ZiGate(object):
 
         self._ota_reset_local_variables()
 
+        if adminpanel:
+            self.start_adminpanel()
+
         if auto_start:
             self.autoStart(channel)
             if auto_save:
                 self.start_auto_save()
+
+    def start_adminpanel(self):
+        '''
+        Start Admin panel in other thread
+        '''
+        from .adminpanel import start_adminpanel
+        start_adminpanel(self)
 
     def _event_loop(self):
         while True:
             if self.connection and not self.connection.received.empty():
                 packet = self.connection.received.get()
                 dispatch_signal(ZIGATE_PACKET_RECEIVED, self, packet=packet)
-                self.decode_data(packet)
+                t = threading.Thread(target=self.decode_data, args=(packet,),
+                                     name='ZiGate-Decode data')
+                t.setDaemon(True)
+                t.start()
+#                 self.decode_data(packet)
             else:
                 sleep(SLEEP_INTERVAL)
 
@@ -178,7 +194,10 @@ class ZiGate(object):
 
     def save_state(self, path=None):
         LOGGER.debug('Saving persistent file')
-        self._save_lock.acquire()
+        r = self._save_lock.acquire(True, 5)
+        if not r:
+            LOGGER.error('Failed to acquire Lock to save persistent file')
+            return
         path = path or self._path
         self._path = os.path.expanduser(path)
         backup_path = self._path + '.0'
@@ -224,9 +243,12 @@ class ZiGate(object):
                 self._scenes = data.get('scenes', {})
                 devices = data.get('devices', [])
                 for data in devices:
-                    device = Device.from_json(data, self)
-                    self._devices[device.addr] = device
-                    device._create_actions()
+                    try:
+                        device = Device.from_json(data, self)
+                        self._devices[device.addr] = device
+                        device._create_actions()
+                    except Exception:
+                        LOGGER.error('Error loading device {}'.format(data))
                 LOGGER.debug('Load success')
                 return True
             except Exception:
@@ -277,21 +299,21 @@ class ZiGate(object):
             LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
             self.setTime()
         self.get_devices_list(True)
-        self.need_refresh()
+        self.need_discovery()
 
-    def need_refresh(self):
+    def need_discovery(self):
         '''
-        scan device which need refresh
-        auto refresh if possible
+        scan device which need discovery
+        auto discovery if possible
         else dispatch signal
         '''
         for device in self.devices:
-            if device.need_refresh():
+            if device.need_discovery():
                 if device.receiver_on_when_idle():
-                    LOGGER.debug('Auto refresh device {}'.format(device))
-                    device.refresh_device()
+                    LOGGER.debug('Auto discover device {}'.format(device))
+                    device.discover_device()
                 else:
-                    dispatch_signal(ZIGATE_DEVICE_NEED_REFRESH,
+                    dispatch_signal(ZIGATE_DEVICE_NEED_DISCOVERY,
                                     self, **{'zigate': self,
                                              'device': device})
 
@@ -443,22 +465,18 @@ class ZiGate(object):
                 ep.update(response.cleaned_data())
                 ep['in_clusters'] = response['in_clusters']
                 ep['out_clusters'] = response['out_clusters']
-                typ = d.type
-                LOGGER.debug('Found type {}'.format(typ))
+                self.discover_device(addr)
                 d._create_actions()
-                d._bind_report(endpoint)
-                # ask for various general information
-                for c in response['in_clusters']:
-                    cluster = CLUSTERS.get(c)
-                    if cluster:
-                        # self.attribute_discovery_request(addr,
-                        #                                 endpoint,
-                        #                                 cluster)
-                        # some devices don't answer if more than 8 attributes asked
-                        attrs = list(cluster.attributes_def.keys())
-                        for i in range(0, len(attrs), 8):
-                            self.read_attribute_request(addr, endpoint, c,
-                                                        attrs[i: i + 8])
+#                 d._bind_report(endpoint)
+#                 # ask for various general information
+#                 for c in response['in_clusters']:
+#                     cluster = CLUSTERS.get(c)
+#                     if cluster:
+#                         # some devices don't answer if more than 8 attributes asked
+#                         attrs = list(cluster.attributes_def.keys())
+#                         for i in range(0, len(attrs), 8):
+#                             self.read_attribute_request(addr, endpoint, c,
+#                                                         attrs[i: i + 8])
         elif response.msg == 0x8045:  # endpoint list
             addr = response['addr']
             for endpoint in response['endpoints']:
@@ -470,9 +488,12 @@ class ZiGate(object):
             else:
                 if device:
                     self._remove_device(device.addr)
+        elif response.msg == 0x8062:  # Get group membership response
+            data = response.cleaned_data()
+            self._sync_group_membership(data['addr'], data['endpoint'], data['groups'])
         elif response.msg in (0x8100, 0x8102, 0x8110, 0x8401):  # attribute report or IAS Zone status change
             if response['status'] != 0:
-                LOGGER.debug('Receive Bad status')
+                LOGGER.debug('Received Bad status')
                 return
             device = self._get_device(response['addr'])
             device.rssi = response['rssi']
@@ -485,6 +506,9 @@ class ZiGate(object):
             changed = device.get_attribute(response['endpoint'],
                                            response['cluster'],
                                            attribute_id, True)
+            if response['cluster'] == 0 and attribute_id == 5:
+                if not device.discovery:
+                    device.load_template()
             if added:
                 dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
                                                                  'device': device,
@@ -494,15 +518,23 @@ class ZiGate(object):
                                                                    'device': device,
                                                                    'attribute': changed})
         elif response.msg == 0x004D:  # device announce
-            LOGGER.debug('Device Announce')
+            LOGGER.debug('Device Announce {}'.format(response))
             device = Device(response.data, self)
             self._set_device(device)
+        elif response.msg == 0x8140:  # attribute discovery
+            if 'addr' in response:
+                device = self._get_device(response['addr'])
+                r = device.set_attribute(response['endpoint'],
+                                         response['cluster'],
+                                         response.cleaned_data())
         elif response.msg == 0x8501:  # OTA image block request
             LOGGER.debug('Client is requesting ota image data')
             self._ota_send_image_data(response)
         elif response.msg == 0x8503:  # OTA Upgrade end request
             LOGGER.debug('Client ended ota process')
             self._ota_handle_upgrade_end_request(response)
+        elif response.msg == 0x8702:  # APS Data confirm Fail
+            LOGGER.error(response)
 #         else:
 #             LOGGER.debug('Do nothing special for response {}'.format(response))
 
@@ -572,10 +604,11 @@ class ZiGate(object):
                 LOGGER.warning('Device already exists with another addr {}, rename it.'.format(d.addr))
                 old_addr = d.addr
                 new_addr = device.addr
+                d.discovery = ''
                 d.update(device)
                 self._devices[new_addr] = d
                 del self._devices[old_addr]
-                dispatch_signal(ZIGATE_DEVICE_RENAMED, self,
+                dispatch_signal(ZIGATE_DEVICE_ADDRESS_CHANGED, self,
                                 **{'zigate': self,
                                    'old_addr': old_addr,
                                    'new_addr': new_addr,
@@ -584,7 +617,7 @@ class ZiGate(object):
                 self._devices[device.addr] = device
                 dispatch_signal(ZIGATE_DEVICE_ADDED, self, **{'zigate': self,
                                                               'device': device})
-            self.refresh_device(device.addr)
+            self.discover_device(device.addr)
 
     def get_status_text(self, status_code):
         return STATUS_CODES.get(status_code,
@@ -603,7 +636,7 @@ class ZiGate(object):
         while self._last_response.get(msg_type) is None:
             sleep(0.01)
             t2 = time()
-            if t2 - t1 > 3:  # no response timeout
+            if t2 - t1 > WAIT_TIMEOUT:  # no response timeout
                 LOGGER.warning('No response waiting command 0x{:04x}'.format(msg_type))
                 return
         LOGGER.debug('Stop waiting, got message 0x{:04x}'.format(msg_type))
@@ -618,7 +651,7 @@ class ZiGate(object):
         while self._last_status.get(cmd) is None:
             sleep(0.01)
             t2 = time()
-            if t2 - t1 > 3:  # no response timeout
+            if t2 - t1 > WAIT_TIMEOUT:  # no response timeout
                 self._no_response_count += 1
                 LOGGER.warning('No response after command 0x{:04x} ({})'.format(cmd, self._no_response_count))
                 return
@@ -689,7 +722,7 @@ class ZiGate(object):
         '''
         reset zigate
         '''
-        return self.send_data(0x0011)
+        return self.send_data(0x0011, wait_status=False)
 
     def erase_persistent(self):
         '''
@@ -946,32 +979,48 @@ class ZiGate(object):
 
     def refresh_device(self, addr):
         '''
-        convenient function to refresh device info by calling
-        node descriptor
-        power descriptor
-        active endpoint request
+        convenient function to refresh device attribute
         '''
-        self.node_descriptor_request(addr)
-#         self.power_descriptor_request(addr)
-        self.active_endpoint_request(addr)
+        device = self.get_device_from_addr(addr)
+        if not device:
+            return
+        device.refresh_device()
 
-    def discover_device(self, addr):
+    def discover_device(self, addr, force=False):
         '''
         starts discovery process
         '''
-        # discovery steps
-        # step 1 active endpoint request
-        # step 2 simple description request
-        # step 3 get type (cluster 0x0000, attribute 0x0005)
-        # step 4 if unknow type => step 5 attribute discovery else step 6
-        # step 5 attribute discovery request then step 7
-        # step 6 load config template
-        # step 7 create actions, bind and report if needed
-        self.active_endpoint_request(addr)
+        device = self.get_device_from_addr(addr)
+        if not device:
+            return
+        if force:
+            device.discovery = ''
+        if device.discovery:
+            return
+        if 'mac_capability' not in device.info:
+            self.node_descriptor_request(addr)
+        if not device.endpoints:
+            self.active_endpoint_request(addr)
+            return
+        for endpoint, values in device.endpoints.items():
+            if not values.get('device'):
+                self.simple_descriptor_request(addr, endpoint)
+                return
+            if not values.get('in_clusters'):
+                self.simple_descriptor_request(addr, endpoint)
+                return
+        typ = device.get_type(False)
+        if not typ:
+            return
+        if not device.load_template():
+            device.discovery = 'auto-discovered'
+            for endpoint, values in device.endpoints.items():
+                for cluster in values.get('in_clusters', []):
+                    self.attribute_discovery_request(addr, endpoint, cluster)
 
     def _generate_addr(self):
         addr = None
-        while not addr or addr in self._devices:
+        while not addr or addr in self._devices or addr in self._groups:
             addr = random.randint(1, 0xffff)
         return addr
 
@@ -1000,10 +1049,39 @@ class ZiGate(object):
         r = self.send_data(cmd, data)
         group_addr = self.__haddr(group)
         if r == 0:
-            if group_addr not in self._groups:
-                self._groups[group_addr] = set()
-            self._groups[group_addr].add((self.__haddr(addr), endpoint))
+            self.__add_group(group_addr, self.__haddr(addr), endpoint)
         return group_addr
+
+    def __add_group(self, group, addr, endpoint):
+        if group not in self._groups:
+                self._groups[group] = set()
+        self._groups[group].add((addr, endpoint))
+
+    def __remove_group(self, group, addr, endpoint):
+        '''
+        remove group for specified addr, endpoint
+        if group is None,
+            remove all group for specified addr, endpoint
+        '''
+        if group is None:
+            groups = list(self._groups.keys())
+        else:
+            groups = [group]
+        for group in groups:
+            if (addr, endpoint) in self._groups.get(group, set()):
+                self._groups[group].remove((addr, endpoint))
+            if group in self._groups and len(self._groups[group]) == 0:
+                del self._groups[group]
+
+    def _sync_group_membership(self, addr, endpoint, groups):
+        for group in groups:
+            self.__add_group(group, addr, endpoint)
+        to_remove = []
+        for group in self._groups:
+            if group not in groups:
+                to_remove.append(group)
+        for group in to_remove:
+            self.__remove_group(group, addr, endpoint)
 
     def add_group(self, addr, endpoint, group=None):
         '''
@@ -1056,22 +1134,21 @@ class ZiGate(object):
         addr_mode = 2
         addr = self.__addr(addr)
         src_endpoint = 1
-        if not group:
-            data = struct.pack('!BHBBH', addr_mode, addr,
+        group_addr = group
+        if group is None:
+            data = struct.pack('!BHBB', addr_mode, addr,
                                src_endpoint, endpoint)
-            return self.send_data(0x0064, data)
-        group = self.__addr(group)
-        data = struct.pack('!BHBBH', addr_mode, addr,
-                           src_endpoint, endpoint, group)
-        r = self.send_data(0x0063, data)
+            r = self.send_data(0x0064, data)
+        else:
+            group = self.__addr(group)
+            data = struct.pack('!BHBBH', addr_mode, addr,
+                               src_endpoint, endpoint, group)
+            r = self.send_data(0x0063, data)
         if r == 0:
-            if group:
-                del self._groups[self.__haddr(group)]
-            else:
-                self._groups = {}
+            self.__remove_group(group_addr, self.__haddr(addr), endpoint)
         return r
 
-    def identify_device(self, addr, time_sec=10):
+    def identify_device(self, addr, time_sec=5):
         '''
         convenient function that automatically find destination endpoint
         '''
@@ -1112,23 +1189,18 @@ class ZiGate(object):
         data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
         return self.send_data(0x00A1, data)
 
-    def remove_scene(self, addr, endpoint, group, scene):
+    def remove_scene(self, addr, endpoint, group, scene=None):
         '''
         Remove scene
+        if scene is not specified, remove all scenes
         '''
         addr = self.__addr(addr)
         group = self.__addr(group)
+        if scene is None:
+            data = struct.pack('!BHBBH', 2, addr, 1, endpoint, group)
+            return self.send_data(0x00A3, data)
         data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
         return self.send_data(0x00A2, data)
-
-    def remove_all_scenes(self, addr, endpoint, group):
-        '''
-        Remove all scenes
-        '''
-        addr = self.__addr(addr)
-        group = self.__addr(group)
-        data = struct.pack('!BHBBH', 2, addr, 1, endpoint, group)
-        return self.send_data(0x00A3, data)
 
     def store_scene(self, addr, endpoint, group, scene):
         '''
@@ -1154,7 +1226,7 @@ class ZiGate(object):
         '''
         addr = self.__addr(addr)
         group = self.__addr(group)
-        data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group)
+        data = struct.pack('!BHBBH', 2, addr, 1, endpoint, group)
         return self.send_data(0x00A6, data)
 
     def copy_scene(self, addr, endpoint, from_group, from_scene, to_group, to_scene):
@@ -1251,30 +1323,37 @@ class ZiGate(object):
                            manufacturer_code, length, *attributes_data)
         self.send_data(0x0110, data)
 
-    def reporting_request(self, addr, endpoint, cluster, attribute, attribute_type,
-                          direction=0, manufacturer_code=0):
+    def reporting_request(self, addr, endpoint, cluster, attributes,
+                          direction=0, manufacturer_code=0, min_interval=1, max_interval=3600):
         '''
         Configure reporting request
-        for now support only one attribute
+        attribute could be a tuple of (attribute_id, attribute_type)
+        or a list of tuple (attribute_id, attribute_type)
         '''
         addr = self.__addr(addr)
-#         if not isinstance(attributes, list):
-#             attributes = [attributes]
-#         length = len(attributes)
-        length = 1
+        if not isinstance(attributes, list):
+            attributes = [attributes]
+        length = len(attributes)
+
         attribute_direction = 0
-#         attribute_type = 0
-        attribute_id = attribute
-        min_interval = 0
-        max_interval = 0
         timeout = 0
         change = 0
+        fmt = ''
+        attributes_data = []
+        for attribute_tuple in attributes:
+            fmt += 'BBHHHHB'
+            attributes_data += [attribute_direction,
+                                attribute_tuple[1],
+                                attribute_tuple[0],
+                                min_interval,
+                                max_interval,
+                                timeout,
+                                change
+                                ]
         manufacturer_specific = manufacturer_code != 0
-        data = struct.pack('!BHBBHBBHBBBHHHHB', 2, addr, 1, endpoint, cluster,
+        data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1, endpoint, cluster,
                            direction, manufacturer_specific,
-                           manufacturer_code, length, attribute_direction,
-                           attribute_type, attribute_id, min_interval,
-                           max_interval, timeout, change)
+                           manufacturer_code, length, *attributes_data)
         self.send_data(0x0120, data, 0x8120)
 
     def ota_load_image(self, path_to_file):
@@ -1324,6 +1403,7 @@ class ZiGate(object):
             LOGGER.error('Header size({header}) and file size({file}) does not match'.format(
                 header=header['size'], file=len(ota_file_content)
             ))
+            return False
 
         destination_address_mode = 0x02
         destination_address = 0x0000
@@ -1666,17 +1746,27 @@ class ZiGate(object):
         return self.actions_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def actions_move_temperature(self, addr, endpoint, temperature, transition=0):
+    def actions_move_temperature(self, addr, endpoint, mired, transition=0):
+        '''
+        move colour to temperature
+        mired color temperature
+        transition in second
+        '''
+        addr = self.__addr(addr)
+        data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
+                           mired, transition)
+        self.send_data(0x00C0, data)
+
+    @register_actions(ACTIONS_TEMPERATURE)
+    def actions_move_temperature_kelvin(self, addr, endpoint, temperature, transition=0):
         '''
         move colour to temperature
         temperature unit is kelvin
         transition in second
+        convenient function to use kelvin instead of mired
         '''
         temperature = int(1000000 // temperature)
-        addr = self.__addr(addr)
-        data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
-                           temperature, transition)
-        self.send_data(0x00C0, data)
+        self.actions_move_temperature(addr, endpoint, temperature, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
     def actions_move_temperature_rate(self, addr, endpoint, mode, rate, min_temperature, max_temperature):
@@ -1714,19 +1804,29 @@ class ZiGate(object):
         broker.connect()
         self.broker_thread = threading.Thread(target=broker.client.loop_forever,
                                               name='ZiGate-MQTT')
+        self.broker_thread.setDaemon(True)
         self.broker_thread.start()
+
+    def generate_templates(self, dirname='~'):
+        '''
+        Generate template file for each device
+        '''
+        for device in self._devices.values():
+            device.generate_template(dirname)
 
 
 class ZiGateWiFi(ZiGate):
     def __init__(self, host, port=None, path='~/.zigate.json',
                  auto_start=True,
                  auto_save=True,
-                 channel=None):
+                 channel=None,
+                 adminpanel=False):
         self._host = host
         ZiGate.__init__(self, port=port, path=path,
                         auto_start=auto_start,
                         auto_save=auto_save,
-                        channel=channel
+                        channel=channel,
+                        adminpanel=adminpanel
                         )
 
     def setup_connection(self):
@@ -1750,6 +1850,8 @@ class DeviceEncoder(json.JSONEncoder):
             return hexlify(obj).decode()
         elif isinstance(obj, set):
             return list(obj)
+        elif isinstance(obj, type):
+            return obj.__name__
         return json.JSONEncoder.default(self, obj)
 
 
@@ -1761,6 +1863,19 @@ class Device(object):
         self.endpoints = {}
         self._expire_timer = {}
         self.missing = False
+        self.genericType = ''
+        self.discovery = ''
+
+    def _lock_acquire(self):
+        r = self._lock.acquire(True, 5)
+        if not r:
+            LOGGER.error('Failed to acquire Lock on device {}'.format(self))
+
+    def _lock_release(self):
+        if not self._lock.locked():
+            LOGGER.error('Device Lock not locked for device {} !'.format(self))
+        else:
+            self._lock.release()
 
     def available_actions(self, endpoint_id=None):
         '''
@@ -1792,11 +1907,14 @@ class Device(object):
                         actions[ep_id].append(ACTIONS_LOCK)
                     if 0x0300 in endpoint['in_clusters']:
                         if endpoint['device'] == 0x0210:
+                            actions[ep_id].append(ACTIONS_COLOR)
                             actions[ep_id].append(ACTIONS_HUE)
+                            actions[ep_id].append(ACTIONS_TEMPERATURE)
                         elif endpoint['device'] == 0x0220:
                             actions[ep_id].append(ACTIONS_TEMPERATURE)
                         else:  # 0x0200
                             actions[ep_id].append(ACTIONS_COLOR)
+                            actions[ep_id].append(ACTIONS_HUE)
         return actions
 
     def _create_actions(self):
@@ -1824,29 +1942,76 @@ class Device(object):
             endpoints_list = self.endpoints.items()
         for endpoint_id, endpoint in endpoints_list:
             if endpoint['device'] in ACTUATORS:  # light
+                LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
                 if 0x0006 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0006')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
                     self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0006, 0x0000, 0x10)  # TODO: auto select data type
+                                                   0x0006, (0x0000, 0x10))  # TODO: auto select data type
                 if 0x0008 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0008')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
                     self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0008, 0x0000, 0x20)
+                                                   0x0008, (0x0000, 0x20))
                 # TODO : auto select data type
-                # TODO : check if the following is needed
                 if 0x0300 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0300')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
-                    for i in range(9):  # all color informations
-                        self._zigate.reporting_request(self.addr, endpoint_id,
-                                                       0x0300, i, 0x20)
+                    if endpoint['device'] == 0x0210:
+                        # self._zigate.reporting_request(self.addr,
+                        #                               endpoint_id,
+                        #                               0x0300, [(0x0000, 0x20),
+                        #                                        (0x0001, 0x20),
+                        #                                        (0x0003, 0x21),
+                        #                                        (0x0004, 0x21),
+                        #                                        (0x0007, 0x21),
+                        #                                        ])
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0000, 0x20))
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0001, 0x20))
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0003, 0x21))
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0004, 0x21))
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0007, 0x21))
+                    elif endpoint['device'] == 0x0220:
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0007, 0x21))
+                    else:  # 0x0200
+                        # self._zigate.reporting_request(self.addr,
+                        #                               endpoint_id,
+                        #                               0x0300, [(0x0000, 0x20),
+                        #                                        (0x0001, 0x20),
+                        #                                        (0x0003, 0x21),
+                        #                                        (0x0004, 0x21),
+                        #                                        ])
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0000, 0x20))
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0001, 0x20))
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0003, 0x21))
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0004, 0x21))
 
     @staticmethod
     def from_json(data, zigate_instance=None):
         d = Device(zigate_instance=zigate_instance)
         d.info = data.get('info', {})
+        d.genericType = data.get('generictype', '')
+        d.discovery = data.get('discovery', '')
         for ep in data.get('endpoints', []):
             if 'attributes' in ep:  # old version
                 LOGGER.debug('Old version found, convert it')
@@ -1883,6 +2048,8 @@ class Device(object):
                             'in_clusters': v['in_clusters'],
                             'out_clusters': v['out_clusters']
                             } for k, v in self.endpoints.items()],
+             'generictype': self.genericType,
+             'discovery': self.discovery
              }
         if properties:
             r['properties'] = list(self.properties)
@@ -1942,8 +2109,7 @@ class Device(object):
     def rssi_percent(self):
         return round(100 * self.rssi / 255)
 
-    @property
-    def type(self):
+    def get_type(self, wait=True):
         typ = self.get_value('type')
         if typ is None:
             for endpoint in self.endpoints:
@@ -1954,21 +2120,37 @@ class Device(object):
                                                         0x0005
                                                         )
                     break
+            if not wait:
+                return
             # wait for type
             t1 = time()
             while self.get_value('type') is None:
-                time.sleep(0.1)
+                sleep(0.1)
                 t2 = time()
-                if t2 - t1 > 3:
+                if t2 - t1 > WAIT_TIMEOUT:
                     LOGGER.warning('No response waiting for type')
                     return
             typ = self.get_value('type')
         return typ
 
     def refresh_device(self):
-        self._zigate.refresh_device(self.addr)
+        to_read = {}
+        for attribute in self.attributes:
+            k = (attribute['endpoint'], attribute['cluster'])
+            if k not in to_read:
+                to_read[k] = []
+            to_read[k].append(attribute['attribute'])
+        for k, attributes in to_read.items():
+            endpoint, cluster = k
+            self._zigate.read_attribute_request(self.addr,
+                                                endpoint,
+                                                cluster,
+                                                attributes)
 
-    def identify_device(self, time_sec=10):
+    def discover_device(self):
+        self._zigate.discover_device(self.addr)
+
+    def identify_device(self, time_sec=5):
         '''
         send identify command
         sec is time in second
@@ -2015,19 +2197,40 @@ class Device(object):
         '''
         update from other device
         '''
-        self._lock.acquire()
+        self._lock_acquire()
         self.info.update(device.info)
-        self.endpoints.update(device.endpoints)
+        self._merge_endpoints(device.endpoints)
+        self.genericType = self.genericType or device.genericType
 #         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
-        self._lock.release()
+        self._lock_release()
+
+    def _merge_endpoints(self, endpoints):
+        for endpoint_id, endpoint in endpoints.items():
+            if endpoint_id not in self.endpoints:
+                self.endpoints[endpoint_id] = endpoint
+            else:
+                myendpoint = self.endpoints[endpoint_id]
+                if 'clusters' not in myendpoint:
+                    myendpoint['clusters'] = {}
+                myendpoint['profile'] = endpoint.get('profile') or myendpoint.get('profile', 0)
+                myendpoint['device'] = endpoint.get('device') or myendpoint.get('device', 0)
+                myendpoint['in_clusters'] = endpoint.get('in_clusters') or myendpoint.get('in_clusters', [])
+                myendpoint['out_clusters'] = endpoint.get('out_clusters') or myendpoint.get('out_clusters', [])
+                for cluster_id, cluster in endpoint['clusters'].items():
+                    if cluster_id not in myendpoint['clusters']:
+                        myendpoint['clusters'][cluster_id] = cluster
+                    else:
+                        mycluster = myendpoint['clusters'][cluster_id]
+                        for attribute in cluster.attributes.values():
+                            mycluster.update(attribute)
 
     def update_info(self, info):
-        self._lock.acquire()
+        self._lock_acquire()
         self.info.update(info)
-        self._lock.release()
+        self._lock_release()
 
     def get_endpoint(self, endpoint_id):
-        self._lock.acquire()
+        self._lock_acquire()
         if endpoint_id not in self.endpoints:
             self.endpoints[endpoint_id] = {'clusters': {},
                                            'profile': 0,
@@ -2035,16 +2238,16 @@ class Device(object):
                                            'in_clusters': [],
                                            'out_clusters': [],
                                            }
-        self._lock.release()
+        self._lock_release()
         return self.endpoints[endpoint_id]
 
     def get_cluster(self, endpoint_id, cluster_id):
         endpoint = self.get_endpoint(endpoint_id)
-        self._lock.acquire()
+        self._lock_acquire()
         if cluster_id not in endpoint['clusters']:
             cluster = get_cluster(cluster_id, endpoint)
             endpoint['clusters'][cluster_id] = cluster
-        self._lock.release()
+        self._lock_release()
         return endpoint['clusters'][cluster_id]
 
     def set_attribute(self, endpoint_id, cluster_id, data):
@@ -2055,7 +2258,7 @@ class Device(object):
         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
         self.missing = False
         cluster = self.get_cluster(endpoint_id, cluster_id)
-        self._lock.acquire()
+        self._lock_acquire()
         r = cluster.update(data)
         if r:
             added, attribute = r
@@ -2064,7 +2267,7 @@ class Device(object):
                                        attribute['attribute'],
                                        attribute['expire'])
         self._avoid_duplicate()
-        self._lock.release()
+        self._lock_release()
         if not r:
             return
         return added, attribute['attribute']
@@ -2095,6 +2298,8 @@ class Device(object):
         value = attribute['value']
         if 'expire_value' in attribute:
             new_value = attribute['expire_value']
+        elif 'type' in attribute:
+            new_value = attribute['type']()
         else:
             new_value = type(value)()
         attribute['value'] = new_value
@@ -2210,28 +2415,30 @@ class Device(object):
             return mac_capability[-3] == '1'
         return False
 
-    def need_refresh(self):
+    def need_discovery(self):
         '''
-        return True if device need to be refresh
+        return True if device need to be discovered
         because of missing important information
         '''
         need = False
-        LOGGER.debug('Check Need refresh {}'.format(self))
+        LOGGER.debug('Check Need discovery {}'.format(self))
+        if not self.discovery:
+            self.load_template()
         if not self.get_property_value('type'):
-            LOGGER.debug('Need refresh : no type')
+            LOGGER.debug('Need discovery : no type')
             need = True
         if not self.ieee:
-            LOGGER.debug('Need refresh : no IEEE')
+            LOGGER.debug('Need discovery : no IEEE')
             need = True
         if not self.endpoints:
-            LOGGER.debug('Need refresh : no endpoints')
+            LOGGER.debug('Need discovery : no endpoints')
             need = True
         for endpoint in self.endpoints.values():
             if endpoint.get('device') is None:
-                LOGGER.debug('Need refresh : no device id')
+                LOGGER.debug('Need discovery : no device id')
                 need = True
             if endpoint.get('in_clusters') is None:
-                LOGGER.debug('Need refresh : no clusters list')
+                LOGGER.debug('Need discovery : no clusters list')
                 need = True
         return need
 
@@ -2251,3 +2458,67 @@ class Device(object):
                                           attribute['attribute'])
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
+
+    def load_template(self):
+        typ = self.get_type()
+        if not typ:
+            LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
+            return
+        typ = typ.replace(' ', '_')
+        path = os.path.join(BASE_PATH, 'templates', typ + '.json')
+        success = False
+        if os.path.exists(path):
+            try:
+                with open(path) as fp:
+                    template = json.load(fp)
+                    device = Device.from_json(template)
+                    self.update(device)
+                success = True
+            except Exception:
+                LOGGER.error('Failed to load template for {}'.format(typ))
+                LOGGER.error(traceback.format_exc())
+        else:
+            LOGGER.warning('No template found for {}'.format(typ))
+        self._bind_report()
+        if success:
+            self.discovery = 'templated'
+            dispatch_signal(ZIGATE_DEVICE_UPDATED,
+                            self._zigate, **{'zigate': self._zigate,
+                                             'device': self})
+        return success
+
+    def generate_template(self, dirname='~'):
+        '''
+        Generate template file
+        '''
+        typ = self.get_type()
+        if not typ:
+            LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
+            return
+        typ = typ.replace(' ', '_')
+        dirname = os.path.expanduser(dirname)
+        path = os.path.join(dirname, typ + '.json')
+        jdata = json.dumps(self, cls=DeviceEncoder)
+        jdata = json.loads(jdata)
+        del jdata['addr']
+        del jdata['discovery']
+        for key in ('id', 'addr', 'ieee', 'rssi', 'last_seen', 'max_rx', 'max_tx', 'max_buffer'):
+            if key in jdata['info']:
+                del jdata['info'][key]
+        for endpoint in jdata.get('endpoints', []):
+            for cluster in endpoint.get('clusters', []):
+                cluster_id = cluster['cluster']
+                if cluster_id == 0:  # we only keep attribute 4, 5, 7 for cluster 0x0000
+                    cluster['attributes'] = [a for a in cluster.get('attributes', [])
+                                             if a.get('attribute') in (4, 5, 7)]
+                for attribute in cluster.get('attributes', []):
+                    keys = list(attribute.keys())
+                    for key in keys:
+                        if key in ('attribute', 'inverse'):
+                            continue
+                        if key == 'data' and cluster_id == 0:
+                            continue
+                        del attribute[key]
+        with open(path, 'w') as fp:
+            json.dump(jdata, fp, cls=DeviceEncoder,
+                      sort_keys=True, indent=4, separators=(',', ': '))

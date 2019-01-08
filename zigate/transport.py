@@ -16,6 +16,8 @@ import select
 from pydispatch import dispatcher
 import sys
 from .const import ZIGATE_FAILED_TO_CONNECT
+import struct
+
 
 LOGGER = logging.getLogger('zigate')
 
@@ -51,6 +53,82 @@ class BaseTransport(object):
                 LOGGER.error('Malformed packet received, ignore it')
             self._buffer = self._buffer[endpos + 1:]
             endpos = self._buffer.find(b'\x03')
+
+    def send(self, data):
+        self.queue.put(data)
+
+    def is_connected(self):
+        pass
+
+
+class FakeTransport(BaseTransport):
+    '''
+    Fake transport for test
+    '''
+    def __init__(self):
+        BaseTransport.__init__(self)
+        self.sent = []
+
+    def is_connected(self):
+        return True
+
+    def send(self, data):
+        self.sent.append(data)
+        # retrieve cmd
+        data = self.zigate_decode(data[1:-1])
+        cmd = struct.unpack('!H', data[0:2])[0]
+        # reply 0x8000 ok for cmd
+        rssi = 255
+        value = struct.pack('!BBHB', 0, 1, cmd, rssi)
+        length = len(value)
+        checksum = self.checksum(struct.pack('!H', 0x8000),
+                                 struct.pack('!B', length),
+                                 value)
+        raw_message = struct.pack('!HHB{}s'.format(len(value)), 0x8000, length, checksum, value)
+        enc_msg = self.zigate_encode(raw_message)
+        enc_msg.insert(0, 0x01)
+        enc_msg.append(0x03)
+        enc_msg = bytes(enc_msg)
+        self.received.put(enc_msg)
+
+    def checksum(self, *args):
+        chcksum = 0
+        for arg in args:
+            if isinstance(arg, int):
+                chcksum ^= arg
+                continue
+            for x in arg:
+                chcksum ^= x
+        return chcksum
+
+    def zigate_encode(self, data):
+        encoded = bytearray()
+        for b in data:
+            if b < 0x10:
+                encoded.extend([0x02, 0x10 ^ b])
+            else:
+                encoded.append(b)
+        return encoded
+
+    def zigate_decode(self, data):
+        flip = False
+        decoded = bytearray()
+        for b in data:
+            if flip:
+                flip = False
+                decoded.append(b ^ 0x10)
+            elif b == 0x02:
+                flip = True
+            else:
+                decoded.append(b)
+        return decoded
+
+    def get_last_cmd(self):
+        if not self.sent:
+            return
+        cmd = self.sent[-1]
+        data = self.zigate_decode(cmd[1:-1])[5:]
+        return data
 
 
 class ThreadSerialConnection(BaseTransport):
@@ -101,9 +179,6 @@ class ThreadSerialConnection(BaseTransport):
                 data = self.queue.get()
                 self.serial.write(data)
             time.sleep(0.05)
-
-    def send(self, data):
-        self.queue.put(data)
 
     def _find_port(self, port):
         '''

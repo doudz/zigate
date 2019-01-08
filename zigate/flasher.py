@@ -164,6 +164,11 @@ def req_chip_id():
     pass
 
 
+@Command(0x36, 'B')
+def req_eeprom_erase(pdm_only=False):
+    return not pdm_only
+
+
 @register(0x26)
 class ReadFlashIDResponse(Response):
 
@@ -197,6 +202,16 @@ class GetChipIDResponse(Response):
 
     def __str__(self):
         return 'GetChipIDResponse (ok=%s, chip_id=0x%04x)' % (self.ok, self.chip_id)
+
+
+@register(0x37)
+class EraseEEPROMResponse(Response):
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def __str__(self):
+        return 'EraseEEPROMResponse %d (ok=%s)' % (self.status, self.ok)
 
 
 def change_baudrate(ser, baudrate):
@@ -303,6 +318,14 @@ def write_file_to_flash(ser, filename):
             cur += read_bytes
 
 
+def erase_EEPROM(ser, pdm_only=False):
+    ser.write(req_eeprom_erase(pdm_only))
+    res = read_response(ser)
+    if not res or not res.ok:
+        print('Erasing EEPROM failed')
+        raise SystemExit(1)
+
+
 def main():
     ports_available = [port for (port, _, _) in sorted(comports())]
     parser = argparse.ArgumentParser()
@@ -310,6 +333,8 @@ def main():
                         help='Serial port, e.g. /dev/ttyUSB0', required=True)
     parser.add_argument('-w', '--write', help='Firmware bin to flash onto the chip')
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
+    parser.add_argument('-e', '--erase', help='Erase EEPROM', action='store_true')
+    parser.add_argument('--pdm-only', help='Erase PDM only, use it with --erase', action='store_true')
     args = parser.parse_args()
     try:
         ser = serial.Serial(args.serialport, 38400, timeout=5)
@@ -324,7 +349,7 @@ def main():
     flash_type = get_flash_type(ser)
     mac_address = get_mac(ser)
     print('Found MAC-address: %s' % mac_address)
-    if args.write or args.save:
+    if args.write or args.save or args.erase:
         select_flash(ser, flash_type)
 
     if args.save:
@@ -332,6 +357,9 @@ def main():
 
     if args.write:
         write_file_to_flash(ser, args.write)
+
+    if args.erase:
+        erase_EEPROM(ser, args.pdm_only)
 
 
 if __name__ == "__main__":

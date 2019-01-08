@@ -75,12 +75,14 @@ class Response(object):
         for k, v in self.s.items():
             if isinstance(v, OrderedDict):
                 keys.remove(k)
+                self.data[k] = []
                 rest = len(msg_data) - struct.calcsize(fmt)
+                if rest == 0:
+                    continue
                 subfmt = '!' + ''.join(v.values())
                 count = rest // struct.calcsize(subfmt)
                 submsg_data = msg_data[-rest:]
                 msg_data = msg_data[:-rest]
-                self.data[k] = []
                 for i in range(count):
                     sdata, submsg_data = self.__decode(subfmt,
                                                        v.keys(),
@@ -302,6 +304,28 @@ class R8024(Response):
 
 
 @register_response
+class R802B(Response):
+    msg = 0x802B
+    type = 'User Descriptor Notify'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H')
+                     ])
+
+
+@register_response
+class R802C(Response):
+    msg = 0x802C
+    type = 'User Descriptor Response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H'),
+                     ('length', 'B'),
+                     ('data', 'rawend')
+                     ])
+
+
+@register_response
 class R8030(Response):
     msg = 0x8030
     type = 'Bind response'
@@ -353,7 +377,7 @@ class R8042(Response):
                      ('bit_field', 'H')
                      ])
     format = {'addr': '{:04x}',
-              'manufacturer': '{:04x}',
+              'manufacturer_code': '{:04x}',
               'descriptor_capability': '{:08b}',
               'mac_capability': '{:08b}',
               'bit_field': '{:016b}'}
@@ -552,9 +576,16 @@ class R8060(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
+                     ('addr', 'H'),
                      ('status', 'B'),
                      ('group', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 7:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -581,6 +612,10 @@ class R8062(Response):
                      ('group_count', 'B'),
                      ('groups', OrderedDict([('group', 'H')]))
                      ])
+
+    def cleaned_data(self):
+        self.data['groups'] = [g['group'] for g in self.data['groups']]
+        return self.data
 
 
 @register_response
@@ -727,9 +762,23 @@ class R8140(Response):
     msg = 0x8140
     type = 'Attribute Discovery response'
     s = OrderedDict([('complete', 'B'),
-                     ('attribute_type', 'B'),
-                     ('attribute_id', 'H'),
+                     ('data_type', 'B'),
+                     ('attribute', 'H'),
+                     ('addr', 'H'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 4:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+            del self.s['endpoint']
+            del self.s['cluster']
+        Response.decode(self)
+
+    def cleaned_data(self):
+        return self._filter_data(['attribute'])
 
 
 @register_response

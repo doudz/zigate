@@ -1,0 +1,83 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 4,
+                            "data": "OSRAM"
+                        },
+                        {
+                            "attribute": 5,
+                            "data": "CLA60 RGBW OSRAM"
+                        }
+                    ],
+                    "cluster": 0
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        },
+                        {
+                            "attribute": 1
+                        },
+                        {
+                            "attribute": 3
+                        },
+                        {
+                            "attribute": 4
+                        },
+                        {
+                            "attribute": 7
+                        }
+                    ],
+                    "cluster": 768
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 8
+                }
+            ],
+            "device": 528,
+            "endpoint": 3,
+            "in_clusters": [
+                4096,
+                0,
+                3,
+                4,
+                5,
+                6,
+                8,
+                768,
+                64527
+            ],
+            "out_clusters": [
+                25
+            ],
+            "profile": 49246
+        }
+    ],
+    "generictype": "light",
+    "info": {
+        "bit_field": "0100000000000001",
+        "descriptor_capability": "00000011",
+        "mac_capability": "10001110",
+        "manufacturer_code": "bbaa",
+        "power_type": 1,
+        "server_mask": 0
+    }
+}

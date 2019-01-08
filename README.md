@@ -13,8 +13,8 @@ ZiGate is an universal gateway compatible with a lot of ZigBee device (like Xiao
 
 Current coverage :
 
-* Commands 57 / 92
-* Responses 45 / 51
+* Commands 69 / 91
+* Responses 48 / 52
 
 ## Getting Started
 
@@ -140,10 +140,10 @@ event can be :
 zigate.ZIGATE_DEVICE_ADDED
 zigate.ZIGATE_DEVICE_UPDATED
 zigate.ZIGATE_DEVICE_REMOVED
-zigate.ZIGATE_DEVICE_RENAMED
+zigate.ZIGATE_DEVICE_ADDRESS_CHANGED
 zigate.ZIGATE_ATTRIBUTE_ADDED
 zigate.ZIGATE_ATTRIBUTE_UPDATED
-zigate.ZIGATE_DEVICE_NEED_REFRESH
+zigate.ZIGATE_DEVICE_NEED_DISCOVERY
 ```
 
 kwargs depends of the event type:
@@ -151,9 +151,10 @@ kwargs depends of the event type:
 * for `zigate.ZIGATE_DEVICE_ADDED` kwargs contains device.
 * for `zigate.ZIGATE_DEVICE_UPDATED` kwargs contains device.
 * for `zigate.ZIGATE_DEVICE_REMOVED` kwargs contains addr (the device short address).
-* for `zigate.ZIGATE_DEVICE_RENAMED` kwargs contains old_addr and new_addr (used when re-pairing an already known device).
+* for `zigate.ZIGATE_DEVICE_ADDRESS_CHANGED` kwargs contains old_addr and new_addr (used when re-pairing an already known device).
 * for `zigate.ZIGATE_ATTRIBUTE_ADDED` kwargs contains device and discovered attribute.
 * for `zigate.ZIGATE_ATTRIBUTE_UPDATED` kwargs contains device and updated attribute.
+* for `zigate.ZIGATE_DEVICE_NEED_DISCOVERY` kwargs contains device.
 
 ## Wifi ZiGate
 
@@ -240,15 +241,18 @@ Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
 ### Flasher Usage
 
 ```bash
-usage: python -m zigate.flasher [-h] -p PORT [-w WRITE] [-s SAVE]
+usage: python3 -m zigate.flasher [-h] -p {/dev/ttyUSB0} [-w WRITE] [-s SAVE] [-e] [--pdm-only]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p PORT, --serialport PORT
+  -p {/dev/ttyUSB0}, --serialport {/dev/ttyUSB0}
                         Serial port, e.g. /dev/ttyUSB0
   -w WRITE, --write WRITE
                         Firmware bin to flash onto the chip
   -s SAVE, --save SAVE  File to save the currently loaded firmware to
+  -e, --erase           Erase EEPROM
+  --pdm-only            Erase PDM only, use it with --erase
+
 ```
 
 
