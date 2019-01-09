@@ -68,6 +68,7 @@ class FakeTransport(BaseTransport):
     def __init__(self):
         BaseTransport.__init__(self)
         self.sent = []
+        self.auto_responder = {}
 
     def is_connected(self):
         return True
@@ -90,6 +91,22 @@ class FakeTransport(BaseTransport):
         enc_msg.append(0x03)
         enc_msg = bytes(enc_msg)
         self.received.put(enc_msg)
+
+        if cmd in self.auto_responder:
+            self.received.put(self.auto_responder[cmd])
+
+    def add_auto_response(self, cmd, resp, value, rssi=255):
+        value += struct.pack('!B', rssi)
+        length = len(value)
+        checksum = self.checksum(struct.pack('!H', resp),
+                                 struct.pack('!B', length),
+                                 value)
+        raw_message = struct.pack('!HHB{}s'.format(len(value)), resp, length, checksum, value)
+        enc_msg = self.zigate_encode(raw_message)
+        enc_msg.insert(0, 0x01)
+        enc_msg.append(0x03)
+        enc_msg = bytes(enc_msg)
+        self.auto_responder[cmd] = enc_msg
 
     def checksum(self, *args):
         chcksum = 0

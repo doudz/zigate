@@ -1354,7 +1354,12 @@ class ZiGate(object):
         data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1, endpoint, cluster,
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
-        self.send_data(0x0120, data, 0x8120)
+        r = self.send_data(0x0120, data, 0x8120)
+        if r and r.status == 0x8c:  # reporting not supported
+            device = self._devices[r.addr]
+            attr = device.get_attribute(r.endpoint, r.cluster, attribute_tuple[0])
+            attr['state'] = 'assumed'
+        return r
 
     def ota_load_image(self, path_to_file):
         # Check that ota process is not active
@@ -1609,6 +1614,12 @@ class ZiGate(object):
             cmd = 0x0094
             data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effect, gradient)
         self.send_data(cmd, data)
+#         device = self._devices.get(self.__haddr(addr))
+#         if device:
+#             if device.is_assumed(endpoint, 6, 0):
+#                 value = device.get_attribute(endpoint, 6, 0)
+#                 value['data'] = {0: False, 1: True, 2: not value.get('data', False)}.get(onoff, 0)
+#                 device.set_attribute(endpoint, 6, value)
 
     @register_actions(ACTIONS_LEVEL)
     def action_move_level(self, addr, endpoint, onoff=OFF, mode=0, rate=0):
@@ -2522,3 +2533,22 @@ class Device(object):
         with open(path, 'w') as fp:
             json.dump(jdata, fp, cls=DeviceEncoder,
                       sort_keys=True, indent=4, separators=(',', ': '))
+
+    def set_assumed_state(self, endpoint_id, cluster_id, attribute_id, assumed=True):
+        '''
+        Manage assumed state for specified attribute
+        '''
+        attr = self.get_attribute(endpoint_id, cluster_id, attribute_id)
+        if attr:
+            if assumed:
+                attr['state'] = 'assumed'
+            elif 'state' in attr:
+                del attr['state']
+
+    def is_assumed(self, endpoint_id, cluster_id, attribute_id):
+        '''
+        return True if specified attribute has assumed state
+        '''
+        attr = self.get_attribute(endpoint_id, cluster_id, attribute_id)
+        if attr:
+            return attr.get('state') == 'assumed'

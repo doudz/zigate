@@ -8,7 +8,7 @@ import os
 import shutil
 import tempfile
 from zigate import ZiGate, responses, transport, core
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 
 
 class TestCore(unittest.TestCase):
@@ -287,6 +287,41 @@ class TestCore(unittest.TestCase):
         self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
                          b'0212340103030000000000020020000000010e100000000020000100010e10000000'
                          )
+
+    def test_assumed_state(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(3, 6, {'attribute': 0, 'rssi': 255, 'data': False})
+        self.zigate._devices['1234'] = device
+        self.zigate.connection.add_auto_response(0x0120, 0x8120, unhexlify(b'01123403000600'))
+        r = self.zigate.reporting_request('1234', 3, 6, (0x0000, 0x20))
+        self.assertEqual(r.status, 0)
+        self.assertDictEqual(device.get_attribute(3, 6, 0),
+                             {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool})
+        self.zigate.action_onoff('1234', 3, True)
+        self.assertDictEqual(device.get_attribute(3, 6, 0),
+                             {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool})
+        self.zigate.connection.add_auto_response(0x0120, 0x8120, unhexlify(b'0112340300068c'))
+        r = self.zigate.reporting_request('1234', 3, 6, (0x0000, 0x20))
+        self.assertEqual(r.status, 0x8c)
+        self.assertDictEqual(device.get_attribute(3, 6, 0),
+                             {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool,
+                              'state': 'assumed'})
+#         self.zigate.action_onoff('1234', 3, 1)
+#         self.assertDictEqual(device.get_attribute(3, 6, 0),
+#                              {'attribute': 0, 'data': True, 'name': 'onoff', 'value': True, 'type': bool,
+#                               'state': 'assumed'})
+#         self.zigate.action_onoff('1234', 3, 0)
+#         self.assertDictEqual(device.get_attribute(3, 6, 0),
+#                              {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool,
+#                               'state': 'assumed'})
+#         self.zigate.action_onoff('1234', 3, 2)
+#         self.assertDictEqual(device.get_attribute(3, 6, 0),
+#                              {'attribute': 0, 'data': True, 'name': 'onoff', 'value': True, 'type': bool,
+#                               'state': 'assumed'})
+#         self.zigate.action_onoff('1234', 3, 2)
+#         self.assertDictEqual(device.get_attribute(3, 6, 0),
+#                              {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool,
+#                               'state': 'assumed'})
 
 
 if __name__ == '__main__':

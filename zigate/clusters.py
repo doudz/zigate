@@ -88,7 +88,7 @@ class Cluster(object):
         if attr_def:
             # remove unwanted key from old conf
             for k in list(attribute.keys()):
-                if k in ('attribute', 'data', 'inverse'):
+                if k in ('attribute', 'data', 'inverse', 'state'):
                     continue
                 if k not in attr_def:
                     del attribute[k]
