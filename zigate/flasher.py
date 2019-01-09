@@ -323,6 +323,7 @@ def write_file_to_flash(ser, filename):
 
 
 def erase_EEPROM(ser, pdm_only=False):
+    ser.timeout = 10  # increase timeout because official NXP programmer do it
     ser.write(req_eeprom_erase(pdm_only))
     res = read_response(ser)
     if not res or not res.ok:
