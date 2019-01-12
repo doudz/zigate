@@ -295,17 +295,17 @@ class TestCore(unittest.TestCase):
         self.zigate.connection.add_auto_response(0x0120, 0x8120, unhexlify(b'01123403000600'))
         r = self.zigate.reporting_request('1234', 3, 6, (0x0000, 0x20))
         self.assertEqual(r.status, 0)
+        self.assertFalse(device.assumed_state)
         self.assertDictEqual(device.get_attribute(3, 6, 0),
                              {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool})
         self.zigate.action_onoff('1234', 3, True)
         self.assertDictEqual(device.get_attribute(3, 6, 0),
                              {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool})
+        self.assertFalse(device.assumed_state)
         self.zigate.connection.add_auto_response(0x0120, 0x8120, unhexlify(b'0112340300068c'))
         r = self.zigate.reporting_request('1234', 3, 6, (0x0000, 0x20))
         self.assertEqual(r.status, 0x8c)
-        self.assertDictEqual(device.get_attribute(3, 6, 0),
-                             {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool,
-                              'state': 'assumed'})
+        self.assertTrue(device.assumed_state)
 #         self.zigate.action_onoff('1234', 3, 1)
 #         self.assertDictEqual(device.get_attribute(3, 6, 0),
 #                              {'attribute': 0, 'data': True, 'name': 'onoff', 'value': True, 'type': bool,
