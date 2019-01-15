@@ -56,6 +56,27 @@ ACTUATORS = [0x0010, 0x0051,
 #             Color light 0x0200
 #             Extended color light 0x0210
 #             Color temperature light 0x0220
+# On/Off Light 0x0100 Section 3.1
+# Dimmable Light 0x0101 Section 3.2
+# Colour Dimmable Light 0x0102 Section 3.3
+# On/Off Light Switch 0x0103 Section 3.4
+# Dimmer Switch 0x0104 Section 3.5
+# Colour Dimmer Switch 0x0105 Section 3.6
+# Light Sensor 0x0106 Section 3.7
+# Occupancy Sensor 0x0107 Section 3.8
+# On/Off Ballast 0x0108 Section 3.9
+# Dimmable Ballast 0x0109 Section 3.10
+# On/Off Plug-in Unit 0x010A Section 3.11
+# Dimmable Plug-in Unit 0x010B Section 3.12
+# Colour Temperature Light 0x010C Section 3.13
+# Extended Colour Light 0x010D Section 3.14
+# Light Level Sensor 0x010E Section 3.15
+# Colour Controller 0x0800 Section 3.16
+# Colour Scene Controller 0x0810 Section 3.17
+# Non-Colour Controller 0x0820 Section 3.18
+# Non-Colour Scene Controller 0x0830 Section 3.19
+# Control Bridge 0x0840 Section 3.20
+# On/Off Sensor 0x0850 Section 3.21
 
 
 def register_actions(action):
@@ -1354,7 +1375,11 @@ class ZiGate(object):
         data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1, endpoint, cluster,
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
-        self.send_data(0x0120, data, 0x8120)
+        r = self.send_data(0x0120, data, 0x8120)
+        if r and r.status == 0x8c:  # reporting not supported
+            device = self._devices[r.addr]
+            device.set_assumed_state()
+        return r
 
     def ota_load_image(self, path_to_file):
         # Check that ota process is not active
@@ -1609,6 +1634,12 @@ class ZiGate(object):
             cmd = 0x0094
             data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effect, gradient)
         self.send_data(cmd, data)
+#         device = self._devices.get(self.__haddr(addr))
+#         if device:
+#             if device.is_assumed(endpoint, 6, 0):
+#                 value = device.get_attribute(endpoint, 6, 0)
+#                 value['data'] = {0: False, 1: True, 2: not value.get('data', False)}.get(onoff, 0)
+#                 device.set_attribute(endpoint, 6, value)
 
     @register_actions(ACTIONS_LEVEL)
     def action_move_level(self, addr, endpoint, onoff=OFF, mode=0, rate=0):
@@ -1906,11 +1937,14 @@ class Device(object):
                     if 0x0101 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_LOCK)
                     if 0x0300 in endpoint['in_clusters']:
-                        if endpoint['device'] == 0x0210:
+                        # if endpoint['device'] in (0x0102, 0x0105):
+                        if endpoint['device'] in (0x0105,):
+                            actions[ep_id].append(ACTIONS_HUE)
+                        elif endpoint['device'] in (0x010D, 0x0210):
                             actions[ep_id].append(ACTIONS_COLOR)
                             actions[ep_id].append(ACTIONS_HUE)
                             actions[ep_id].append(ACTIONS_TEMPERATURE)
-                        elif endpoint['device'] == 0x0220:
+                        elif endpoint['device'] in (0x0102, 0x010C, 0x0220):
                             actions[ep_id].append(ACTIONS_TEMPERATURE)
                         else:  # 0x0200
                             actions[ep_id].append(ACTIONS_COLOR)
@@ -1957,7 +1991,14 @@ class Device(object):
                 if 0x0300 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0300')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
-                    if endpoint['device'] == 0x0210:
+                    if endpoint['device'] in (0x0105,):
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0000, 0x20))
+                        self._zigate.reporting_request(self.addr,
+                                                       endpoint_id,
+                                                       0x0300, (0x0001, 0x20))
+                    elif endpoint['device'] in (0x010D, 0x0210):
                         # self._zigate.reporting_request(self.addr,
                         #                               endpoint_id,
                         #                               0x0300, [(0x0000, 0x20),
@@ -1981,7 +2022,7 @@ class Device(object):
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
                                                        0x0300, (0x0007, 0x21))
-                    elif endpoint['device'] == 0x0220:
+                    elif endpoint['device'] in (0x0102, 0x010C, 0x0220):
                         self._zigate.reporting_request(self.addr,
                                                        endpoint_id,
                                                        0x0300, (0x0007, 0x21))
@@ -2522,3 +2563,13 @@ class Device(object):
         with open(path, 'w') as fp:
             json.dump(jdata, fp, cls=DeviceEncoder,
                       sort_keys=True, indent=4, separators=(',', ': '))
+
+    def set_assumed_state(self, assumed_state=True):
+        self.info['assumed_state'] = assumed_state
+
+    @property
+    def assumed_state(self):
+        '''
+        return True if it has assumed state
+        '''
+        return self.info.get('assumed_state', False)

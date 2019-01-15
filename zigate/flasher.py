@@ -32,7 +32,7 @@ class Command:
 
     def __init__(self, type_, fmt=None, raw=False):
         assert not (raw and fmt), 'Raw commands cannot use built-in struct formatting'
-
+        logger.debug('Command {} {} {}'.format(type_, fmt, raw))
         self.type = type_
         self.raw = raw
         if fmt:
@@ -63,6 +63,7 @@ class Command:
 class Response:
 
     def __init__(self, type_, data, chksum):
+        logger.debug('Response {} {} {}'.format(type_, data, chksum))
         self.type = type_
         self.data = data[1:]
         self.chksum = chksum
@@ -104,13 +105,16 @@ def prepare(type_, data):
 def read_response(ser):
     length = ser.read()
     length = int.from_bytes(length, 'big')
+    logger.debug('read_response length {}'.format(length))
     answer = ser.read(length)
+    logger.debug('read_response answer {}'.format(answer))
     return _unpack_raw_message(length, answer)
     type_, data, chksum = struct.unpack('!B%dsB' % (length - 2), answer)
     return {'type': type_, 'data': data, 'chksum': chksum}
 
 
 def _unpack_raw_message(length, decoded):
+    logger.debug('unpack raw message {} {}'.format(length, decoded))
     if len(decoded) != length or length < 2:
         print("Unpack failed, length: %d, msg %s" % (length, decoded.hex()))
         return False
@@ -319,6 +323,7 @@ def write_file_to_flash(ser, filename):
 
 
 def erase_EEPROM(ser, pdm_only=False):
+    ser.timeout = 10  # increase timeout because official NXP programmer do it
     ser.write(req_eeprom_erase(pdm_only))
     res = read_response(ser)
     if not res or not res.ok:
@@ -335,7 +340,10 @@ def main():
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
     parser.add_argument('-e', '--erase', help='Erase EEPROM', action='store_true')
     parser.add_argument('--pdm-only', help='Erase PDM only, use it with --erase', action='store_true')
+    parser.add_argument('-d', '--debug', help='Set log level to DEBUG', action='store_true')
     args = parser.parse_args()
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
     try:
         ser = serial.Serial(args.serialport, 38400, timeout=5)
     except serial.SerialException:
