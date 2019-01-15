@@ -5,4 +5,4 @@
 # file that was distributed with this source code.
 #
 
-__version__ = '0.25.1'
+__version__ = '0.26.0.dev0'
