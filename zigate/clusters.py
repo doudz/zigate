@@ -329,6 +329,17 @@ class C0101(Cluster):
 
 
 @register_cluster
+class C0201(Cluster):
+    cluster_id = 0x0201
+    type = 'Thermostat'
+    attributes_def = {0x0000: {'name': 'local_temperature', 'value': 'value/100.',
+                               'unit': '°C', 'type': float},
+                      0x000b: {'name': 'heating_setpoint', 'value': 'value/100.',
+                               'unit': '°C', 'type': float},
+                      }
+
+
+@register_cluster
 class C0300(Cluster):
     cluster_id = 0x0300
     type = 'Lighting: Color Control'
