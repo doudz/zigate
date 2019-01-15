@@ -33,6 +33,7 @@ import random
 from enum import Enum
 import colorsys
 import datetime
+import asyncio
 
 
 LOGGER = logging.getLogger('zigate')
@@ -161,7 +162,9 @@ class ZiGate(object):
         self._started = False
         self._no_response_count = 0
 
-        self._event_thread = threading.Thread(target=self._event_loop,
+        loop = asyncio.new_event_loop()
+        loop.create_task(self._event_loop(loop))
+        self._event_thread = threading.Thread(target=loop.run_forever,
                                               name='ZiGate-Event Loop')
         self._event_thread.setDaemon(True)
         self._event_thread.start()
@@ -185,18 +188,19 @@ class ZiGate(object):
         from .adminpanel import start_adminpanel
         start_adminpanel(self)
 
-    def _event_loop(self):
+    async def _event_loop(self, loop):
         while True:
             if self.connection and not self.connection.received.empty():
                 packet = self.connection.received.get()
                 dispatch_signal(ZIGATE_PACKET_RECEIVED, self, packet=packet)
-                t = threading.Thread(target=self.decode_data, args=(packet,),
-                                     name='ZiGate-Decode data')
-                t.setDaemon(True)
-                t.start()
+                loop.create_task(self.decode_data(packet))
+#                 t = threading.Thread(target=self.decode_data, args=(packet,),
+#                                      name='ZiGate-Decode data')
+#                 t.setDaemon(True)
+#                 t.start()
 #                 self.decode_data(packet)
             else:
-                sleep(SLEEP_INTERVAL)
+                asyncio.sleep(SLEEP_INTERVAL)
 
     def setup_connection(self):
         self.connection = ThreadSerialConnection(self, self._port)
@@ -417,7 +421,7 @@ class ZiGate(object):
             return status
         return False
 
-    def decode_data(self, packet):
+    async def decode_data(self, packet):
         '''
         Decode raw packet message
         '''
