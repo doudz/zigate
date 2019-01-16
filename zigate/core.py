@@ -857,6 +857,12 @@ class ZiGate(object):
             data = struct.pack('!QQ', zigate_ieee, ieee)
             return self.send_data(0x0026, data)
 
+    def remove_device_ieee(self, ieee):
+        ''' remove device '''
+        device = self.get_device_from_ieee(ieee)
+        if device:
+            self.remove_device(device.addr)
+
     def enable_permissions_controlled_joins(self, enable=True):
         '''
         Enable Permissions Controlled Joins
