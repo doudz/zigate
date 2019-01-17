@@ -178,6 +178,14 @@ class ZiGate(object):
             if auto_save:
                 self.start_auto_save()
 
+    @property
+    def ieee(self):
+        return self._ieee
+
+    @property
+    def addr(self):
+        return self._addr
+
     def start_adminpanel(self):
         '''
         Start Admin panel in other thread
