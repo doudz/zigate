@@ -289,7 +289,7 @@ class TestCore(unittest.TestCase):
                          )
 
     def test_raw_aps_data(self):
-        r = self.zigate.raw_aps_data_request('1234', 1, 0x0104, 0x0006, 0, 0, b'payload')
+        r = self.zigate.raw_aps_data_request('1234', 1, 1, 0x0104, 0x0006, b'payload', 3)
         self.assertEqual(r.sequence, 1)
 
     def test_assumed_state(self):
