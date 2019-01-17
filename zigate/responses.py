@@ -635,10 +635,10 @@ class R8085(Response):
                      ('addr', 'H'),
                      ('cmd', 'B'),
                      ])
-    
+
     def decode(self):
         Response.decode(self)
-        press_type = {2: 'click', 1: 'hold', 3: 'release',}
+        press_type = {2: 'click', 1: 'hold', 3: 'release'}
         if self.data['cmd'] in (1, 2, 3):
             self.data['button'] = 'down'
             self.data['type'] = press_type.get(self.data['cmd'], self.data['cmd'])
@@ -648,7 +648,7 @@ class R8085(Response):
 
 
 @register_response
-class R8085(Response):
+class R8095(Response):
     msg = 0x8095
     type = 'Remote button pressed (ONOFF_UPDATE)'
     s = OrderedDict([('sequence', 'B'),
