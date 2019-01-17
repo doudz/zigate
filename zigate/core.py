@@ -48,7 +48,7 @@ WAIT_TIMEOUT = 3
 ACTUATORS = [0x0010, 0x0051,
              0x010a,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
-             0x0200, 0x0210, 0x0220]
+             0x0200, 0x0202, 0x0210, 0x0220]
 #             On/off light 0x0000
 #             On/off plug-in unit 0x0010
 #             Dimmable light 0x0100
@@ -2000,6 +2000,16 @@ class Device(object):
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
                     self._zigate.reporting_request(self.addr, endpoint_id,
                                                    0x0008, (0x0000, 0x20))
+                if 0x000f in endpoint['in_clusters']:
+                    LOGGER.debug('bind and report for cluster 0x000f')
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x000f)
+                    self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x000f, (0x0055, 0x10))
+                if 0x0102 in endpoint['in_clusters']:
+                    LOGGER.debug('bind and report for cluster 0x0102')
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0102)
+                    self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x0102, (0x0007, 0x20))
                 # TODO : auto select data type
                 if 0x0300 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0300')

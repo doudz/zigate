@@ -299,6 +299,21 @@ class C0012(Cluster):
                                    }
 
 
+class C000f(Cluster):
+    cluster_id = 0x000f
+    type = 'Binary Input (Basic)'
+    attributes_def = {0x0004: {'name': 'active_text', 'value': 'value'},
+                      0x001c: {'name': 'description', 'value': 'value'},
+                      0x002e: {'name': 'inactive_text', 'value': 'value'},
+                      0x0051: {'name': 'out_of_service', 'value': 'value', 'type': bool},
+                      0x0054: {'name': 'polarity', 'value': 'value'},
+                      0x0055: {'name': 'present_value', 'type': bool},
+                      0x0067: {'name': 'reliability', 'value': 'value'},
+                      0x006f: {'name': 'status_flags', 'value': 'value'},
+                      0x0100: {'name': 'application_type', 'value': 'value'},
+                      }
+
+
 def vibration_decode(value):
     '''
     Special decoder for XIAOMI Vibration sensor
@@ -325,6 +340,22 @@ class C0101(Cluster):
                                'expire': 2, 'expire_value': '', 'type': str},
                       0x0503: {'name': 'rotation', 'value': 'round(value, 2)',
                                'unit': '°', 'expire': 2, 'type': float},
+                      }
+
+
+@register_cluster
+class C0102(Cluster):
+    cluster_id = 0x0102
+    type = 'Window covering'
+    attributes_def = {0x0000: {'name': 'window_covering_type', 'value': 'value'},
+                      0x0001: {'name': 'physical_close_limit_lift_cm', 'value': 'value'},
+                      0x0002: {'name': 'physical_close_limit_tilt_ddegree', 'value': 'value'},
+                      0x0003: {'name': 'current_position_lift_cm', 'value': 'value'},
+                      0x0004: {'name': 'current_position_tilt_ddegree', 'value': 'value'},
+                      0x0005: {'name': 'num_of_actuation_lift', 'value': 'value'},
+                      0x0007: {'name': 'config_status', 'value': 'value'},
+                      0x0008: {'name': 'current_position_lift_percentage', 'value': 'value'},
+                      0x0009: {'name': 'current_position_tilt_percentage', 'value': 'value'},
                       }
 
 
