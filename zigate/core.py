@@ -1832,6 +1832,16 @@ class ZiGate(object):
         data = struct.pack('!BHBBB', 2, addr, 1, endpoint, lock)
         self.send_data(0x00f0, data)
 
+    def raw_aps_data_request(self, addr, endpoint, profile, cluster, security, radius, payload):
+        '''
+        Send raw APS Data request
+        '''
+        addr = self.__addr(addr)
+        length = len(payload)
+        data = struct.pack('!BHBBHHBBB{}s'.format(length), 2, addr, 1, endpoint,
+                           profile, cluster, security, radius, length, payload)
+        return self.send_data(0x0530, data)
+
     def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
         '''
         Start a MQTT broker in a new thread
