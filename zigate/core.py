@@ -1840,13 +1840,14 @@ class ZiGate(object):
         data = struct.pack('!BHBBB', 2, addr, 1, endpoint, lock)
         self.send_data(0x00f0, data)
 
-    def raw_aps_data_request(self, addr, endpoint, profile, cluster, security, radius, payload):
+    def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, security=0x01 | 0x02):
         '''
         Send raw APS Data request
         '''
         addr = self.__addr(addr)
         length = len(payload)
-        data = struct.pack('!BHBBHHBBB{}s'.format(length), 2, addr, 1, endpoint,
+        radius = 0
+        data = struct.pack('!BHBBHHBBB{}s'.format(length), 2, addr, src_ep, dst_ep,
                            profile, cluster, security, radius, length, payload)
         return self.send_data(0x0530, data)
 
