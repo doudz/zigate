@@ -73,13 +73,13 @@ class TestTransport(unittest.TestCase):
     def test_initial_failed(self):
         success = False
         try:
-            connection = transport.ThreadSerialConnection(None, '/dummyport')
+            transport.ThreadSerialConnection(None, '/dummyport')
         except transport.ZIGATE_CANNOT_CONNECT:
             success = True
         self.assertTrue(success)
         success = False
         try:
-            connection = transport.ThreadSocketConnection(None, 'fake.address')
+            transport.ThreadSocketConnection(None, 'fake.address')
         except transport.ZIGATE_CANNOT_CONNECT:
             success = True
         self.assertTrue(success)
