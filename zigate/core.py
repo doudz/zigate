@@ -699,18 +699,6 @@ class ZiGate(object):
         return '{0:0{1}x}'.format(int_addr, length)
 
     @property
-    def ieee(self):
-        if not self._ieee:
-            self.get_network_state()
-        return self._ieee
-
-    @property
-    def addr(self):
-        if not self._addr:
-            self.get_network_state()
-        return self._addr
-
-    @property
     def devices(self):
         return list(self._devices.values())
 
