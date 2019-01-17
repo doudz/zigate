@@ -457,7 +457,7 @@ class ZiGate(object):
                 LOGGER.error('Command 0x{:04x} failed {} : {}'.format(response['packet_type'],
                                                                       response.status_text(),
                                                                       response['error']))
-            self._last_status[response['packet_type']] = response['status']
+            self._last_status[response['packet_type']] = response
         elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
@@ -1075,7 +1075,7 @@ class ZiGate(object):
                            src_endpoint, endpoint, group)
         r = self.send_data(cmd, data)
         group_addr = self.__haddr(group)
-        if r == 0:
+        if r.status == 0:
             self.__add_group(group_addr, self.__haddr(addr), endpoint)
         return group_addr
 
@@ -1171,7 +1171,7 @@ class ZiGate(object):
             data = struct.pack('!BHBBH', addr_mode, addr,
                                src_endpoint, endpoint, group)
             r = self.send_data(0x0063, data)
-        if r == 0:
+        if r.status == 0:
             self.__remove_group(group_addr, self.__haddr(addr), endpoint)
         return r
 

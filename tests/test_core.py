@@ -288,6 +288,10 @@ class TestCore(unittest.TestCase):
                          b'0212340103030000000000020020000000010e100000000020000100010e10000000'
                          )
 
+    def test_raw_aps_data(self):
+        r = self.zigate.raw_aps_data_request('1234', 1, 0x0104, 0x0006, 0, 0, b'payload')
+        self.assertEqual(r.sequence, 1)
+
     def test_assumed_state(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         device.set_attribute(3, 6, {'attribute': 0, 'rssi': 255, 'data': False})
