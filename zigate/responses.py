@@ -924,3 +924,9 @@ class R8702(Response):
                      ('dst_address', 'Q'),
                      ('sequence', 'B')
                      ])
+
+    def decode(self):
+        Response.decode(self)
+        if self.data['dst_address_mode'] == 2:
+            self.data['dst_address'] = hex(self.data['dst_address'])[:6]
+
