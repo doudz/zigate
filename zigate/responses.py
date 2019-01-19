@@ -929,4 +929,3 @@ class R8702(Response):
         Response.decode(self)
         if self.data['dst_address_mode'] == 2:
             self.data['dst_address'] = hex(self.data['dst_address'])[:6]
-
