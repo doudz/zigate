@@ -365,8 +365,10 @@ class C0201(Cluster):
     type = 'Thermostat'
     attributes_def = {0x0000: {'name': 'local_temperature', 'value': 'value/100.',
                                'unit': '°C', 'type': float},
-                      0x000b: {'name': 'heating_setpoint', 'value': 'value/100.',
+                      0x0008: {'name': 'heating_demand', 'value': 'value'},
+                      0x0012: {'name': 'heating_setpoint', 'value': 'value/100.',
                                'unit': '°C', 'type': float},
+                      0x001C: {'name': 'system_mode', 'value': 'value'},
                       }
 
 

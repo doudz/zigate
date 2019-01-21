@@ -1991,6 +1991,11 @@ class Device(object):
         for endpoint_id, endpoint in endpoints_list:
             if endpoint['device'] in ACTUATORS:  # light
                 LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
+                if 0x0001 in endpoint['in_clusters']:
+                    LOGGER.debug('bind and report for cluster 0x0001')
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
+                    self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x0001, (0x0020, 0x20))  # TODO: auto select data type
                 if 0x0006 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0006')
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
@@ -2011,6 +2016,17 @@ class Device(object):
                     self._zigate.bind_addr(self.addr, endpoint_id, 0x0102)
                     self._zigate.reporting_request(self.addr, endpoint_id,
                                                    0x0102, (0x0007, 0x20))
+                if 0x0201 in endpoint['in_clusters']:
+                    LOGGER.debug('bind and report for cluster 0x0201')
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0201)
+                    self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x0201, (0x0000, 0x29))
+                    self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x0201, (0x0008, 0x20))
+                    self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x0201, (0x0012, 0x29))
+                    self._zigate.reporting_request(self.addr, endpoint_id,
+                                                   0x0201, (0x001C, 0x20))
                 # TODO : auto select data type
                 if 0x0300 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0300')
