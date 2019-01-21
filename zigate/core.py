@@ -2026,7 +2026,7 @@ class Device(object):
                     self._zigate.reporting_request(self.addr, endpoint_id,
                                                    0x0201, (0x0012, 0x29))
                     self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0201, (0x001C, 0x20))
+                                                   0x0201, (0x001C, 0x30))
                 # TODO : auto select data type
                 if 0x0300 in endpoint['in_clusters']:
                     LOGGER.debug('bind and report for cluster 0x0300')
