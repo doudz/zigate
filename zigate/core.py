@@ -46,7 +46,7 @@ WAIT_TIMEOUT = 3
 
 # Device id
 ACTUATORS = [0x0010, 0x0051,
-             0x010a,
+             0x010a, 0x010b,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0202, 0x0210, 0x0220]
 #             On/off light 0x0000
@@ -1944,7 +1944,9 @@ class Device(object):
                         if ep_id != 1 and self.get_property_value('type') == 'lumi.ctrl_neutral1':
                             ep_id -= 1
                         actions[ep_id].append(ACTIONS_ONOFF)
-                    if 0x0008 in endpoint['in_clusters']:
+                    if 0x0008 in endpoint['in_clusters'] and endpoint['device'] != 0x010a:
+                        # except device 0x010a because Tradfri Outlet don't have level control
+                        # but still have endpoint 8...
                         actions[ep_id].append(ACTIONS_LEVEL)
                     if 0x0101 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_LOCK)
