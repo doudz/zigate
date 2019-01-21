@@ -768,6 +768,13 @@ class R80A7(Response):
         if self.data['type'] == 'release':
             self.data['button'] = 'previous'
 
+    def cleaned_data(self):
+        # fake attribute
+        self.data['attribute'] = 0x00ff
+        self.data['data'] = '{}_{}'.format(self.data['button'],
+                                           self.data['type'])
+        return self._filter_data(['attribute', 'data'])
+
 
 @register_response
 class R8100(Response):

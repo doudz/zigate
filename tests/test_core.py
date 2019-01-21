@@ -347,6 +347,16 @@ class TestCore(unittest.TestCase):
         self.assertEqual(device.get_property_value('remote_onoff_button'),
                          'middle_click')
 
+    def test_handle_response_80A7(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        msg_data = b'\x01\x01\x00\x05\x02\x124\x07\x01'
+        r = responses.R80A7(msg_data, 255)
+        self.zigate.interpret_response(r)
+        self.assertEqual(device.get_property_value('remote_scene_button'),
+                         'left_click')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -205,6 +205,16 @@ class C0001(Cluster):
 
 
 @register_cluster
+class C0005(Cluster):
+    cluster_id = 0x0005
+    type = 'General: Scenes'
+    attributes_def = {
+                      0x00ff: {'name': 'remote_scene_button', 'value': 'value',
+                               'type': str, 'expire': 2}
+                      }
+
+
+@register_cluster
 class C0006(Cluster):
     cluster_id = 0x0006
     type = 'General: On/Off'
