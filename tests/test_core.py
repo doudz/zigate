@@ -327,6 +327,26 @@ class TestCore(unittest.TestCase):
 #                              {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool,
 #                               'state': 'assumed'})
 
+    def test_handle_response_8085(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        msg_data = b'\x01\x01\x00\x08\x02\x124\x01'
+        r = responses.R8085(msg_data, 255)
+        self.zigate.interpret_response(r)
+        self.assertEqual(device.get_property_value('remote_level_button'),
+                         'down_hold')
+
+    def test_handle_response_8095(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        msg_data = b'\x01\x01\x00\x06\x02\x124\x02'
+        r = responses.R8095(msg_data, 255)
+        self.zigate.interpret_response(r)
+        self.assertEqual(device.get_property_value('remote_onoff_button'),
+                         'middle_click')
+
 
 if __name__ == '__main__':
     unittest.main()

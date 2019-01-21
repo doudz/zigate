@@ -646,6 +646,13 @@ class R8085(Response):
             self.data['button'] = 'up'
             self.data['type'] = press_type.get(self.data['cmd'] - 4, self.data['cmd'])
 
+    def cleaned_data(self):
+        # fake attribute
+        self.data['attribute'] = 0x00ff
+        self.data['data'] = '{}_{}'.format(self.data['button'],
+                                           self.data['type'])
+        return self._filter_data(['attribute', 'data'])
+
 
 @register_response
 class R8095(Response):
@@ -664,6 +671,13 @@ class R8095(Response):
         press_type = {2: 'click'}
         self.data['button'] = 'middle'
         self.data['type'] = press_type.get(self.data['cmd'], self.data['cmd'])
+
+    def cleaned_data(self):
+        # fake attribute
+        self.data['attribute'] = 0x00ff
+        self.data['data'] = '{}_{}'.format(self.data['button'],
+                                           self.data['type'])
+        return self._filter_data(['attribute', 'data'])
 
 
 @register_response
