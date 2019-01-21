@@ -208,8 +208,7 @@ class C0001(Cluster):
 class C0005(Cluster):
     cluster_id = 0x0005
     type = 'General: Scenes'
-    attributes_def = {
-                      0x00ff: {'name': 'remote_scene_button', 'value': 'value',
+    attributes_def = {0x00ff: {'name': 'remote_scene_button', 'value': 'value',
                                'type': str, 'expire': 2}
                       }
 
