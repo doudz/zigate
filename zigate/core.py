@@ -1989,7 +1989,7 @@ class Device(object):
         else:
             endpoints_list = self.endpoints.items()
         for endpoint_id, endpoint in endpoints_list:
-#             if endpoint['device'] in ACTUATORS:  # light
+            # if endpoint['device'] in ACTUATORS:  # light
             LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
             if 0x0001 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0001')
