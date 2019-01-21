@@ -39,7 +39,7 @@ LOGGER = logging.getLogger('zigate')
 
 
 AUTO_SAVE = 5 * 60  # 5 minutes
-BIND_REPORT_LIGHT = True  # automatically bind and report state for light
+BIND_REPORT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
 WAIT_TIMEOUT = 3
@@ -1982,7 +1982,7 @@ class Device(object):
         '''
         automatically bind and report data for light
         '''
-        if not BIND_REPORT_LIGHT:
+        if not BIND_REPORT:
             return
         if enpoint_id:
             endpoints_list = [(enpoint_id, self.endpoints[enpoint_id])]
