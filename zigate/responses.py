@@ -625,6 +625,48 @@ class R8063(R8061):
 
 
 @register_response
+class R8085(Response):
+    msg = 0x8085
+    type = 'Remote button pressed (MOVE_TO_LEVEL_UPDATE)'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('cmd', 'B'),
+                     ])
+
+    def decode(self):
+        Response.decode(self)
+        press_type = {2: 'click', 1: 'hold', 3: 'release'}
+        if self.data['cmd'] in (1, 2, 3):
+            self.data['button'] = 'down'
+            self.data['type'] = press_type.get(self.data['cmd'], self.data['cmd'])
+        elif self.data['cmd'] in (5, 6, 7):
+            self.data['button'] = 'up'
+            self.data['type'] = press_type.get(self.data['cmd'] - 4, self.data['cmd'])
+
+
+@register_response
+class R8095(Response):
+    msg = 0x8095
+    type = 'Remote button pressed (ONOFF_UPDATE)'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('cmd', 'B'),
+                     ])
+
+    def decode(self):
+        Response.decode(self)
+        press_type = {2: 'click'}
+        self.data['button'] = 'middle'
+        self.data['type'] = press_type.get(self.data['cmd'], self.data['cmd'])
+
+
+@register_response
 class R80A0(Response):
     msg = 0x80A0
     type = 'View Scene response'
@@ -688,6 +730,29 @@ class R80A6(Response):
                      ('scene_count', 'B'),
                      ('scenes', OrderedDict([('scene', 'B')]))
                      ])
+
+
+@register_response
+class R80A7(Response):
+    msg = 0x80A7
+    type = 'Remote button pressed (LEFT/RIGHT)'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('cmd', 'B'),
+                     ('direction', 'B'),
+                     ])
+
+    def decode(self):
+        Response.decode(self)
+        directions = {0: 'right', 1: 'left', 2: 'middle'}
+        press_type = {7: 'click', 8: 'hold', 9: 'release'}
+        self.data['button'] = directions.get(self.data['direction'], self.data['direction'])
+        self.data['type'] = press_type.get(self.data['cmd'], self.data['cmd'])
+        if self.data['type'] == 'release':
+            self.data['button'] = 'previous'
 
 
 @register_response
@@ -859,3 +924,8 @@ class R8702(Response):
                      ('dst_address', 'Q'),
                      ('sequence', 'B')
                      ])
+
+    def decode(self):
+        Response.decode(self)
+        if self.data['dst_address_mode'] == 2:
+            self.data['dst_address'] = hex(self.data['dst_address'])[:6]
