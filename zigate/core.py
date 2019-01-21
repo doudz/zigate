@@ -166,8 +166,6 @@ class ZiGate(object):
         self._event_thread.setDaemon(True)
         self._event_thread.start()
 
-        dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
-
         self._ota_reset_local_variables()
 
         if adminpanel:
@@ -457,6 +455,7 @@ class ZiGate(object):
             LOGGER.warning('Unknown response 0x{:04x}'.format(msg_type))
         LOGGER.debug(response)
         self._last_response[msg_type] = response
+        self.interpret_response(response)
         dispatch_signal(ZIGATE_RESPONSE_RECEIVED, self, response=response)
 
     def interpret_response(self, response):
