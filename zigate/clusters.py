@@ -208,7 +208,7 @@ class C0001(Cluster):
 class C0005(Cluster):
     cluster_id = 0x0005
     type = 'General: Scenes'
-    attributes_def = {0x00ff: {'name': 'remote_scene_button', 'value': 'value',
+    attributes_def = {0xfff0: {'name': 'remote_scene_button', 'value': 'value',
                                'type': str, 'expire': 2}
                       }
 
@@ -220,7 +220,7 @@ class C0006(Cluster):
     attributes_def = {0x0000: {'name': 'onoff', 'value': 'value', 'type': bool},
                       0x8000: {'name': 'multiclick', 'value': 'value', 'type': int,
                                'expire': 2},
-                      0x00ff: {'name': 'remote_onoff_button', 'value': 'value',
+                      0xfff0: {'name': 'remote_onoff_button', 'value': 'value',
                                'type': str, 'expire': 2}
                       }
 
@@ -230,7 +230,7 @@ class C0008(Cluster):
     cluster_id = 0x0008
     type = 'General: Level control'
     attributes_def = {0x0000: {'name': 'current_level', 'value': 'int(value*100/254)', 'type': int},
-                      0x00ff: {'name': 'remote_level_button', 'value': 'value',
+                      0xfff0: {'name': 'remote_level_button', 'value': 'value',
                                'type': str, 'expire': 2}
                       }
 

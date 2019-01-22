@@ -648,7 +648,7 @@ class R8085(Response):
 
     def cleaned_data(self):
         # fake attribute
-        self.data['attribute'] = 0x00ff
+        self.data['attribute'] = 0xfff0
         self.data['data'] = '{}_{}'.format(self.data['button'],
                                            self.data['type'])
         return self._filter_data(['attribute', 'data'])
@@ -674,7 +674,7 @@ class R8095(Response):
 
     def cleaned_data(self):
         # fake attribute
-        self.data['attribute'] = 0x00ff
+        self.data['attribute'] = 0xfff0
         self.data['data'] = '{}_{}'.format(self.data['button'],
                                            self.data['type'])
         return self._filter_data(['attribute', 'data'])
@@ -770,7 +770,7 @@ class R80A7(Response):
 
     def cleaned_data(self):
         # fake attribute
-        self.data['attribute'] = 0x00ff
+        self.data['attribute'] = 0xfff0
         self.data['data'] = '{}_{}'.format(self.data['button'],
                                            self.data['type'])
         return self._filter_data(['attribute', 'data'])
