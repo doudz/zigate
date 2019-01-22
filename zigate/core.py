@@ -1970,6 +1970,8 @@ class Device(object):
                         actions[ep_id].append(ACTIONS_LEVEL)
                     if 0x0101 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_LOCK)
+                    if 0x0102 in endpoint['in_clusters']:
+                        actions[ep_id].append(ACTIONS_COVER)
                     if 0x0300 in endpoint['in_clusters']:
                         # if endpoint['device'] in (0x0102, 0x0105):
                         if endpoint['device'] in (0x0105,):
