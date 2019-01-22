@@ -154,7 +154,7 @@ class ThreadSerialConnection(BaseTransport):
         self._port = port
         self.device = device
         self._running = True
-        self.reconnect()
+        self.reconnect(False)
         self.thread = threading.Thread(target=self.listen,
                                        name='ZiGate-Listen')
         self.thread.setDaemon(True)
@@ -164,7 +164,7 @@ class ThreadSerialConnection(BaseTransport):
         self._port = self._find_port(self._port)
         return serial.Serial(self._port, 115200)
 
-    def reconnect(self):
+    def reconnect(self, retry=True):
         delay = 1
         while True:
             try:
@@ -174,13 +174,16 @@ class ThreadSerialConnection(BaseTransport):
                 LOGGER.error('ZiGate has not been found, please check configuration.')
                 sys.exit(2)
             except Exception:
+                if not retry:
+                    LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))
+                    raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using port {}'.format(self._port))
+                    sys.exit(2)
                 msg = 'Failed to connect, retry in {} sec...'.format(delay)
                 dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
                 LOGGER.error(msg)
                 time.sleep(delay)
                 if delay < 60:
                     delay *= 2
-        return self.serial
 
     def listen(self):
         while self._running:
@@ -243,13 +246,13 @@ class ThreadSocketConnection(ThreadSerialConnection):
         for port in ports:
             try:
                 s = socket.create_connection((host, port), 10)
-                LOGGER.debug('ZiGate found on port {}'.format(port))
+                LOGGER.debug('ZiGate found on {} port {}'.format(host, port))
                 return s
             except Exception:
-                LOGGER.debug('ZiGate not found on port {}'.format(port))
+                LOGGER.debug('ZiGate not found on {} port {}'.format(host, port))
                 continue
-        LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))
-        raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using port {}'.format(self._port))
+        LOGGER.error('Cannot connect to ZiGate using {} port {}'.format(self._host, self._port))
+        raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using {} port {}'.format(self._host, self._port))
 
     def _find_host(self, host):
         host = host or 'auto'

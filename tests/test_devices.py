@@ -116,7 +116,7 @@ class TestCore(unittest.TestCase):
                              )
 
     def test_inverse_bool(self):
-        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
         device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.sensor_switch.aq2'})
         device.set_attribute(1, 6, {'attribute': 0, 'rssi': 255, 'data': True})
         self.assertTrue(device.get_property_value('onoff'))

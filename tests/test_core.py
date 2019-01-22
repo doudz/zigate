@@ -288,6 +288,10 @@ class TestCore(unittest.TestCase):
                          b'0212340103030000000000020020000000010e100000000020000100010e10000000'
                          )
 
+    def test_raw_aps_data(self):
+        r = self.zigate.raw_aps_data_request('1234', 1, 1, 0x0104, 0x0006, b'payload', 3)
+        self.assertEqual(r.sequence, 1)
+
     def test_assumed_state(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         device.set_attribute(3, 6, {'attribute': 0, 'rssi': 255, 'data': False})
@@ -322,6 +326,36 @@ class TestCore(unittest.TestCase):
 #         self.assertDictEqual(device.get_attribute(3, 6, 0),
 #                              {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool,
 #                               'state': 'assumed'})
+
+    def test_handle_response_8085(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        msg_data = b'\x01\x01\x00\x08\x02\x124\x01'
+        r = responses.R8085(msg_data, 255)
+        self.zigate.interpret_response(r)
+        self.assertEqual(device.get_property_value('remote_level_button'),
+                         'down_hold')
+
+    def test_handle_response_8095(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        msg_data = b'\x01\x01\x00\x06\x02\x124\x02'
+        r = responses.R8095(msg_data, 255)
+        self.zigate.interpret_response(r)
+        self.assertEqual(device.get_property_value('remote_onoff_button'),
+                         'middle_click')
+
+    def test_handle_response_80A7(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        msg_data = b'\x01\x01\x00\x05\x02\x124\x07\x01'
+        r = responses.R80A7(msg_data, 255)
+        self.zigate.interpret_response(r)
+        self.assertEqual(device.get_property_value('remote_scene_button'),
+                         'left_click')
 
 
 if __name__ == '__main__':

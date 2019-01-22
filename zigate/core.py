@@ -17,7 +17,7 @@ from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection, ThreadSocketConnection)
 from .responses import (RESPONSES, Response)
 from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
-                    ACTIONS_ONOFF, ACTIONS_TEMPERATURE,
+                    ACTIONS_ONOFF, ACTIONS_TEMPERATURE, ACTIONS_COVER,
                     OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
                     ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
@@ -39,16 +39,16 @@ LOGGER = logging.getLogger('zigate')
 
 
 AUTO_SAVE = 5 * 60  # 5 minutes
-BIND_REPORT_LIGHT = True  # automatically bind and report state for light
+BIND_REPORT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
 WAIT_TIMEOUT = 3
 
 # Device id
 ACTUATORS = [0x0010, 0x0051,
-             0x010a,
+             0x010a, 0x010b,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
-             0x0200, 0x0210, 0x0220]
+             0x0200, 0x0202, 0x0210, 0x0220]
 #             On/off light 0x0000
 #             On/off plug-in unit 0x0010
 #             Dimmable light 0x0100
@@ -166,8 +166,6 @@ class ZiGate(object):
         self._event_thread.setDaemon(True)
         self._event_thread.start()
 
-        dispatcher.connect(self.interpret_response, ZIGATE_RESPONSE_RECEIVED)
-
         self._ota_reset_local_variables()
 
         if adminpanel:
@@ -177,6 +175,14 @@ class ZiGate(object):
             self.autoStart(channel)
             if auto_save:
                 self.start_auto_save()
+
+    @property
+    def ieee(self):
+        return self._ieee
+
+    @property
+    def addr(self):
+        return self._addr
 
     def start_adminpanel(self):
         '''
@@ -449,6 +455,7 @@ class ZiGate(object):
             LOGGER.warning('Unknown response 0x{:04x}'.format(msg_type))
         LOGGER.debug(response)
         self._last_response[msg_type] = response
+        self.interpret_response(response)
         dispatch_signal(ZIGATE_RESPONSE_RECEIVED, self, response=response)
 
     def interpret_response(self, response):
@@ -457,7 +464,7 @@ class ZiGate(object):
                 LOGGER.error('Command 0x{:04x} failed {} : {}'.format(response['packet_type'],
                                                                       response.status_text(),
                                                                       response['error']))
-            self._last_status[response['packet_type']] = response['status']
+            self._last_status[response['packet_type']] = response
         elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
@@ -512,8 +519,9 @@ class ZiGate(object):
         elif response.msg == 0x8062:  # Get group membership response
             data = response.cleaned_data()
             self._sync_group_membership(data['addr'], data['endpoint'], data['groups'])
-        elif response.msg in (0x8100, 0x8102, 0x8110, 0x8401):  # attribute report or IAS Zone status change
-            if response['status'] != 0:
+        elif response.msg in (0x8100, 0x8102, 0x8110, 0x8401,
+                              0x8085, 0x8095, 0x80A7):  # attribute report or IAS Zone status change
+            if response.get('status', 0) != 0:
                 LOGGER.debug('Received Bad status')
                 return
             device = self._get_device(response['addr'])
@@ -691,18 +699,6 @@ class ZiGate(object):
         return '{0:0{1}x}'.format(int_addr, length)
 
     @property
-    def ieee(self):
-        if not self._ieee:
-            self.get_network_state()
-        return self._ieee
-
-    @property
-    def addr(self):
-        if not self._addr:
-            self.get_network_state()
-        return self._addr
-
-    @property
     def devices(self):
         return list(self._devices.values())
 
@@ -856,6 +852,12 @@ class ZiGate(object):
             zigate_ieee = self.__addr(self.ieee)
             data = struct.pack('!QQ', zigate_ieee, ieee)
             return self.send_data(0x0026, data)
+
+    def remove_device_ieee(self, ieee):
+        ''' remove device '''
+        device = self.get_device_from_ieee(ieee)
+        if device:
+            self.remove_device(device.addr)
 
     def enable_permissions_controlled_joins(self, enable=True):
         '''
@@ -1069,7 +1071,7 @@ class ZiGate(object):
                            src_endpoint, endpoint, group)
         r = self.send_data(cmd, data)
         group_addr = self.__haddr(group)
-        if r == 0:
+        if r.status == 0:
             self.__add_group(group_addr, self.__haddr(addr), endpoint)
         return group_addr
 
@@ -1165,7 +1167,7 @@ class ZiGate(object):
             data = struct.pack('!BHBBH', addr_mode, addr,
                                src_endpoint, endpoint, group)
             r = self.send_data(0x0063, data)
-        if r == 0:
+        if r.status == 0:
             self.__remove_group(group_addr, self.__haddr(addr), endpoint)
         return r
 
@@ -1633,13 +1635,7 @@ class ZiGate(object):
         elif effect:
             cmd = 0x0094
             data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effect, gradient)
-        self.send_data(cmd, data)
-#         device = self._devices.get(self.__haddr(addr))
-#         if device:
-#             if device.is_assumed(endpoint, 6, 0):
-#                 value = device.get_attribute(endpoint, 6, 0)
-#                 value['data'] = {0: False, 1: True, 2: not value.get('data', False)}.get(onoff, 0)
-#                 device.set_attribute(endpoint, 6, value)
+        return self.send_data(cmd, data)
 
     @register_actions(ACTIONS_LEVEL)
     def action_move_level(self, addr, endpoint, onoff=OFF, mode=0, rate=0):
@@ -1649,7 +1645,7 @@ class ZiGate(object):
         '''
         addr = self.__addr(addr)
         data = struct.pack('!BHBBBBB', 2, addr, 1, endpoint, onoff, mode, rate)
-        self.send_data(0x0080, data)
+        return self.send_data(0x0080, data)
 
     @register_actions(ACTIONS_LEVEL)
     def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition_time=0):
@@ -1660,7 +1656,7 @@ class ZiGate(object):
         addr = self.__addr(addr)
         level = int(level * 254 // 100)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint, onoff, level, transition_time)
-        self.send_data(0x0081, data)
+        return self.send_data(0x0081, data)
 
     @register_actions(ACTIONS_LEVEL)
     def action_move_step(self, addr, endpoint, onoff=OFF, step_mode=0, step_size=0, transition_time=0):
@@ -1669,7 +1665,7 @@ class ZiGate(object):
         '''
         addr = self.__addr(addr)
         data = struct.pack('!BHBBBBBH', 2, addr, 1, endpoint, onoff, step_mode, step_size, transition_time)
-        self.send_data(0x0082, data)
+        return self.send_data(0x0082, data)
 
     @register_actions(ACTIONS_LEVEL)
     def action_move_stop(self, addr, endpoint):
@@ -1678,7 +1674,7 @@ class ZiGate(object):
         '''
         addr = self.__addr(addr)
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
-        self.send_data(0x0083, data)
+        return self.send_data(0x0083, data)
 
     @register_actions(ACTIONS_LEVEL)
     def action_move_stop_onoff(self, addr, endpoint):
@@ -1687,10 +1683,10 @@ class ZiGate(object):
         '''
         addr = self.__addr(addr)
         data = struct.pack('!BHBB', 2, addr, 1, endpoint)
-        self.send_data(0x0084, data)
+        return self.send_data(0x0084, data)
 
     @register_actions(ACTIONS_HUE)
-    def actions_move_hue(self, addr, endpoint, hue, direction=0, transition=0):
+    def action_move_hue(self, addr, endpoint, hue, direction=0, transition=0):
         '''
         move to hue
         hue 0-360 in degrees
@@ -1701,10 +1697,10 @@ class ZiGate(object):
         hue = int(hue * 254 // 360)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
                            hue, direction, transition)
-        self.send_data(0x00B0, data)
+        return self.send_data(0x00B0, data)
 
     @register_actions(ACTIONS_HUE)
-    def actions_move_hue_saturation(self, addr, endpoint, hue, saturation=100, transition=0):
+    def action_move_hue_saturation(self, addr, endpoint, hue, saturation=100, transition=0):
         '''
         move to hue and saturation
         hue 0-360 in degrees
@@ -1716,19 +1712,19 @@ class ZiGate(object):
         saturation = int(saturation * 254 // 100)
         data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
                            hue, saturation, transition)
-        self.send_data(0x00B6, data)
+        return self.send_data(0x00B6, data)
 
     @register_actions(ACTIONS_HUE)
-    def actions_move_hue_hex(self, addr, endpoint, color_hex, transition=0):
+    def action_move_hue_hex(self, addr, endpoint, color_hex, transition=0):
         '''
         move to hue color in #ffffff
         transition in second
         '''
         rgb = hex_to_rgb(color_hex)
-        self.actions_move_hue_rgb(addr, endpoint, rgb, transition)
+        return self.actions_move_hue_rgb(addr, endpoint, rgb, transition)
 
     @register_actions(ACTIONS_HUE)
-    def actions_move_hue_rgb(self, addr, endpoint, rgb, transition=0):
+    def action_move_hue_rgb(self, addr, endpoint, rgb, transition=0):
         '''
         move to hue (r,g,b) example : (1.0, 1.0, 1.0)
         transition in second
@@ -1738,10 +1734,10 @@ class ZiGate(object):
         saturation = int(saturation * 100)
         level = int(level * 100)
         self.action_move_level_onoff(addr, endpoint, ON, level, 0)
-        self.actions_move_hue_saturation(addr, endpoint, hue, saturation, transition)
+        return self.actions_move_hue_saturation(addr, endpoint, hue, saturation, transition)
 
     @register_actions(ACTIONS_COLOR)
-    def actions_move_colour(self, addr, endpoint, x, y, transition=0):
+    def action_move_colour(self, addr, endpoint, x, y, transition=0):
         '''
         move to colour x y
         x, y can be integer 0-65536 or float 0-1.0
@@ -1754,10 +1750,10 @@ class ZiGate(object):
         addr = self.__addr(addr)
         data = struct.pack('!BHBBHHH', 2, addr, 1, endpoint,
                            x, y, transition)
-        self.send_data(0x00B7, data)
+        return self.send_data(0x00B7, data)
 
     @register_actions(ACTIONS_COLOR)
-    def actions_move_colour_hex(self, addr, endpoint, color_hex, transition=0):
+    def action_move_colour_hex(self, addr, endpoint, color_hex, transition=0):
         '''
         move to colour #ffffff
         convenient function to set color in hex format
@@ -1767,7 +1763,7 @@ class ZiGate(object):
         return self.actions_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_COLOR)
-    def actions_move_colour_rgb(self, addr, endpoint, rgb, transition=0):
+    def action_move_colour_rgb(self, addr, endpoint, rgb, transition=0):
         '''
         move to colour (r,g,b) example : (1.0, 1.0, 1.0)
         convenient function to set color in hex format
@@ -1777,7 +1773,7 @@ class ZiGate(object):
         return self.actions_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def actions_move_temperature(self, addr, endpoint, mired, transition=0):
+    def action_move_temperature(self, addr, endpoint, mired, transition=0):
         '''
         move colour to temperature
         mired color temperature
@@ -1786,10 +1782,10 @@ class ZiGate(object):
         addr = self.__addr(addr)
         data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
                            mired, transition)
-        self.send_data(0x00C0, data)
+        return self.send_data(0x00C0, data)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def actions_move_temperature_kelvin(self, addr, endpoint, temperature, transition=0):
+    def action_move_temperature_kelvin(self, addr, endpoint, temperature, transition=0):
         '''
         move colour to temperature
         temperature unit is kelvin
@@ -1797,10 +1793,10 @@ class ZiGate(object):
         convenient function to use kelvin instead of mired
         '''
         temperature = int(1000000 // temperature)
-        self.actions_move_temperature(addr, endpoint, temperature, transition)
+        return self.actions_move_temperature(addr, endpoint, temperature, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def actions_move_temperature_rate(self, addr, endpoint, mode, rate, min_temperature, max_temperature):
+    def action_move_temperature_rate(self, addr, endpoint, mode, rate, min_temperature, max_temperature):
         '''
         move colour temperature in specified rate towards given min or max value
         Available modes:
@@ -1815,7 +1811,7 @@ class ZiGate(object):
         max_temperature = int(1000000 // max_temperature)
         addr = self.__addr(addr)
         data = struct.pack('!BHBBBHHH', 2, addr, 1, endpoint, mode, rate, min_temperature, max_temperature)
-        self.send_data(0x00C1, data)
+        return self.send_data(0x00C1, data)
 
     @register_actions(ACTIONS_LOCK)
     def action_lock(self, addr, endpoint, lock):
@@ -1824,7 +1820,43 @@ class ZiGate(object):
         '''
         addr = self.__addr(addr)
         data = struct.pack('!BHBBB', 2, addr, 1, endpoint, lock)
-        self.send_data(0x00f0, data)
+        return self.send_data(0x00f0, data)
+
+    @register_actions(ACTIONS_COVER)
+    def action_cover(self, addr, endpoint, cmd, param=None):
+        '''
+        Open, close, move, ...
+        cmd could be :
+            OPEN = 0x00
+            CLOSE = 0x01
+            STOP = 0x02
+            LIFT_VALUE = 0x04
+            LIFT_PERCENT = 0x05
+            TILT_VALUE = 0x07
+            TILT_PERCENT = 0x08
+        '''
+        fmt = '!BHBBB'
+        addr = self.__addr(addr)
+        args = [2, addr, 1, endpoint, cmd]
+        if cmd in (0x04, 0x07):
+            fmt += 'H'
+            args.append(param)
+        elif cmd in (0x05, 0x08):
+            fmt += 'B'
+            args.append(param)
+        data = struct.pack(fmt, *args)
+        return self.send_data(0x00fa, data)
+
+    def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, security=0x01 | 0x02):
+        '''
+        Send raw APS Data request
+        '''
+        addr = self.__addr(addr)
+        length = len(payload)
+        radius = 0
+        data = struct.pack('!BHBBHHBBB{}s'.format(length), 2, addr, src_ep, dst_ep,
+                           profile, cluster, security, radius, length, payload)
+        return self.send_data(0x0530, data)
 
     def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
         '''
@@ -1932,10 +1964,14 @@ class Device(object):
                         if ep_id != 1 and self.get_property_value('type') == 'lumi.ctrl_neutral1':
                             ep_id -= 1
                         actions[ep_id].append(ACTIONS_ONOFF)
-                    if 0x0008 in endpoint['in_clusters']:
+                    if 0x0008 in endpoint['in_clusters'] and endpoint['device'] != 0x010a:
+                        # except device 0x010a because Tradfri Outlet don't have level control
+                        # but still have endpoint 8...
                         actions[ep_id].append(ACTIONS_LEVEL)
                     if 0x0101 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_LOCK)
+                    if 0x0102 in endpoint['in_clusters']:
+                        actions[ep_id].append(ACTIONS_COVER)
                     if 0x0300 in endpoint['in_clusters']:
                         # if endpoint['device'] in (0x0102, 0x0105):
                         if endpoint['device'] in (0x0105,):
@@ -1968,84 +2004,110 @@ class Device(object):
         '''
         automatically bind and report data for light
         '''
-        if not BIND_REPORT_LIGHT:
+        if not BIND_REPORT:
             return
         if enpoint_id:
             endpoints_list = [(enpoint_id, self.endpoints[enpoint_id])]
         else:
             endpoints_list = self.endpoints.items()
         for endpoint_id, endpoint in endpoints_list:
-            if endpoint['device'] in ACTUATORS:  # light
-                LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
-                if 0x0006 in endpoint['in_clusters']:
-                    LOGGER.debug('bind and report for cluster 0x0006')
-                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
-                    self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0006, (0x0000, 0x10))  # TODO: auto select data type
-                if 0x0008 in endpoint['in_clusters']:
-                    LOGGER.debug('bind and report for cluster 0x0008')
-                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
-                    self._zigate.reporting_request(self.addr, endpoint_id,
-                                                   0x0008, (0x0000, 0x20))
-                # TODO : auto select data type
-                if 0x0300 in endpoint['in_clusters']:
-                    LOGGER.debug('bind and report for cluster 0x0300')
-                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
-                    if endpoint['device'] in (0x0105,):
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0000, 0x20))
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0001, 0x20))
-                    elif endpoint['device'] in (0x010D, 0x0210):
-                        # self._zigate.reporting_request(self.addr,
-                        #                               endpoint_id,
-                        #                               0x0300, [(0x0000, 0x20),
-                        #                                        (0x0001, 0x20),
-                        #                                        (0x0003, 0x21),
-                        #                                        (0x0004, 0x21),
-                        #                                        (0x0007, 0x21),
-                        #                                        ])
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0000, 0x20))
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0001, 0x20))
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0003, 0x21))
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0004, 0x21))
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0007, 0x21))
-                    elif endpoint['device'] in (0x0102, 0x010C, 0x0220):
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0007, 0x21))
-                    else:  # 0x0200
-                        # self._zigate.reporting_request(self.addr,
-                        #                               endpoint_id,
-                        #                               0x0300, [(0x0000, 0x20),
-                        #                                        (0x0001, 0x20),
-                        #                                        (0x0003, 0x21),
-                        #                                        (0x0004, 0x21),
-                        #                                        ])
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0000, 0x20))
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0001, 0x20))
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0003, 0x21))
-                        self._zigate.reporting_request(self.addr,
-                                                       endpoint_id,
-                                                       0x0300, (0x0004, 0x21))
+            # if endpoint['device'] in ACTUATORS:  # light
+            LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
+            if 0x0001 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0001')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0001, (0x0020, 0x20))  # TODO: auto select data type
+            if 0x0006 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0006')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0006, (0x0000, 0x10))  # TODO: auto select data type
+            if 0x0008 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0008')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0008, (0x0000, 0x20))
+            if 0x000f in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x000f')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x000f)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x000f, (0x0055, 0x10))
+            if 0x0102 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0102')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0102)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0102, (0x0007, 0x20))
+            if 0x0201 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0201')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0201)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0201, (0x0000, 0x29))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0201, (0x0008, 0x20))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0201, (0x0012, 0x29))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0201, (0x001C, 0x30))
+            # TODO : auto select data type
+            if 0x0300 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0300')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
+                if endpoint['device'] in (0x0105,):
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0000, 0x20))
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0001, 0x20))
+                elif endpoint['device'] in (0x010D, 0x0210):
+                    # self._zigate.reporting_request(self.addr,
+                    #                               endpoint_id,
+                    #                               0x0300, [(0x0000, 0x20),
+                    #                                        (0x0001, 0x20),
+                    #                                        (0x0003, 0x21),
+                    #                                        (0x0004, 0x21),
+                    #                                        (0x0007, 0x21),
+                    #                                        ])
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0000, 0x20))
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0001, 0x20))
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0003, 0x21))
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0004, 0x21))
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0007, 0x21))
+                elif endpoint['device'] in (0x0102, 0x010C, 0x0220):
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0007, 0x21))
+                else:  # 0x0200
+                    # self._zigate.reporting_request(self.addr,
+                    #                               endpoint_id,
+                    #                               0x0300, [(0x0000, 0x20),
+                    #                                        (0x0001, 0x20),
+                    #                                        (0x0003, 0x21),
+                    #                                        (0x0004, 0x21),
+                    #                                        ])
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0000, 0x20))
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0001, 0x20))
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0003, 0x21))
+                    self._zigate.reporting_request(self.addr,
+                                                   endpoint_id,
+                                                   0x0300, (0x0004, 0x21))
 
     @staticmethod
     def from_json(data, zigate_instance=None):

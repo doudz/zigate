@@ -70,6 +70,20 @@ class TestTransport(unittest.TestCase):
         self.assertEqual(b'\x01123\x03', connection.received.get())
         self.assertEqual(b'\x01456\x03', connection.received.get())
 
+    def test_initial_failed(self):
+        success = False
+        try:
+            transport.ThreadSerialConnection(None, '/dummyport')
+        except transport.ZIGATE_CANNOT_CONNECT:
+            success = True
+        self.assertTrue(success)
+        success = False
+        try:
+            transport.ThreadSocketConnection(None, 'fake.address')
+        except transport.ZIGATE_CANNOT_CONNECT:
+            success = True
+        self.assertTrue(success)
+
 
 if __name__ == '__main__':
     unittest.main()
