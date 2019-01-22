@@ -32,6 +32,13 @@ ON = 1
 TOGGLE = 2
 LOCK = 0
 UNLOCK = 1
+OPEN = 0x00
+CLOSE = 0x01
+STOP = 0x02
+LIFT_VALUE = 0x04
+LIFT_PERCENT = 0x05
+TILT_VALUE = 0x07
+TILT_PERCENT = 0x08
 
 STATUS_CODES = {0: 'Success', 1: 'Invalid parameters',
                 2: 'Unhandled command', 3: 'Command failed',
@@ -43,6 +50,7 @@ ACTIONS_COLOR = 'color'
 ACTIONS_TEMPERATURE = 'temperature'
 ACTIONS_HUE = 'hue'
 ACTIONS_LOCK = 'lock'
+ACTIONS_COVER = 'cover'
 
 DATA_TYPE = {0x00: None,
              0x10: '?',  # bool
