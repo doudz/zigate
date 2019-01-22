@@ -1960,9 +1960,6 @@ class Device(object):
             if endpoint:
                 if endpoint['device'] in ACTUATORS:
                     if 0x0006 in endpoint['in_clusters']:
-                        # Oh please XIAOMI, respect the standard...
-                        if ep_id != 1 and self.get_property_value('type') == 'lumi.ctrl_neutral1':
-                            ep_id -= 1
                         actions[ep_id].append(ACTIONS_ONOFF)
                     if 0x0008 in endpoint['in_clusters'] and endpoint['device'] != 0x010a:
                         # except device 0x010a because Tradfri Outlet don't have level control
