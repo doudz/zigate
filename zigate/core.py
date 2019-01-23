@@ -1999,7 +1999,7 @@ class Device(object):
 
     def _bind_report(self, enpoint_id=None):
         '''
-        automatically bind and report data for light
+        automatically bind and report data
         '''
         if not BIND_REPORT:
             return
@@ -2007,19 +2007,20 @@ class Device(object):
             endpoints_list = [(enpoint_id, self.endpoints[enpoint_id])]
         else:
             endpoints_list = self.endpoints.items()
+        LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
         for endpoint_id, endpoint in endpoints_list:
             # if endpoint['device'] in ACTUATORS:  # light
-            LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
+            LOGGER.debug('Bind and report endpoint {} for device {}'.format(endpoint_id, self))
             if 0x0001 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0001')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
                 self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0001, (0x0020, 0x20))  # TODO: auto select data type
+                                               0x0001, (0x0020, 0x20))
             if 0x0006 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0006')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
                 self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0006, (0x0000, 0x10))  # TODO: auto select data type
+                                               0x0006, (0x0000, 0x10))
             if 0x0008 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0008')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
@@ -2046,7 +2047,6 @@ class Device(object):
                                                0x0201, (0x0012, 0x29))
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0201, (0x001C, 0x30))
-            # TODO : auto select data type
             if 0x0300 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0300')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
