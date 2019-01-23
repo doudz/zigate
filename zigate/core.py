@@ -639,6 +639,7 @@ class ZiGate(object):
                 del self._devices[old_addr]
                 dispatch_signal(ZIGATE_DEVICE_ADDRESS_CHANGED, self,
                                 **{'zigate': self,
+                                   'device': d,
                                    'old_addr': old_addr,
                                    'new_addr': new_addr,
                                    })
