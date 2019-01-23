@@ -15,6 +15,8 @@ class TestCore(unittest.TestCase):
     def setUp(self):
         core.WAIT_TIMEOUT = 2 * core.SLEEP_INTERVAL  # reduce timeout during test
         self.zigate = ZiGate(auto_start=False)
+        self.zigate._addr = '0000'
+        self.zigate._ieee = '0123456789abcdef'
         self.zigate.connection = transport.FakeTransport()
         self.test_dir = tempfile.mkdtemp()
 
@@ -194,6 +196,270 @@ class TestCore(unittest.TestCase):
                 "last_seen": "2019-01-05 20:39:07",
                 "power_type": 0,
                 "rssi": 207
+            }
+        },
+        {
+            "addr": "c28c",
+            "discovery": "",
+            "endpoints": [
+                {
+                    "clusters": [
+                        {
+                            "attributes": [
+                                {
+                                    "attribute": 0,
+                                    "data": 1,
+                                    "name": "zcl_version",
+                                    "value": 1
+                                },
+                                {
+                                    "attribute": 1,
+                                    "data": 31,
+                                    "name": "application_version",
+                                    "value": 31
+                                },
+                                {
+                                    "attribute": 2,
+                                    "data": 2,
+                                    "name": "stack_version",
+                                    "value": 2
+                                },
+                                {
+                                    "attribute": 3,
+                                    "data": 18,
+                                    "name": "hardware_version",
+                                    "value": 18
+                                },
+                                {
+                                    "attribute": 4,
+                                    "data": "LUMI",
+                                    "name": "manufacturer",
+                                    "value": "LUMI"
+                                },
+                                {
+                                    "attribute": 5,
+                                    "data": "lumi.ctrl_ln2.aq1",
+                                    "name": "type",
+                                    "type": "str",
+                                    "value": "lumi.ctrl_ln2.aq1"
+                                }
+                            ],
+                            "cluster": 0
+                        },
+                        {
+                            "attributes": [
+                                {
+                                    "attribute": 0,
+                                    "data": false,
+                                    "name": "onoff",
+                                    "type": "bool",
+                                    "value": false
+                                },
+                                {
+                                    "attribute": 61440,
+                                    "data": 63081472
+                                }
+                            ],
+                            "cluster": 6
+                        }
+                    ],
+                    "device": 81,
+                    "endpoint": 1,
+                    "in_clusters": [
+                        0,
+                        4,
+                        3,
+                        6,
+                        16,
+                        5,
+                        10,
+                        1,
+                        2
+                    ],
+                    "out_clusters": [
+                        25,
+                        10
+                    ],
+                    "profile": 260
+                },
+                {
+                    "clusters": [
+                        {
+                            "attributes": [
+                                {
+                                    "attribute": 0,
+                                    "data": false,
+                                    "name": "onoff2",
+                                    "type": "bool",
+                                    "value": false
+                                },
+                                {
+                                    "attribute": 61440,
+                                    "data": 63081472
+                                }
+                            ],
+                            "cluster": 6
+                        }
+                    ],
+                    "device": 81,
+                    "endpoint": 2,
+                    "in_clusters": [
+                        6,
+                        16
+                    ],
+                    "out_clusters": [],
+                    "profile": 260
+                },
+                {
+                    "clusters": [
+                        {
+                            "attributes": [
+                                {
+                                    "attribute": 85,
+                                    "data": 0.0,
+                                    "expire": 2,
+                                    "name": "rotation",
+                                    "type": "float",
+                                    "unit": "\u00b0",
+                                    "value": 0.0
+                                }
+                            ],
+                            "cluster": 12
+                        }
+                    ],
+                    "device": 9,
+                    "endpoint": 3,
+                    "in_clusters": [
+                        12
+                    ],
+                    "out_clusters": [
+                        12,
+                        4
+                    ],
+                    "profile": 260
+                },
+                {
+                    "clusters": [
+                        {
+                            "attributes": [
+                                {
+                                    "attribute": 85,
+                                    "data": 0.0,
+                                    "expire": 2,
+                                    "name": "rotation4",
+                                    "type": "float",
+                                    "unit": "\u00b0",
+                                    "value": 0.0
+                                }
+                            ],
+                            "cluster": 12
+                        }
+                    ],
+                    "device": 83,
+                    "endpoint": 4,
+                    "in_clusters": [
+                        12
+                    ],
+                    "out_clusters": [
+                        12
+                    ],
+                    "profile": 260
+                },
+                {
+                    "clusters": [
+                        {
+                            "attributes": [
+                                {
+                                    "attribute": 85,
+                                    "data": "",
+                                    "expire": 2,
+                                    "expire_value": "",
+                                    "name": "movement",
+                                    "type": "str",
+                                    "value": ""
+                                }
+                            ],
+                            "cluster": 18
+                        }
+                    ],
+                    "device": 0,
+                    "endpoint": 5,
+                    "in_clusters": [
+                        16,
+                        18
+                    ],
+                    "out_clusters": [],
+                    "profile": 260
+                },
+                {
+                    "clusters": [
+                        {
+                            "attributes": [
+                                {
+                                    "attribute": 85,
+                                    "data": "",
+                                    "expire": 2,
+                                    "expire_value": "",
+                                    "name": "movement6",
+                                    "type": "str",
+                                    "value": ""
+                                }
+                            ],
+                            "cluster": 18
+                        }
+                    ],
+                    "device": 0,
+                    "endpoint": 6,
+                    "in_clusters": [
+                        18,
+                        16
+                    ],
+                    "out_clusters": [],
+                    "profile": 260
+                },
+                {
+                    "clusters": [
+                        {
+                            "attributes": [
+                                {
+                                    "attribute": 85,
+                                    "data": "",
+                                    "expire": 2,
+                                    "expire_value": "",
+                                    "name": "movement7",
+                                    "type": "str",
+                                    "value": ""
+                                }
+                            ],
+                            "cluster": 18
+                        }
+                    ],
+                    "device": 0,
+                    "endpoint": 7,
+                    "in_clusters": [
+                        18,
+                        16
+                    ],
+                    "out_clusters": [],
+                    "profile": 260
+                }
+            ],
+            "generictype": "",
+            "info": {
+                "addr": "c28c",
+                "bit_field": "0100000000000001",
+                "descriptor_capability": "00000000",
+                "id": 53,
+                "ieee": "00158d000232294f",
+                "last_seen": "2019-01-23 10:35:21",
+                "mac_capability": "10001110",
+                "manufacturer_code": "115f",
+                "max_buffer": 127,
+                "max_rx": 100,
+                "max_tx": 100,
+                "power_type": 1,
+                "rssi": 96,
+                "server_mask": 0
             }
         }
         ],
