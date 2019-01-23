@@ -9,7 +9,6 @@ import shutil
 import tempfile
 from zigate import ZiGate, responses, transport, core
 from binascii import hexlify, unhexlify
-import logging
 
 
 class TestCore(unittest.TestCase):
