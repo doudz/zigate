@@ -463,7 +463,42 @@ class TestCore(unittest.TestCase):
             }
         }
         ],
-    "groups": {},
+    "groups": {
+        "5a92": [
+            [
+                "a677",
+                11
+            ],
+            [
+                "fe1b",
+                1
+            ],
+            [
+                "edf0",
+                1
+            ],
+            [
+                "7ad1",
+                1
+            ],
+            [
+                "d7d0",
+                1
+            ],
+            [
+                "9c5c",
+                1
+            ],
+            [
+                "a14f",
+                1
+            ],
+            [
+                "639f",
+                1
+            ]
+        ]
+    },
     "scenes": {}
 }'''
         path = os.path.join(self.test_dir, 'test_zigate.json')
@@ -476,6 +511,10 @@ class TestCore(unittest.TestCase):
                               'supervision': False, 'restore': False,
                               'trouble': False, 'ac_fault': False,
                               'test_mode': False, 'battery_defect': False}
+                             )
+        self.assertDictEqual(self.zigate.groups,
+                             {'5a92': {('a677', 11), ('9c5c', 1), ('7ad1', 1), ('a14f', 1),
+                                       ('d7d0', 1), ('639f', 1), ('fe1b', 1), ('edf0', 1)}}
                              )
 
     def test_group_membership(self):
