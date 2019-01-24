@@ -324,7 +324,7 @@ class ZiGate(object):
 
         if version['version'] >= '3.0f':
             LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
-            self.setTime()
+            self.set_time()
         self.get_devices_list(True)
         self.need_discovery()
 
@@ -765,18 +765,18 @@ class ZiGate(object):
             r = r.get('status', False)
         return r
 
-    def setTime(self, dt=None):
+    def set_time(self, dt=None):
         '''
         Set internal zigate time
         dt should be datetime.datetime object
         '''
         dt = dt or datetime.datetime.now()
-        # timestamp from 2001-01-01 00:00:00
-        timestamp = int((dt - datetime.datetime(2001, 1, 1)).total_seconds())
+        # timestamp from 2000-01-01 00:00:00
+        timestamp = int((dt - datetime.datetime(2000, 1, 1)).total_seconds())
         data = struct.pack('!L', timestamp)
         self.send_data(0x0016, data)
 
-    def getTime(self):
+    def get_time(self):
         '''
         get internal zigate time
         '''
@@ -784,7 +784,7 @@ class ZiGate(object):
         dt = None
         if r:
             timestamp = r.get('timestamp')
-            dt = datetime.datetime(2001, 1, 1) + datetime.timedelta(seconds=timestamp)
+            dt = datetime.datetime(2000, 1, 1) + datetime.timedelta(seconds=timestamp)
         return dt
 
     def permit_join(self, duration=30):
@@ -1054,6 +1054,20 @@ class ZiGate(object):
         return known groups
         '''
         return self._groups
+
+    def get_group_for_addr(self, addr):
+        '''
+        return group for device addr
+        '''
+        groups = {}
+        for group, members in self._groups.items():
+            for member in members:
+                if member[0] == addr:
+                    if member[1] not in groups:
+                        groups[member[1]] = []
+                    groups[member[1]].append(group)
+                    continue
+        return groups
 
     def _add_group(self, cmd, addr, endpoint, group=None):
         '''
@@ -2633,3 +2647,10 @@ class Device(object):
         return True if it has assumed state
         '''
         return self.info.get('assumed_state', False)
+
+    @property
+    def groups(self):
+        '''
+        return groups
+        '''
+        return self._zigate.get_group_for_addr(self.addr)

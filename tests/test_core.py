@@ -532,6 +532,9 @@ class TestCore(unittest.TestCase):
                              {'4567': {('0123', 1)},
                               })
 
+        self.assertDictEqual(self.zigate.get_group_for_addr('0123'),
+                             {1: ['4567']})
+
     def test_attribute_discovery(self):
         msg_data = b'\x000\x00\x08\x93-\x03\x03\x00'
         r = responses.R8140(msg_data, 255)
