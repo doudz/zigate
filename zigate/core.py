@@ -1055,6 +1055,20 @@ class ZiGate(object):
         '''
         return self._groups
 
+    def get_group_for_addr(self, addr):
+        '''
+        return group for device addr
+        '''
+        groups = {}
+        for group, members in self._groups.items():
+            for member in members:
+                if member[0] == addr:
+                    if member[1] not in groups:
+                        groups[member[1]] = []
+                    groups[member[1]].append(group)
+                    continue
+        return groups
+
     def _add_group(self, cmd, addr, endpoint, group=None):
         '''
         Add group
@@ -2633,3 +2647,10 @@ class Device(object):
         return True if it has assumed state
         '''
         return self.info.get('assumed_state', False)
+
+    @property
+    def groups(self):
+        '''
+        return groups
+        '''
+        return self._zigate.get_group_for_addr(self.addr)
