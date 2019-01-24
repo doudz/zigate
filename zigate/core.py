@@ -264,7 +264,7 @@ class ZiGate(object):
                 if not isinstance(data, dict):  # old version
                     data = {'devices': data, 'groups': {}}
                 groups = data.get('groups', {})
-                for k, v in groups:
+                for k, v in groups.items():
                     groups[k] = set([tuple(r) for r in v])
                 self._groups = groups
                 self._scenes = data.get('scenes', {})
