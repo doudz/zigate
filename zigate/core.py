@@ -868,6 +868,21 @@ class ZiGate(object):
         data = struct.pack('!B', enable)
         return self.send_data(0x0027, data)
 
+    def _choose_addr_mode(self, addr_ieee):
+        '''
+        Choose the right address mode
+        '''
+        if len(addr_ieee) == 4:
+            if addr_ieee in self._groups:
+                dst_addr_mode = 1  # AddrMode.group
+            elif addr_ieee in self._devices:
+                dst_addr_mode = 2  # AddrMode.short
+            else:
+                dst_addr_mode = 0  # AddrMode.bound
+        else:
+            dst_addr_mode = 3  # AddrMode.ieee
+        return dst_addr_mode
+
     def _bind_unbind(self, cmd, ieee, endpoint, cluster,
                      dst_addr=None, dst_endpoint=1):
         '''
@@ -876,16 +891,9 @@ class ZiGate(object):
         '''
         if not dst_addr:
             dst_addr = self.ieee
-        if len(dst_addr) == 4:
-            if dst_addr in self._groups:
-                dst_addr_mode = 1  # AddrMode.group
-            elif dst_addr in self._devices:
-                dst_addr_mode = 2  # AddrMode.short
-            else:
-                dst_addr_mode = 0  # AddrMode.bound
-            dst_addr_fmt = 'H'
-        else:
-            dst_addr_mode = 3  # AddrMode.ieee
+        dst_addr_fmt = 'H'
+        dst_addr_mode = self._choose_addr_mode(dst_addr)
+        if dst_addr_mode == 3:
             dst_addr_fmt = 'Q'
         ieee = self.__addr(ieee)
         dst_addr = self.__addr(dst_addr)
@@ -1641,15 +1649,16 @@ class ZiGate(object):
         gradient : effect gradient
         Note that timed onoff and effect are mutually exclusive
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBB', 2, addr, 1, endpoint, onoff)
+        data = struct.pack('!BHBBB', addr_mode, addr, 1, endpoint, onoff)
         cmd = 0x0092
         if on_time or off_time:
             cmd = 0x0093
             data += struct.pack('!HH', on_time, off_time)
         elif effect:
             cmd = 0x0094
-            data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effect, gradient)
+            data = struct.pack('!BHBBBB', addr_mode, addr, 1, endpoint, effect, gradient)
         return self.send_data(cmd, data)
 
     @register_actions(ACTIONS_LEVEL)
