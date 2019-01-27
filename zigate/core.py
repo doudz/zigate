@@ -2606,7 +2606,8 @@ class Device(object):
                 LOGGER.error(traceback.format_exc())
         else:
             LOGGER.warning('No template found for {}'.format(typ))
-        self._bind_report()
+        if self.need_report:
+            self._bind_report()
         if success:
             self.discovery = 'templated'
             dispatch_signal(ZIGATE_DEVICE_UPDATED,
@@ -2649,6 +2650,10 @@ class Device(object):
         with open(path, 'w') as fp:
             json.dump(jdata, fp, cls=DeviceEncoder,
                       sort_keys=True, indent=4, separators=(',', ': '))
+
+    @property
+    def need_report(self):
+        return self.info.get('need_report', True)
 
     def set_assumed_state(self, assumed_state=True):
         self.info['assumed_state'] = assumed_state
