@@ -1404,7 +1404,8 @@ class ZiGate(object):
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
         r = self.send_data(0x0120, data, 0x8120)
-        if r and r.status == 0x8c:  # reporting not supported
+        # reporting not supported on cluster 6, supposed on/off attribute
+        if r and r.status == 0x8c and r.cluster == 6:
             device = self._devices[r.addr]
             device.set_assumed_state()
         return r
