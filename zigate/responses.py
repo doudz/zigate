@@ -794,7 +794,12 @@ class R8100(Response):
     def decode(self):
         Response.decode(self)
         fmt = DATA_TYPE.get(self.data['data_type'], 's')
-        fmt = '!{}{}'.format(self.data['size'] // struct.calcsize(fmt), fmt)
+        length = self.data['size']
+        # https://github.com/fairecasoimeme/ZiGate/issues/134
+        # workaround because of type 0x25 unsupported
+        if self.data['data_type'] not in DATA_TYPE:
+            length = len(self.data['data'])
+        fmt = '!{}{}'.format(length // struct.calcsize(fmt), fmt)
         data = struct.unpack(fmt, self.data['data'])[0]
         if isinstance(data, bytes):
             try:
