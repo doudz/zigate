@@ -14,7 +14,9 @@ import json
 import os
 from shutil import copyfile
 from pydispatch import dispatcher
-from .transport import (ThreadSerialConnection, ThreadSocketConnection)
+from .transport import (ThreadSerialConnection,
+                        ThreadSocketConnection,
+                        FakeTransport)
 from .responses import (RESPONSES, Response)
 from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ACTIONS_ONOFF, ACTIONS_TEMPERATURE, ACTIONS_COVER,
@@ -1904,6 +1906,15 @@ class ZiGate(object):
         '''
         for device in self._devices.values():
             device.generate_template(dirname)
+
+
+class FakeZiGate(ZiGate):
+    '''
+    Fake ZiGate for test only without real hardware
+    '''
+
+    def setup_connection(self):
+        self.connection = FakeTransport()
 
 
 class ZiGateWiFi(ZiGate):
