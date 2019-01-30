@@ -1100,7 +1100,7 @@ class ZiGate(object):
 
     def __add_group(self, group, addr, endpoint):
         if group not in self._groups:
-                self._groups[group] = set()
+            self._groups[group] = set()
         self._groups[group].add((addr, endpoint))
 
     def __remove_group(self, group, addr, endpoint):
