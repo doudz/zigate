@@ -223,13 +223,18 @@ class ZiGate(object):
 
     def save_state(self, path=None):
         LOGGER.debug('Saving persistent file')
+        path = path or self._path
+        if path is None:
+            LOGGER.warning('Persistent file is disabled')
+            if self._autosavetimer:
+                self._autosavetimer.cancel()
+            return
+        self._path = os.path.expanduser(path)
+        backup_path = self._path + '.0'
         r = self._save_lock.acquire(True, 5)
         if not r:
             LOGGER.error('Failed to acquire Lock to save persistent file')
             return
-        path = path or self._path
-        self._path = os.path.expanduser(path)
-        backup_path = self._path + '.0'
         try:
             if os.path.exists(self._path):
                 LOGGER.debug('File already existing, make a backup before')
@@ -257,6 +262,9 @@ class ZiGate(object):
     def load_state(self, path=None):
         LOGGER.debug('Try loading persistent file')
         path = path or self._path
+        if path is None:
+            LOGGER.warning('Persistent file is disabled')
+            return
         self._path = os.path.expanduser(path)
         backup_path = self._path + '.0'
         if os.path.exists(self._path):

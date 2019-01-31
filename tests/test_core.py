@@ -9,6 +9,7 @@ import shutil
 import tempfile
 from zigate import ZiGate, responses, transport, core
 from binascii import hexlify, unhexlify
+import time
 
 
 class TestCore(unittest.TestCase):
@@ -22,6 +23,16 @@ class TestCore(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
+
+    def test_disable_persistent(self):
+        self.zigate._path = None
+        result = self.zigate.load_state()
+        self.assertIsNone(result)
+        self.zigate.start_auto_save()
+        self.assertTrue(self.zigate._autosavetimer.is_alive())
+        result = self.zigate.save_state()
+        time.sleep(0.2)
+        self.assertFalse(self.zigate._autosavetimer.is_alive())
 
     def test_persistent(self):
         path = os.path.join(self.test_dir, 'test_zigate.json')
