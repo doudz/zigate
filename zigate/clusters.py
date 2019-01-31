@@ -297,18 +297,19 @@ def cube_decode(value):
 @register_cluster
 class C0012(Cluster):
     cluster_id = 0x0012
-    type = 'Multistate input (Xiaomi cube: Movement)'
-    attributes_def = {0x0055: {'name': 'movement',
-                               'value': 'cube_decode(value)',
-                               'expire': 2, 'expire_value': '', 'type': str},
+    type = 'Multistate input'
+    attributes_def = {0x0055: {'name': 'multiclick',
+                               'value': 'value',
+                               'expire': 2, 'type': int}
                       }
 
     def __init__(self, endpoint=None):
         Cluster.__init__(self, endpoint=endpoint)
-        if self._endpoint['device'] == 0x0103:  # lumi.remote.b1acn01
-            self.attributes_def = {0x0055: {'name': 'multiclick',
-                                            'value': 'value',
-                                            'expire': 2, 'type': int},
+        if self._endpoint['device'] == 0x5f02:  # xiaomi cube
+            self.attributes_def = {0x0055: {'name': 'movement',
+                                            'value': 'cube_decode(value)',
+                                            'expire': 2, 'expire_value': '',
+                                            'type': str}
                                    }
 
 
