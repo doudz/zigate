@@ -174,10 +174,13 @@ class C0000(Cluster):
                       0xff01: {'name': 'battery',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
                                'unit': 'V'},
+                      0xff02: {'name': 'battery',
+                               'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
+                               'unit': 'V'},
                       }
 
     def update(self, data):
-        if data['attribute'] == 0xff01 and not data.get('data', '').startswith('0121'):
+        if data['attribute'] in (0xff01, 0xff02) and not data.get('data', '').startswith('0121'):
             return
         return Cluster.update(self, data)
 
