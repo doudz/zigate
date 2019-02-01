@@ -6,6 +6,7 @@ ZiGate responses Tests
 import unittest
 from zigate import responses
 from collections import OrderedDict
+from binascii import unhexlify
 
 
 class TestResponses(unittest.TestCase):
@@ -104,6 +105,22 @@ class TestResponses(unittest.TestCase):
                                           ('addr', '932d'),
                                           ('status', 0),
                                           ('group', '1234'),
+                                          ('rssi', 255)])
+                             )
+
+    def test_reponse_8102_vibration(self):
+        msg_data = unhexlify(b'26a32301010105080025000800000448')
+        r = responses.R8102(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 38),
+                                          ('addr', 'a323'),
+                                          ('endpoint', 1),
+                                          ('cluster', 257),
+                                          ('attribute', 0x0508),
+                                          ('status', 0),
+                                          ('data_type', 37),
+                                          ('size', 8),
+                                          ('data', '\x00\x00\x04H'),
                                           ('rssi', 255)])
                              )
 

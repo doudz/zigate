@@ -9,9 +9,9 @@ import json
 
 
 class TestResponses(unittest.TestCase):
-    def test_cluster_0012(self):
+    def test_cluster_C0012(self):
         # xiaomi cube status
-        endpoint = {'device': 24321}
+        endpoint = {'device': 24322}
         data = {"attributes": [{"attribute": 85,
                                 "data": 4,
                                 "expire": 2,
@@ -46,6 +46,24 @@ class TestResponses(unittest.TestCase):
                                'type': int}}
                          )
 
+        # xiaomi lumi.remote.b286acn01
+        endpoint = {'device': 24321}
+        data = {"attributes": [{"attribute": 85,
+                                "data": 1,
+                                "expire": 2,
+                                "name": "multiclick",
+                                "value": ""}],
+                "cluster": 18
+                }
+        c = clusters.C0012.from_json(data, endpoint)
+        self.assertEqual(c.attributes,
+                         {85: {'attribute': 85, 'data': 1,
+                               'expire': 2,
+                               'name': 'multiclick', 'value': 1,
+                               'type': int}}
+                         )
+
+    def test_cluster_C0000(self):
         endpoint = {'device': 1}
         data = {"attributes": [{"attribute": 5,
                                 "data": 'test.test',

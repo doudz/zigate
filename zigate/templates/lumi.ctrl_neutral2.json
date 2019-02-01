@@ -1,0 +1,97 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 4,
+                            "data": "LUMI"
+                        },
+                        {
+                            "attribute": 5,
+                            "data": "lumi.ctrl_neutral2"
+                        },
+                        {
+                            "attribute": 7,
+                            "data": 4
+                        }
+                    ],
+                    "cluster": 0
+                }
+            ],
+            "device": 6,
+            "endpoint": 1,
+            "in_clusters": [
+                0,
+                3,
+                1,
+                2,
+                25,
+                10
+            ],
+            "out_clusters": [
+                0,
+                10,
+                25
+            ],
+            "profile": 260
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 256,
+            "endpoint": 2,
+            "in_clusters": [
+                16,
+                6,
+                4,
+                5
+            ],
+            "out_clusters": [],
+            "profile": 260
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 256,
+            "endpoint": 3,
+            "in_clusters": [
+                16,
+                6,
+                4,
+                5
+            ],
+            "out_clusters": [],
+            "profile": 260
+        }
+    ],
+    "generictype": "",
+    "info": {
+        "assumed_state": false,
+        "need_report": false,
+        "bit_field": "0100000000000001",
+        "descriptor_capability": "00000000",
+        "mac_capability": "10000100",
+        "manufacturer_code": "1037",
+        "power_type": 1,
+        "rssi": 105,
+        "server_mask": 1
+    }
+}

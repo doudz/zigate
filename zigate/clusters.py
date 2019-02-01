@@ -174,10 +174,13 @@ class C0000(Cluster):
                       0xff01: {'name': 'battery',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
                                'unit': 'V'},
+                      0xff02: {'name': 'battery',
+                               'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
+                               'unit': 'V'},
                       }
 
     def update(self, data):
-        if data['attribute'] == 0xff01 and not data.get('data', '').startswith('0121'):
+        if data['attribute'] in (0xff01, 0xff02) and not data.get('data', '').startswith('0121'):
             return
         return Cluster.update(self, data)
 
@@ -297,18 +300,19 @@ def cube_decode(value):
 @register_cluster
 class C0012(Cluster):
     cluster_id = 0x0012
-    type = 'Multistate input (Xiaomi cube: Movement)'
-    attributes_def = {0x0055: {'name': 'movement',
-                               'value': 'cube_decode(value)',
-                               'expire': 2, 'expire_value': '', 'type': str},
+    type = 'Multistate input'
+    attributes_def = {0x0055: {'name': 'multiclick',
+                               'value': 'value',
+                               'expire': 2, 'type': int}
                       }
 
     def __init__(self, endpoint=None):
         Cluster.__init__(self, endpoint=endpoint)
-        if self._endpoint['device'] == 0x0103:  # lumi.remote.b1acn01
-            self.attributes_def = {0x0055: {'name': 'multiclick',
-                                            'value': 'value',
-                                            'expire': 2, 'type': int},
+        if self._endpoint['device'] == 0x5f02:  # xiaomi cube
+            self.attributes_def = {0x0055: {'name': 'movement',
+                                            'value': 'cube_decode(value)',
+                                            'expire': 2, 'expire_value': '',
+                                            'type': str}
                                    }
 
 

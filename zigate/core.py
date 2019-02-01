@@ -14,7 +14,9 @@ import json
 import os
 from shutil import copyfile
 from pydispatch import dispatcher
-from .transport import (ThreadSerialConnection, ThreadSocketConnection)
+from .transport import (ThreadSerialConnection,
+                        ThreadSocketConnection,
+                        FakeTransport)
 from .responses import (RESPONSES, Response)
 from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ACTIONS_ONOFF, ACTIONS_TEMPERATURE, ACTIONS_COVER,
@@ -221,13 +223,18 @@ class ZiGate(object):
 
     def save_state(self, path=None):
         LOGGER.debug('Saving persistent file')
+        path = path or self._path
+        if path is None:
+            LOGGER.warning('Persistent file is disabled')
+            if self._autosavetimer:
+                self._autosavetimer.cancel()
+            return
+        self._path = os.path.expanduser(path)
+        backup_path = self._path + '.0'
         r = self._save_lock.acquire(True, 5)
         if not r:
             LOGGER.error('Failed to acquire Lock to save persistent file')
             return
-        path = path or self._path
-        self._path = os.path.expanduser(path)
-        backup_path = self._path + '.0'
         try:
             if os.path.exists(self._path):
                 LOGGER.debug('File already existing, make a backup before')
@@ -255,6 +262,9 @@ class ZiGate(object):
     def load_state(self, path=None):
         LOGGER.debug('Try loading persistent file')
         path = path or self._path
+        if path is None:
+            LOGGER.warning('Persistent file is disabled')
+            return
         self._path = os.path.expanduser(path)
         backup_path = self._path + '.0'
         if os.path.exists(self._path):
@@ -868,6 +878,21 @@ class ZiGate(object):
         data = struct.pack('!B', enable)
         return self.send_data(0x0027, data)
 
+    def _choose_addr_mode(self, addr_ieee):
+        '''
+        Choose the right address mode
+        '''
+        if len(addr_ieee) == 4:
+            if addr_ieee in self._groups:
+                dst_addr_mode = 1  # AddrMode.group
+            elif addr_ieee in self._devices:
+                dst_addr_mode = 2  # AddrMode.short
+            else:
+                dst_addr_mode = 0  # AddrMode.bound
+        else:
+            dst_addr_mode = 3  # AddrMode.ieee
+        return dst_addr_mode
+
     def _bind_unbind(self, cmd, ieee, endpoint, cluster,
                      dst_addr=None, dst_endpoint=1):
         '''
@@ -876,16 +901,9 @@ class ZiGate(object):
         '''
         if not dst_addr:
             dst_addr = self.ieee
-        if len(dst_addr) == 4:
-            if dst_addr in self._groups:
-                dst_addr_mode = 1  # AddrMode.group
-            elif dst_addr in self._devices:
-                dst_addr_mode = 2  # AddrMode.short
-            else:
-                dst_addr_mode = 0  # AddrMode.bound
-            dst_addr_fmt = 'H'
-        else:
-            dst_addr_mode = 3  # AddrMode.ieee
+        dst_addr_fmt = 'H'
+        dst_addr_mode = self._choose_addr_mode(dst_addr)
+        if dst_addr_mode == 3:
             dst_addr_fmt = 'Q'
         ieee = self.__addr(ieee)
         dst_addr = self.__addr(dst_addr)
@@ -1092,7 +1110,7 @@ class ZiGate(object):
 
     def __add_group(self, group, addr, endpoint):
         if group not in self._groups:
-                self._groups[group] = set()
+            self._groups[group] = set()
         self._groups[group].add((addr, endpoint))
 
     def __remove_group(self, group, addr, endpoint):
@@ -1332,10 +1350,13 @@ class ZiGate(object):
             attribute = [attribute]
         length = len(attribute)
         manufacturer_specific = manufacturer_code != 0
-        data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1, endpoint, cluster,
-                           direction, manufacturer_specific,
-                           manufacturer_code, length, *attribute)
-        self.send_data(0x0100, data)
+        for i in range(0, length, 10):
+            sub_attribute = attribute[i: i + 10]
+            data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1,
+                               endpoint, cluster,
+                               direction, manufacturer_specific,
+                               manufacturer_code, length, *sub_attribute)
+            self.send_data(0x0100, data)
 
     def write_attribute_request(self, addr, endpoint, cluster, attributes,
                                 direction=0, manufacturer_code=0):
@@ -1393,7 +1414,8 @@ class ZiGate(object):
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
         r = self.send_data(0x0120, data, 0x8120)
-        if r and r.status == 0x8c:  # reporting not supported
+        # reporting not supported on cluster 6, supposed on/off attribute
+        if r and r.status == 0x8c and r.cluster == 6:
             device = self._devices[r.addr]
             device.set_assumed_state()
         return r
@@ -1641,15 +1663,16 @@ class ZiGate(object):
         gradient : effect gradient
         Note that timed onoff and effect are mutually exclusive
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBB', 2, addr, 1, endpoint, onoff)
+        data = struct.pack('!BHBBB', addr_mode, addr, 1, endpoint, onoff)
         cmd = 0x0092
         if on_time or off_time:
             cmd = 0x0093
             data += struct.pack('!HH', on_time, off_time)
         elif effect:
             cmd = 0x0094
-            data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effect, gradient)
+            data = struct.pack('!BHBBBB', addr_mode, addr, 1, endpoint, effect, gradient)
         return self.send_data(cmd, data)
 
     @register_actions(ACTIONS_LEVEL)
@@ -1658,8 +1681,9 @@ class ZiGate(object):
         move to level
         mode 0 up, 1 down
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBBBB', 2, addr, 1, endpoint, onoff, mode, rate)
+        data = struct.pack('!BHBBBBB', addr_mode, addr, 1, endpoint, onoff, mode, rate)
         return self.send_data(0x0080, data)
 
     @register_actions(ACTIONS_LEVEL)
@@ -1668,9 +1692,10 @@ class ZiGate(object):
         move to level with on off
         level between 0 - 100
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         level = int(level * 254 // 100)
-        data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint, onoff, level, transition_time)
+        data = struct.pack('!BHBBBBH', addr_mode, addr, 1, endpoint, onoff, level, transition_time)
         return self.send_data(0x0081, data)
 
     @register_actions(ACTIONS_LEVEL)
@@ -1678,8 +1703,9 @@ class ZiGate(object):
         '''
         move step
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBBBBH', 2, addr, 1, endpoint, onoff, step_mode, step_size, transition_time)
+        data = struct.pack('!BHBBBBBH', addr_mode, addr, 1, endpoint, onoff, step_mode, step_size, transition_time)
         return self.send_data(0x0082, data)
 
     @register_actions(ACTIONS_LEVEL)
@@ -1687,8 +1713,9 @@ class ZiGate(object):
         '''
         move stop
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBB', 2, addr, 1, endpoint)
+        data = struct.pack('!BHBB', addr_mode, addr, 1, endpoint)
         return self.send_data(0x0083, data)
 
     @register_actions(ACTIONS_LEVEL)
@@ -1696,8 +1723,9 @@ class ZiGate(object):
         '''
         move stop on off
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBB', 2, addr, 1, endpoint)
+        data = struct.pack('!BHBB', addr_mode, addr, 1, endpoint)
         return self.send_data(0x0084, data)
 
     @register_actions(ACTIONS_HUE)
@@ -1708,9 +1736,10 @@ class ZiGate(object):
         direction : 0 shortest, 1 longest, 2 up, 3 down
         transition in second
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         hue = int(hue * 254 // 360)
-        data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
+        data = struct.pack('!BHBBBBH', addr_mode, addr, 1, endpoint,
                            hue, direction, transition)
         return self.send_data(0x00B0, data)
 
@@ -1722,10 +1751,11 @@ class ZiGate(object):
         saturation 0-100 in percent
         transition in second
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         hue = int(hue * 254 // 360)
         saturation = int(saturation * 254 // 100)
-        data = struct.pack('!BHBBBBH', 2, addr, 1, endpoint,
+        data = struct.pack('!BHBBBBH', addr_mode, addr, 1, endpoint,
                            hue, saturation, transition)
         return self.send_data(0x00B6, data)
 
@@ -1762,8 +1792,9 @@ class ZiGate(object):
             x = int(x * 65536)
         if isinstance(y, float) and y <= 1:
             y = int(y * 65536)
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBHHH', 2, addr, 1, endpoint,
+        data = struct.pack('!BHBBHHH', addr_mode, addr, 1, endpoint,
                            x, y, transition)
         return self.send_data(0x00B7, data)
 
@@ -1794,8 +1825,9 @@ class ZiGate(object):
         mired color temperature
         transition in second
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBHH', 2, addr, 1, endpoint,
+        data = struct.pack('!BHBBHH', addr_mode, addr, 1, endpoint,
                            mired, transition)
         return self.send_data(0x00C0, data)
 
@@ -1824,8 +1856,9 @@ class ZiGate(object):
         '''
         min_temperature = int(1000000 // min_temperature)
         max_temperature = int(1000000 // max_temperature)
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBBHHH', 2, addr, 1, endpoint, mode, rate, min_temperature, max_temperature)
+        data = struct.pack('!BHBBBHHH', addr_mode, addr, 1, endpoint, mode, rate, min_temperature, max_temperature)
         return self.send_data(0x00C1, data)
 
     @register_actions(ACTIONS_LOCK)
@@ -1833,8 +1866,9 @@ class ZiGate(object):
         '''
         Lock / unlock
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBB', 2, addr, 1, endpoint, lock)
+        data = struct.pack('!BHBBB', addr_mode, addr, 1, endpoint, lock)
         return self.send_data(0x00f0, data)
 
     @register_actions(ACTIONS_COVER)
@@ -1850,9 +1884,10 @@ class ZiGate(object):
             TILT_VALUE = 0x07
             TILT_PERCENT = 0x08
         '''
+        addr_mode = self._choose_addr_mode(addr)
         fmt = '!BHBBB'
         addr = self.__addr(addr)
-        args = [2, addr, 1, endpoint, cmd]
+        args = [addr_mode, addr, 1, endpoint, cmd]
         if cmd in (0x04, 0x07):
             fmt += 'H'
             args.append(param)
@@ -1866,10 +1901,11 @@ class ZiGate(object):
         '''
         Send raw APS Data request
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         length = len(payload)
         radius = 0
-        data = struct.pack('!BHBBHHBBB{}s'.format(length), 2, addr, src_ep, dst_ep,
+        data = struct.pack('!BHBBHHBBB{}s'.format(length), addr_mode, addr, src_ep, dst_ep,
                            profile, cluster, security, radius, length, payload)
         return self.send_data(0x0530, data)
 
@@ -1891,6 +1927,15 @@ class ZiGate(object):
         '''
         for device in self._devices.values():
             device.generate_template(dirname)
+
+
+class FakeZiGate(ZiGate):
+    '''
+    Fake ZiGate for test only without real hardware
+    '''
+
+    def setup_connection(self):
+        self.connection = FakeTransport()
 
 
 class ZiGateWiFi(ZiGate):
@@ -2594,7 +2639,8 @@ class Device(object):
                 LOGGER.error(traceback.format_exc())
         else:
             LOGGER.warning('No template found for {}'.format(typ))
-        self._bind_report()
+        if self.need_report:
+            self._bind_report()
         if success:
             self.discovery = 'templated'
             dispatch_signal(ZIGATE_DEVICE_UPDATED,
@@ -2637,6 +2683,10 @@ class Device(object):
         with open(path, 'w') as fp:
             json.dump(jdata, fp, cls=DeviceEncoder,
                       sort_keys=True, indent=4, separators=(',', ': '))
+
+    @property
+    def need_report(self):
+        return self.info.get('need_report', True)
 
     def set_assumed_state(self, assumed_state=True):
         self.info['assumed_state'] = assumed_state

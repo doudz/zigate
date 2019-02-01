@@ -17,6 +17,7 @@ from pydispatch import dispatcher
 import sys
 from .const import ZIGATE_FAILED_TO_CONNECT
 import struct
+from binascii import unhexlify
 
 
 LOGGER = logging.getLogger('zigate')
@@ -69,6 +70,7 @@ class FakeTransport(BaseTransport):
         BaseTransport.__init__(self)
         self.sent = []
         self.auto_responder = {}
+        self.add_auto_response(0x0010, 0x8010, unhexlify(b'000f3ff0'))
 
     def is_connected(self):
         return True
