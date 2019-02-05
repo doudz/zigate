@@ -1352,10 +1352,12 @@ class ZiGate(object):
         manufacturer_specific = manufacturer_code != 0
         for i in range(0, length, 10):
             sub_attribute = attribute[i: i + 10]
-            data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1,
+            sub_length = len(sub_attribute)
+            print(sub_attribute)
+            data = struct.pack('!BHBBHBBHB{}H'.format(sub_length), 2, addr, 1,
                                endpoint, cluster,
                                direction, manufacturer_specific,
-                               manufacturer_code, length, *sub_attribute)
+                               manufacturer_code, sub_length, *sub_attribute)
             self.send_data(0x0100, data)
 
     def write_attribute_request(self, addr, endpoint, cluster, attributes,
