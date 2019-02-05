@@ -1937,6 +1937,8 @@ class FakeZiGate(ZiGate):
                  auto_start=False, auto_save=False, channel=None, adminpanel=False):
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start, auto_save=auto_save,
                         channel=channel, adminpanel=adminpanel)
+        self._addr = '0000'
+        self._ieee = '0123456789abcdef'
         # by default add a fake xiaomi temp sensor on address abcd
         device = Device({'addr': 'abcd', 'ieee': '0123456789abcdef'}, self)
         device.set_attribute(1, 0, {'attribute': 5, 'rssi': 170, 'data': 'lumi.weather'})
