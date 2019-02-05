@@ -71,6 +71,21 @@ class FakeTransport(BaseTransport):
         self.sent = []
         self.auto_responder = {}
         self.add_auto_response(0x0010, 0x8010, unhexlify(b'000f3ff0'))
+        # by default add a fake xiaomi temp sensor on address abcd
+        self.add_auto_response(0x0015, 0x8015, unhexlify(b'01abcd0123456789abcdef00aa'))
+
+    def start_fake_response(self):
+        def periodic_response():
+            import random
+            while True:
+                time.sleep(5)
+                temp = int(round(random.random() * 40.0, 2) * 100)
+                msg = struct.pack('!BHBHHBBHI', 1, int('abcd', 16), 1, 0x0402, 0, 0, 0x22, 4, temp)
+                enc_msg = self.create_fake_response(0x8102, msg, random.randint(0, 255))
+                self.received.put(enc_msg)
+        t = threading.Thread(target=periodic_response)
+        t.setDaemon(True)
+        t.start()
 
     def is_connected(self):
         return True
@@ -98,6 +113,10 @@ class FakeTransport(BaseTransport):
             self.received.put(self.auto_responder[cmd])
 
     def add_auto_response(self, cmd, resp, value, rssi=255):
+        enc_msg = self.create_fake_response(resp, value, rssi)
+        self.auto_responder[cmd] = enc_msg
+
+    def create_fake_response(self, resp, value, rssi=255):
         value += struct.pack('!B', rssi)
         length = len(value)
         checksum = self.checksum(struct.pack('!H', resp),
@@ -108,7 +127,7 @@ class FakeTransport(BaseTransport):
         enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
         enc_msg = bytes(enc_msg)
-        self.auto_responder[cmd] = enc_msg
+        return enc_msg
 
     def checksum(self, *args):
         chcksum = 0
