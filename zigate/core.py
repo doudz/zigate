@@ -1332,11 +1332,12 @@ class ZiGate(object):
             'finish_effect': 0xfe,
             'stop_effect': 0xff
         }
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if effect not in effects.keys():
             effect = 'blink'
         effect_variant = 0  # Current Zigbee standard doesn't provide any variant
-        data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effects[effect], effect_variant)
+        data = struct.pack('!BHBBBB', addr_mode, addr, 1, endpoint, effects[effect], effect_variant)
         return self.send_data(0x00E0, data)
 
     def read_attribute_request(self, addr, endpoint, cluster, attribute,
@@ -1345,6 +1346,7 @@ class ZiGate(object):
         Read Attribute request
         attribute can be a unique int or a list of int
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if not isinstance(attribute, list):
             attribute = [attribute]
@@ -1353,7 +1355,7 @@ class ZiGate(object):
         for i in range(0, length, 10):
             sub_attribute = attribute[i: i + 10]
             sub_length = len(sub_attribute)
-            data = struct.pack('!BHBBHBBHB{}H'.format(sub_length), 2, addr, 1,
+            data = struct.pack('!BHBBHBBHB{}H'.format(sub_length), addr_mode, addr, 1,
                                endpoint, cluster,
                                direction, manufacturer_specific,
                                manufacturer_code, sub_length, *sub_attribute)
@@ -1366,6 +1368,7 @@ class ZiGate(object):
         attribute could be a tuple of (attribute_id, attribute_type, data)
         or a list of tuple (attribute_id, attribute_type, data)
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         fmt = ''
         if not isinstance(attributes, list):
@@ -1377,7 +1380,7 @@ class ZiGate(object):
             attributes_data += attribute_tuple
         length = len(attributes)
         manufacturer_specific = manufacturer_code != 0
-        data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1,
+        data = struct.pack('!BHBBHBBHB{}'.format(fmt), addr_mode, addr, 1,
                            endpoint, cluster,
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
@@ -1390,6 +1393,7 @@ class ZiGate(object):
         attribute could be a tuple of (attribute_id, attribute_type)
         or a list of tuple (attribute_id, attribute_type)
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if not isinstance(attributes, list):
             attributes = [attributes]
@@ -1411,7 +1415,7 @@ class ZiGate(object):
                                 change
                                 ]
         manufacturer_specific = manufacturer_code != 0
-        data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1, endpoint, cluster,
+        data = struct.pack('!BHBBHBBHB{}'.format(fmt), addr_mode, addr, 1, endpoint, cluster,
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
         r = self.send_data(0x0120, data, 0x8120)
