@@ -1933,6 +1933,16 @@ class FakeZiGate(ZiGate):
     '''
     Fake ZiGate for test only without real hardware
     '''
+    def __init__(self, port='auto', path='~/.zigate.json',
+                 auto_start=True, auto_save=True, channel=None, adminpanel=False):
+        ZiGate.__init__(self, port=port, path=path, auto_start=auto_start, auto_save=auto_save,
+                        channel=channel, adminpanel=adminpanel)
+        # by default add a fake xiaomi temp sensor on address abcd
+        device = Device({'addr': 'abcd', 'ieee': '0123456789abcdef'}, self)
+        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 170, 'data': 'lumi.weather'})
+        device.load_template()
+        self._devices['abcd'] = device
+        self.connection.start_fake_response()
 
     def setup_connection(self):
         self.connection = FakeTransport()
