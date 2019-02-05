@@ -79,7 +79,7 @@ class FakeTransport(BaseTransport):
             import random
             while True:
                 time.sleep(5)
-                temp = int(round(random.random()*40.0, 2)*100)
+                temp = int(round(random.random() * 40.0, 2) * 100)
                 msg = struct.pack('!BHBHHBBHI', 1, int('abcd', 16), 1, 0x0402, 0, 0, 0x22, 4, temp)
                 enc_msg = self.create_fake_response(0x8102, msg, random.randint(0, 255))
                 self.received.put(enc_msg)
