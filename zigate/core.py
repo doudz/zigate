@@ -1353,7 +1353,6 @@ class ZiGate(object):
         for i in range(0, length, 10):
             sub_attribute = attribute[i: i + 10]
             sub_length = len(sub_attribute)
-            print(sub_attribute)
             data = struct.pack('!BHBBHBBHB{}H'.format(sub_length), 2, addr, 1,
                                endpoint, cluster,
                                direction, manufacturer_specific,
