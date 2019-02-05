@@ -302,8 +302,8 @@ class C0012(Cluster):
     cluster_id = 0x0012
     type = 'Multistate input'
     attributes_def = {0x0055: {'name': 'multiclick',
-                               'value': 'value',
-                               'expire': 2, 'type': int}
+                               'value': 'str(value)',
+                               'expire': 2, 'type': str}
                       }
 
     def __init__(self, endpoint=None):
