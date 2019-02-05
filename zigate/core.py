@@ -332,7 +332,7 @@ class ZiGate(object):
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
 
-        if version['version'] >= '3.0f':
+        if version and version['version'] >= '3.0f':
             LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
             self.set_time()
         self.get_devices_list(True)
@@ -736,7 +736,11 @@ class ZiGate(object):
         get zigate firmware version
         '''
         if not self._version or refresh:
-            self._version = self.send_data(0x0010, wait_response=0x8010).data
+            r = self.send_data(0x0010, wait_response=0x8010)
+            if r:
+                self._version = r.data
+            else:
+                LOGGER.warning('Failed to retrieve zigate firmware version')
         return self._version
 
     def get_version_text(self, refresh=False):
