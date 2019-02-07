@@ -339,7 +339,10 @@ class ZiGate(object):
             LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
             self.set_time()
         self.get_devices_list(True)
-        self.need_discovery()
+        t = threading.Thread(target=self.need_discovery)
+        t.setDaemon(True)
+        t.start()
+#         self.need_discovery()
 
     def need_discovery(self):
         '''
