@@ -77,11 +77,11 @@
                     "cluster": 12
                 }
             ],
-            "device": 0,
+            "device": 24323,
             "endpoint": 3,
             "in_clusters": [],
             "out_clusters": [],
-            "profile": 0
+            "profile": 260
         }
     ],
     "generictype": "sensor",
