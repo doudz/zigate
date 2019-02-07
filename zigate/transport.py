@@ -71,6 +71,7 @@ class FakeTransport(BaseTransport):
         self.sent = []
         self.auto_responder = {}
         self.add_auto_response(0x0010, 0x8010, unhexlify(b'000f3ff0'))
+        self.add_auto_response(0x0009, 0x8009, unhexlify(b'00000123456789abcdef12340123456789abcdef0b'))
         # by default add a fake xiaomi temp sensor on address abcd
         self.add_auto_response(0x0015, 0x8015, unhexlify(b'01abcd0123456789abcdef00aa'))
 

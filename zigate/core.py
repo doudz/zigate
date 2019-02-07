@@ -160,6 +160,9 @@ class ZiGate(object):
 
         self._addr = None
         self._ieee = None
+        self.panid = 0
+        self.extended_panid = 0
+        self.channel = 0
         self._started = False
         self._no_response_count = 0
 
@@ -814,9 +817,9 @@ class ZiGate(object):
         '''
         return self.permit_join(0)
 
-    def set_expended_panid(self, panid):
+    def set_extended_panid(self, panid):
         '''
-        Set Expended PANID
+        Set Extended PANID
         '''
         data = struct.pack('!Q', panid)
         return self.send_data(0x0020, data)
@@ -846,6 +849,9 @@ class ZiGate(object):
             data = r.cleaned_data()
             self._addr = data['addr']
             self._ieee = data['ieee']
+            self.panid = data['panid']
+            self.extended_panid = data['extended_panid']
+            self.channel = data['channel']
             return data
 
     def start_network(self, wait=False):

@@ -238,8 +238,8 @@ class R8009(Response):
     type = 'Network state response'
     s = OrderedDict([('addr', 'H'),
                      ('ieee', 'Q'),
-                     ('pan', 'H'),
-                     ('extend_pan', 'Q'),
+                     ('panid', 'H'),
+                     ('extended_panid', 'Q'),
                      ('channel', 'B'),
                      ])
 
