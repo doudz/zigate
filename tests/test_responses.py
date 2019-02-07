@@ -127,12 +127,11 @@ class TestResponses(unittest.TestCase):
     def test_response_8009(self):
         msg_data = unhexlify(b'00000123456789abcdef12340123456789abcdef0b')
         r = responses.R8009(msg_data, 255)
-        print(r.data)
         self.assertDictEqual(r.data,
                              OrderedDict([('addr', '0000'),
                                           ('ieee', '0123456789abcdef'),
-                                          ('pan', 4660),
-                                          ('extend_pan', 81985529216486895),
+                                          ('panid', 4660),
+                                          ('extended_panid', 81985529216486895),
                                           ('channel', 11),
                                           ('rssi', 255)])
                              )
