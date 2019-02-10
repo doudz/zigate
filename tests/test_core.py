@@ -594,6 +594,8 @@ class TestCore(unittest.TestCase):
                                 'name': 'colour_mode', 'value': None}])
 
     def test_reporting_request(self):
+        device = core.Device()
+        self.zigate._devices['1234'] = device
         self.zigate.reporting_request('1234', 3, 0x0300, (0x0000, 0x20))
         self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
                          b'0212340103030000000000010020000000010e10000000'

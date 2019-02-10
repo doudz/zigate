@@ -160,6 +160,9 @@ class ZiGate(object):
 
         self._addr = None
         self._ieee = None
+        self.panid = 0
+        self.extended_panid = 0
+        self.channel = 0
         self._started = False
         self._no_response_count = 0
 
@@ -332,11 +335,14 @@ class ZiGate(object):
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
 
-        if version['version'] >= '3.0f':
+        if version and version['version'] >= '3.0f':
             LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
             self.set_time()
         self.get_devices_list(True)
-        self.need_discovery()
+        t = threading.Thread(target=self.need_discovery)
+        t.setDaemon(True)
+        t.start()
+#         self.need_discovery()
 
     def need_discovery(self):
         '''
@@ -736,7 +742,11 @@ class ZiGate(object):
         get zigate firmware version
         '''
         if not self._version or refresh:
-            self._version = self.send_data(0x0010, wait_response=0x8010).data
+            r = self.send_data(0x0010, wait_response=0x8010)
+            if r:
+                self._version = r.data
+            else:
+                LOGGER.warning('Failed to retrieve zigate firmware version')
         return self._version
 
     def get_version_text(self, refresh=False):
@@ -810,9 +820,9 @@ class ZiGate(object):
         '''
         return self.permit_join(0)
 
-    def set_expended_panid(self, panid):
+    def set_extended_panid(self, panid):
         '''
-        Set Expended PANID
+        Set Extended PANID
         '''
         data = struct.pack('!Q', panid)
         return self.send_data(0x0020, data)
@@ -842,6 +852,9 @@ class ZiGate(object):
             data = r.cleaned_data()
             self._addr = data['addr']
             self._ieee = data['ieee']
+            self.panid = data['panid']
+            self.extended_panid = data['extended_panid']
+            self.channel = data['channel']
             return data
 
     def start_network(self, wait=False):
@@ -1332,11 +1345,12 @@ class ZiGate(object):
             'finish_effect': 0xfe,
             'stop_effect': 0xff
         }
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if effect not in effects.keys():
             effect = 'blink'
         effect_variant = 0  # Current Zigbee standard doesn't provide any variant
-        data = struct.pack('!BHBBBB', 2, addr, 1, endpoint, effects[effect], effect_variant)
+        data = struct.pack('!BHBBBB', addr_mode, addr, 1, endpoint, effects[effect], effect_variant)
         return self.send_data(0x00E0, data)
 
     def read_attribute_request(self, addr, endpoint, cluster, attribute,
@@ -1345,6 +1359,7 @@ class ZiGate(object):
         Read Attribute request
         attribute can be a unique int or a list of int
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if not isinstance(attribute, list):
             attribute = [attribute]
@@ -1352,10 +1367,11 @@ class ZiGate(object):
         manufacturer_specific = manufacturer_code != 0
         for i in range(0, length, 10):
             sub_attribute = attribute[i: i + 10]
-            data = struct.pack('!BHBBHBBHB{}H'.format(length), 2, addr, 1,
+            sub_length = len(sub_attribute)
+            data = struct.pack('!BHBBHBBHB{}H'.format(sub_length), addr_mode, addr, 1,
                                endpoint, cluster,
                                direction, manufacturer_specific,
-                               manufacturer_code, length, *sub_attribute)
+                               manufacturer_code, sub_length, *sub_attribute)
             self.send_data(0x0100, data)
 
     def write_attribute_request(self, addr, endpoint, cluster, attributes,
@@ -1365,6 +1381,7 @@ class ZiGate(object):
         attribute could be a tuple of (attribute_id, attribute_type, data)
         or a list of tuple (attribute_id, attribute_type, data)
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         fmt = ''
         if not isinstance(attributes, list):
@@ -1376,7 +1393,7 @@ class ZiGate(object):
             attributes_data += attribute_tuple
         length = len(attributes)
         manufacturer_specific = manufacturer_code != 0
-        data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1,
+        data = struct.pack('!BHBBHBBHB{}'.format(fmt), addr_mode, addr, 1,
                            endpoint, cluster,
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
@@ -1389,6 +1406,7 @@ class ZiGate(object):
         attribute could be a tuple of (attribute_id, attribute_type)
         or a list of tuple (attribute_id, attribute_type)
         '''
+        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if not isinstance(attributes, list):
             attributes = [attributes]
@@ -1410,7 +1428,7 @@ class ZiGate(object):
                                 change
                                 ]
         manufacturer_specific = manufacturer_code != 0
-        data = struct.pack('!BHBBHBBHB{}'.format(fmt), 2, addr, 1, endpoint, cluster,
+        data = struct.pack('!BHBBHBBHB{}'.format(fmt), addr_mode, addr, 1, endpoint, cluster,
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
         r = self.send_data(0x0120, data, 0x8120)
@@ -1934,14 +1952,19 @@ class FakeZiGate(ZiGate):
     Fake ZiGate for test only without real hardware
     '''
     def __init__(self, port='auto', path='~/.zigate.json',
-                 auto_start=True, auto_save=True, channel=None, adminpanel=False):
+                 auto_start=False, auto_save=False, channel=None, adminpanel=False):
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start, auto_save=auto_save,
                         channel=channel, adminpanel=adminpanel)
+        self._addr = '0000'
+        self._ieee = '0123456789abcdef'
         # by default add a fake xiaomi temp sensor on address abcd
         device = Device({'addr': 'abcd', 'ieee': '0123456789abcdef'}, self)
         device.set_attribute(1, 0, {'attribute': 5, 'rssi': 170, 'data': 'lumi.weather'})
         device.load_template()
         self._devices['abcd'] = device
+
+    def autoStart(self, channel=None):
+        ZiGate.autoStart(self, channel=channel)
         self.connection.start_fake_response()
 
     def setup_connection(self):
@@ -2086,6 +2109,8 @@ class Device(object):
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0001, (0x0020, 0x20))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0001, (0x0021, 0x20))
             if 0x0006 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0006')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
