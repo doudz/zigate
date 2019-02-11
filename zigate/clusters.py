@@ -171,10 +171,10 @@ class C0000(Cluster):
                       0x0007: {'name': 'power_source', 'value': 'value'},
                       0x0010: {'name': 'description',
                                'value': 'clean_str(value)'},
-                      0xff01: {'name': 'battery',
+                      0xff01: {'name': 'battery_voltage',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
                                'unit': 'V'},
-                      0xff02: {'name': 'battery',
+                      0xff02: {'name': 'battery_voltage',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
                                'unit': 'V'},
                       }
@@ -190,8 +190,8 @@ class C0001(Cluster):
     cluster_id = 0x0001
     type = 'General: Power Config'
     attributes_def = {0x0000: {'name': 'voltage', 'value': 'value'},
-                      0x0020: {'name': 'battery_voltage', 'value': 'value'},
-                      0x0021: {'name': 'battery_percent', 'value': 'value'},
+                      0x0020: {'name': 'battery_voltage', 'value': 'value/10.', 'type': float},
+                      0x0021: {'name': 'battery_percent', 'value': 'value', 'type': int},
                       0x0030: {'name': 'battery_manufacturer', 'value': 'value'},
                       0x0031: {'name': 'battery_size', 'value': 'value'},
                       0x0033: {'name': 'battery_quantity', 'value': 'value'},
