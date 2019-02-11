@@ -171,10 +171,10 @@ class C0000(Cluster):
                       0x0007: {'name': 'power_source', 'value': 'value'},
                       0x0010: {'name': 'description',
                                'value': 'clean_str(value)'},
-                      0xff01: {'name': 'battery',
+                      0xff01: {'name': 'battery_voltage',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
                                'unit': 'V'},
-                      0xff02: {'name': 'battery',
+                      0xff02: {'name': 'battery_voltage',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
                                'unit': 'V'},
                       }
