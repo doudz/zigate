@@ -1043,11 +1043,13 @@ class ZiGate(object):
         return r
 
     def build_neighbours_table(self, addr='0000'):
+        '''
+        Build neighbours table
+        '''
         index = 0
         neighbours = []
         entries = 255
         while len(neighbours) < entries:
-            index += len(neighbours)
             r = self.lqi_request(addr, index, True)
             if not r:
                 LOGGER.error('Failed to build neighbours table')
@@ -1056,6 +1058,7 @@ class ZiGate(object):
             entries = data['entries']
             for n in data['neighbours']:
                 neighbours.append(n)
+            index += len(data['count'])
         return neighbours
 
     def refresh_device(self, addr):
