@@ -1030,13 +1030,33 @@ class ZiGate(object):
         data = struct.pack('!HQBB', addr, ieee, rejoin, remove_children)
         return self.send_data(0x0047, data)
 
-    def lqi_request(self, addr='0000', index=0):
+    def lqi_request(self, addr='0000', index=0, wait=False):
         '''
         Management LQI request
         '''
         addr = self.__addr(addr)
         data = struct.pack('!HB', addr, index)
-        return self.send_data(0x004e, data)
+        wait_response = None
+        if wait:
+            wait_response = 0x804e
+        r = self.send_data(0x004e, data, wait_response=wait_response)
+        return r
+
+    def build_neighbours_table(self, addr='0000'):
+        index = 0
+        neighbours = []
+        entries = 255
+        while len(neighbours) < entries:
+            index += len(neighbours)
+            r = self.lqi_request(addr, index, True)
+            if not r:
+                LOGGER.error('Failed to build neighbours table')
+                return
+            data = r.cleaned_data()
+            entries = data['entries']
+            for n in data['neighbours']:
+                neighbours.append(n)
+        return neighbours
 
     def refresh_device(self, addr):
         '''

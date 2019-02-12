@@ -136,6 +136,24 @@ class TestResponses(unittest.TestCase):
                                           ('rssi', 255)])
                              )
 
+    def test_response_804E(self):
+        msg_data = unhexlify(b'e6000e02001d4ddb95a5201556ccd800158d0001e56372'
+                             b'01b01a1e02db95a5201556ccd800158d0001e45b44016f1a')
+        r = responses.R804E(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('neighbour', [OrderedDict([('addr', '1d4d'),
+                                                                      ('extended_panid', 15822734423051652312),
+                                                                      ('ieee', '00158d0001e56372'), ('depth', 1),
+                                                                      ('rssi', 176), ('bit_field', '00011010')]),
+                                                         OrderedDict([('addr', '1e02'),
+                                                                      ('extended_panid', 15822734423051652312),
+                                                                      ('ieee', '00158d0001e45b44'), ('depth', 1),
+                                                                      ('rssi', 111), ('bit_field', '00011010')])]),
+                                          ('sequence', 230), ('status', 0), ('entries', 14),
+                                          ('count', 2), ('index', 0),
+                                          ('rssi', 255)])
+                             )
+
 
 if __name__ == '__main__':
     unittest.main()

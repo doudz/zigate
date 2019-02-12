@@ -552,12 +552,15 @@ class R804E(Response):
                      ('entries', 'B'),
                      ('count', 'B'),
                      ('index', 'B'),
-                     ('neighbour', OrderedDict([('addr', 'H'),
-                                                ('extend_pan', 'Q'),
+                     ('neighbours', OrderedDict([('addr', 'H'),
+                                                ('extended_panid', 'Q'),
                                                 ('ieee', 'Q'),
                                                 ('depth', 'B'),
                                                 ('rssi', 'B'),
                                                 ('bit_field', 'B')]))])
+    format = {'addr': '{:04x}',
+              'ieee': '{:016x}',
+              'bit_field': '{:08b}'}
 # Bit map of attributes Described below: uint8_t
 # {bit 0-1 Device Type
 # (0-Coordinator 1-Router 2-End Device)
