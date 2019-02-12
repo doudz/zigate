@@ -158,7 +158,7 @@ class ZiGate(object):
         self._closing = False
         self.connection = None
 
-        self._addr = None
+        self._addr = '0000'
         self._ieee = None
         self.panid = 0
         self.extended_panid = 0
@@ -327,11 +327,11 @@ class ZiGate(object):
         self.set_channel(channel)
         self.set_type(TYPE_COORDINATOR)
         LOGGER.debug('Check network state')
-        self.start_network()
+        # self.start_network()
         network_state = self.get_network_state()
         if not network_state:
             LOGGER.error('Failed to get network state')
-        if not network_state or network_state.get('extend_pan') == 0:
+        if not network_state or network_state.get('extended_panid') == 0:
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
 
@@ -862,7 +862,13 @@ class ZiGate(object):
         wait_response = None
         if wait:
             wait_response = 0x8024
-        return self.send_data(0x0024, wait_response=wait_response)
+        r = self.send_data(0x0024, wait_response=wait_response)
+        if wait and r:
+            data = r.cleaned_data()
+            self._addr = data['addr']
+            self._ieee = data['ieee']
+            self.channel = data['channel']
+        return r
 
     def start_network_scan(self):
         ''' start network scan '''
@@ -2099,7 +2105,7 @@ class Device(object):
         if enpoint_id:
             endpoints_list = [(enpoint_id, self.endpoints[enpoint_id])]
         else:
-            endpoints_list = self.endpoints.items()
+            endpoints_list = list(self.endpoints.items())
         LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
         for endpoint_id, endpoint in endpoints_list:
             # if endpoint['device'] in ACTUATORS:  # light
