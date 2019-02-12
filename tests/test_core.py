@@ -678,6 +678,13 @@ class TestCore(unittest.TestCase):
         self.assertEqual(device.get_property_value('remote_scene_button'),
                          'left_click')
 
+    def test_handle_response_8024(self):
+        self.zigate.connection.add_auto_response(0x0024, 0x8024, unhexlify(b'001234fedcba98765432100b'))
+        self.zigate.start_network(True)
+        self.assertEqual(self.zigate.addr, '1234')
+        self.assertEqual(self.zigate.ieee, 'fedcba9876543210')
+        self.assertEqual(self.zigate.channel, 11)
+
 
 if __name__ == '__main__':
     unittest.main()

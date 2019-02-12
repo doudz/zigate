@@ -158,7 +158,7 @@ class ZiGate(object):
         self._closing = False
         self.connection = None
 
-        self._addr = None
+        self._addr = '0000'
         self._ieee = None
         self.panid = 0
         self.extended_panid = 0
@@ -862,7 +862,13 @@ class ZiGate(object):
         wait_response = None
         if wait:
             wait_response = 0x8024
-        return self.send_data(0x0024, wait_response=wait_response)
+        r = self.send_data(0x0024, wait_response=wait_response)
+        if wait and r:
+            data = r.cleaned_data()
+            self._addr = data['addr']
+            self._ieee = data['ieee']
+            self.channel = data['channel']
+        return r
 
     def start_network_scan(self):
         ''' start network scan '''
