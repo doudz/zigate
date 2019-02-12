@@ -1066,7 +1066,7 @@ class ZiGate(object):
                     n2 = self.build_neighbours_table(n['addr'])
                     if n2:
                         neighbours += n2
-            index += len(data['count'])
+            index += data['count']
         return neighbours
 
     def refresh_device(self, addr):
