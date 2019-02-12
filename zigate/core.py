@@ -1057,7 +1057,7 @@ class ZiGate(object):
             data = r.cleaned_data()
             entries = data['entries']
             for n in data['neighbours']:
-                is_parent = n['bit_field'][2:4] = '00'
+                is_parent = n['bit_field'][2:4] == '00'
                 if is_parent:
                     continue
                 neighbours.append((addr, n['addr'], n['rssi']))
