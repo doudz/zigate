@@ -2099,7 +2099,7 @@ class Device(object):
         if enpoint_id:
             endpoints_list = [(enpoint_id, self.endpoints[enpoint_id])]
         else:
-            endpoints_list = self.endpoints.items()
+            endpoints_list = list(self.endpoints.items())
         LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
         for endpoint_id, endpoint in endpoints_list:
             # if endpoint['device'] in ACTUATORS:  # light
