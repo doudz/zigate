@@ -141,11 +141,11 @@ class TestResponses(unittest.TestCase):
                              b'01b01a1e02db95a5201556ccd800158d0001e45b44016f1a')
         r = responses.R804E(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([('neighbour', [OrderedDict([('addr', '1d4d'),
+                             OrderedDict([('neighbours', [OrderedDict([('addr', '1d4d'),
                                                                       ('extended_panid', 15822734423051652312),
                                                                       ('ieee', '00158d0001e56372'), ('depth', 1),
                                                                       ('rssi', 176), ('bit_field', '00011010')]),
-                                                         OrderedDict([('addr', '1e02'),
+                                                          OrderedDict([('addr', '1e02'),
                                                                       ('extended_panid', 15822734423051652312),
                                                                       ('ieee', '00158d0001e45b44'), ('depth', 1),
                                                                       ('rssi', 111), ('bit_field', '00011010')])]),
