@@ -7,7 +7,7 @@ import unittest
 import os
 import shutil
 import tempfile
-from zigate import ZiGate, responses, transport, core
+from zigate import responses, transport, core
 from binascii import hexlify, unhexlify
 import time
 
@@ -15,10 +15,12 @@ import time
 class TestCore(unittest.TestCase):
     def setUp(self):
         core.WAIT_TIMEOUT = 2 * core.SLEEP_INTERVAL  # reduce timeout during test
-        self.zigate = ZiGate(auto_start=False)
-        self.zigate._addr = '0000'
-        self.zigate._ieee = '0123456789abcdef'
-        self.zigate.connection = transport.FakeTransport()
+#         self.zigate = ZiGate(auto_start=False)
+#         self.zigate._addr = '0000'
+#         self.zigate._ieee = '0123456789abcdef'
+#         self.zigate.connection = transport.FakeTransport()
+        self.zigate = core.FakeZiGate(auto_start=False)
+        self.zigate.setup_connection()
         self.test_dir = tempfile.mkdtemp()
 
     def tearDown(self):
@@ -679,8 +681,16 @@ class TestCore(unittest.TestCase):
                          'left_click')
 
     def test_handle_response_8024(self):
-        self.zigate.connection.add_auto_response(0x0024, 0x8024, unhexlify(b'001234fedcba98765432100b'))
-        self.zigate.start_network(True)
+        self.zigate._path = None
+
+        def setup_connection():
+            self.zigate.connection = transport.FakeTransport()
+            self.zigate.connection.add_auto_response(0x0009, 0x8009,
+                                                     unhexlify(b'00000123456789abcdef123400000000000000000b'))
+            self.zigate.connection.add_auto_response(0x0024, 0x8024,
+                                                     unhexlify(b'001234fedcba98765432100b'))
+        self.zigate.setup_connection = setup_connection
+        self.zigate.autoStart()
         self.assertEqual(self.zigate.addr, '1234')
         self.assertEqual(self.zigate.ieee, 'fedcba9876543210')
         self.assertEqual(self.zigate.channel, 11)

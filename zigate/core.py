@@ -327,11 +327,11 @@ class ZiGate(object):
         self.set_channel(channel)
         self.set_type(TYPE_COORDINATOR)
         LOGGER.debug('Check network state')
-        self.start_network()
+        # self.start_network()
         network_state = self.get_network_state()
         if not network_state:
             LOGGER.error('Failed to get network state')
-        if not network_state or network_state.get('extend_pan') == 0:
+        if not network_state or network_state.get('extended_panid') == 0:
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
 
