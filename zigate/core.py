@@ -1049,7 +1049,7 @@ class ZiGate(object):
         index = 0
         neighbours = []
         entries = 255
-        while len(neighbours) < entries:
+        while index < entries:
             r = self.lqi_request(addr, index, True)
             if not r:
                 LOGGER.error('Failed to build neighbours table')
