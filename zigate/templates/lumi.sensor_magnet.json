@@ -1,0 +1,48 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 5,
+                            "data": "lumi.sensor_magnet"
+                        }
+                    ],
+                    "cluster": 0
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 260,
+            "endpoint": 1,
+            "in_clusters": [
+                0,
+                3,
+                65535,
+                25
+            ],
+            "out_clusters": [
+                0,
+                4,
+                3,
+                6,
+                8,
+                5,
+                25
+            ],
+            "profile": 260
+        }
+    ],
+    "generictype": "",
+    "info": {
+        "mac_capability": "10000000",
+        "power_type": 0
+    }
+}
