@@ -702,10 +702,11 @@ class TestCore(unittest.TestCase):
         self.assertEqual(table, [('0000', 'abcd', 182)])
 
     def test_build_network_map(self):
+        filename = os.path.join(self.test_dir, 'test.png')
         self.zigate.connection.add_auto_response(0x004e, 0x804e,
                                                  unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b626'))
-        self.zigate.build_network_map(os.path.join(self.test_dir, 'test.png'))
-        self.assertTrue(os.path.exists(os.path.join(self.test_dir, 'test.png')))
+        self.zigate.build_network_map(filename)
+        self.assertTrue(os.path.exists(filename))
 
 
 if __name__ == '__main__':
