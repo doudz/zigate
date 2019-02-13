@@ -1,0 +1,80 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 4,
+                            "data": "LUMI"
+                        },
+                        {
+                            "attribute": 5,
+                            "data": "lumi.weather"
+                        },
+                        {
+                            "attribute": 7,
+                            "data": 3
+                        }
+                    ],
+                    "cluster": 0
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 1026
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        },
+                        {
+                            "attribute": 16
+                        },
+                        {
+                            "attribute": 20
+                        }
+                    ],
+                    "cluster": 1027
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 1029
+                }
+            ],
+            "device": 24321,
+            "endpoint": 1,
+            "in_clusters": [
+                0,
+                3,
+                65535,
+                1026,
+                1027,
+                1029
+            ],
+            "out_clusters": [
+                0,
+                4,
+                65535
+            ],
+            "profile": 260
+        }
+    ],
+    "generictype": "sensor",
+    "info": {
+        "bit_field": "0100000000000010",
+        "descriptor_capability": "00000000",
+        "mac_capability": "10000000",
+        "manufacturer_code": "1037",
+        "power_type": 0,
+        "server_mask": 0
+    }
+}

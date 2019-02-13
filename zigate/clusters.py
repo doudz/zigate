@@ -53,9 +53,9 @@ def register_cluster(o):
     return o
 
 
-def get_cluster(cluster_id):
+def get_cluster(cluster_id, endpoint=None):
     cls_cluster = CLUSTERS.get(cluster_id, Cluster)
-    cluster = cls_cluster()
+    cluster = cls_cluster(endpoint)
     if type(cluster) == Cluster:
         cluster.cluster_id = cluster_id
     return cluster
@@ -72,8 +72,9 @@ class Cluster(object):
     type = 'Unknown cluster'
     attributes_def = {}
 
-    def __init__(self):
+    def __init__(self, endpoint=None):
         self.attributes = {}
+        self._endpoint = endpoint
 
     def update(self, data):
         attribute_id = data['attribute']
@@ -85,18 +86,34 @@ class Cluster(object):
         attribute.update(data)
         attr_def = self.attributes_def.get(attribute_id)
         if attr_def:
+            # remove unwanted key from old conf
+            for k in list(attribute.keys()):
+                if k in ('attribute', 'data', 'inverse'):
+                    continue
+                if k not in attr_def:
+                    del attribute[k]
             attribute.update(attr_def)
-            try:
-                attribute['value'] = eval(attribute['value'],
-                                          globals(),
-                                          {'value': attribute['data'],
-                                           'self': self})
-            except Exception:
-                LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
-                                                                     attribute['data']
-                                                                     ))
-                LOGGER.error(traceback.format_exc())
+            attribute_type = attribute.get('type')
+            if attribute.get('data') is None:
                 attribute['value'] = None
+                if attribute_type:
+                    attribute['value'] = attribute_type()
+            else:
+                try:
+                    attribute['value'] = eval(attribute['value'],
+                                              globals(),
+                                              {'value': attribute['data'],
+                                               'self': self})
+                    if attribute.get('inverse', False) and isinstance(attribute['value'], bool):
+                        attribute['value'] = not attribute['value']
+                except Exception:
+                    LOGGER.error('Failed to eval "{}" using "{}"'.format(attribute['value'],
+                                                                         attribute['data']
+                                                                         ))
+                    LOGGER.error(traceback.format_exc())
+                    attribute['value'] = None
+                    if attribute_type:
+                        attribute['value'] = attribute_type()
         return (added, attribute)
 
     def __str__(self):
@@ -111,10 +128,10 @@ class Cluster(object):
                 }
 
     @staticmethod
-    def from_json(data):
+    def from_json(data, endpoint=None):
         cluster_id = data['cluster']
         cluster = CLUSTERS.get(cluster_id, Cluster)
-        cluster = cluster()
+        cluster = cluster(endpoint)
         if type(cluster) == Cluster:
             cluster.cluster_id = cluster_id
         for attribute in data['attributes']:
@@ -149,18 +166,21 @@ class C0000(Cluster):
                       0x0003: {'name': 'hardware_version', 'value': 'value'},
                       0x0004: {'name': 'manufacturer',
                                'value': 'clean_str(value)'},
-                      0x0005: {'name': 'type', 'value': 'clean_str(value)'},
+                      0x0005: {'name': 'type', 'value': 'clean_str(value)', 'type': str},
                       0x0006: {'name': 'datecode', 'value': 'value'},
                       0x0007: {'name': 'power_source', 'value': 'value'},
                       0x0010: {'name': 'description',
                                'value': 'clean_str(value)'},
-                      0xff01: {'name': 'battery',
+                      0xff01: {'name': 'battery_voltage',
+                               'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
+                               'unit': 'V'},
+                      0xff02: {'name': 'battery_voltage',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
                                'unit': 'V'},
                       }
 
     def update(self, data):
-        if data['attribute'] == 0xff01 and not data['data'].startswith('0121'):
+        if data['attribute'] in (0xff01, 0xff02) and not data.get('data', '').startswith('0121'):
             return
         return Cluster.update(self, data)
 
@@ -170,8 +190,8 @@ class C0001(Cluster):
     cluster_id = 0x0001
     type = 'General: Power Config'
     attributes_def = {0x0000: {'name': 'voltage', 'value': 'value'},
-                      0x0020: {'name': 'battery_voltage', 'value': 'value'},
-                      0x0021: {'name': 'battery_percent', 'value': 'value'},
+                      0x0020: {'name': 'battery_voltage', 'value': 'value/10.', 'type': float},
+                      0x0021: {'name': 'battery_percent', 'value': 'value', 'type': int},
                       0x0030: {'name': 'battery_manufacturer', 'value': 'value'},
                       0x0031: {'name': 'battery_size', 'value': 'value'},
                       0x0033: {'name': 'battery_quantity', 'value': 'value'},
@@ -188,12 +208,23 @@ class C0001(Cluster):
 
 
 @register_cluster
+class C0005(Cluster):
+    cluster_id = 0x0005
+    type = 'General: Scenes'
+    attributes_def = {0xfff0: {'name': 'remote_scene_button', 'value': 'value',
+                               'type': str, 'expire': 2}
+                      }
+
+
+@register_cluster
 class C0006(Cluster):
     cluster_id = 0x0006
     type = 'General: On/Off'
-    attributes_def = {0x0000: {'name': 'onoff', 'value': 'value'},
-                      0x8000: {'name': 'multiclick', 'value': 'value',
+    attributes_def = {0x0000: {'name': 'onoff', 'value': 'value', 'type': bool},
+                      0x8000: {'name': 'multiclick', 'value': 'value', 'type': int,
                                'expire': 2},
+                      0xfff0: {'name': 'remote_onoff_button', 'value': 'value',
+                               'type': str, 'expire': 2}
                       }
 
 
@@ -201,7 +232,9 @@ class C0006(Cluster):
 class C0008(Cluster):
     cluster_id = 0x0008
     type = 'General: Level control'
-    attributes_def = {0x0000: {'name': 'current_level', 'value': 'int(value*100/254)'},
+    attributes_def = {0x0000: {'name': 'current_level', 'value': 'int(value*100/254)', 'type': int},
+                      0xfff0: {'name': 'remote_level_button', 'value': 'value',
+                               'type': str, 'expire': 2}
                       }
 
 
@@ -209,10 +242,10 @@ class C0008(Cluster):
 class C000c(Cluster):
     cluster_id = 0x000c
     type = 'Analog input (Xiaomi cube: Rotation)'
-    attributes_def = {0x0055: {'name': 'rotation_angle?', 'value': 'value',
-                               'expire': 2},
-                      0xff05: {'name': 'rotation', 'value': 'value',
-                               'expire': 2},
+    attributes_def = {0x0055: {'name': 'rotation', 'value': 'round(value, 2)',
+                               'unit': '°', 'expire': 2, 'type': float},
+                      0xff05: {'name': 'rotation_time', 'value': 'value',
+                               'unit': 'ms', 'expire': 2, 'type': int},
                       }
 
 
@@ -267,9 +300,34 @@ def cube_decode(value):
 @register_cluster
 class C0012(Cluster):
     cluster_id = 0x0012
-    type = 'Multistate input (Xiaomi cube: Movement)'
-    attributes_def = {0x0055: {'name': 'movement', 'value': 'cube_decode(value)',
-                               'expire': 2, 'expire_value': ''},
+    type = 'Multistate input'
+    attributes_def = {0x0055: {'name': 'multiclick',
+                               'value': 'str(value)',
+                               'expire': 2, 'type': str}
+                      }
+
+    def __init__(self, endpoint=None):
+        Cluster.__init__(self, endpoint=endpoint)
+        if self._endpoint['device'] == 0x5f02:  # xiaomi cube
+            self.attributes_def = {0x0055: {'name': 'movement',
+                                            'value': 'cube_decode(value)',
+                                            'expire': 2, 'expire_value': '',
+                                            'type': str}
+                                   }
+
+
+class C000f(Cluster):
+    cluster_id = 0x000f
+    type = 'Binary Input (Basic)'
+    attributes_def = {0x0004: {'name': 'active_text', 'value': 'value'},
+                      0x001c: {'name': 'description', 'value': 'value'},
+                      0x002e: {'name': 'inactive_text', 'value': 'value'},
+                      0x0051: {'name': 'out_of_service', 'value': 'value', 'type': bool},
+                      0x0054: {'name': 'polarity', 'value': 'value'},
+                      0x0055: {'name': 'present_value', 'type': bool},
+                      0x0067: {'name': 'reliability', 'value': 'value'},
+                      0x006f: {'name': 'status_flags', 'value': 'value'},
+                      0x0100: {'name': 'application_type', 'value': 'value'},
                       }
 
 
@@ -279,7 +337,7 @@ def vibration_decode(value):
     '''
     if value == '' or value is None:
         return value
-    events = {0x0001: 'take',
+    events = {0x0001: 'touched',
               0x0002: 'tilt',
               0x0003: 'drop',
               }
@@ -296,11 +354,38 @@ class C0101(Cluster):
                       0x0001: {'name': 'locktype', 'value': 'value'},
                       0x0002: {'name': 'enabled', 'value': 'bool(value)'},
                       0x0055: {'name': 'movement', 'value': 'vibration_decode(value)',
-                               'expire': 2, 'expire_value': ''},
-                      0x0503: {'name': 'rotation', 'value': 'value',
-                               'expire': 2, 'expire_value': ''},
-                      0x0505: {'name': 'unknown', 'value': 'value',
-                               'expire': 2, 'expire_value': ''}
+                               'expire': 2, 'expire_value': '', 'type': str},
+                      0x0503: {'name': 'rotation', 'value': 'round(value, 2)',
+                               'unit': '°', 'expire': 2, 'type': float},
+                      }
+
+
+@register_cluster
+class C0102(Cluster):
+    cluster_id = 0x0102
+    type = 'Window covering'
+    attributes_def = {0x0000: {'name': 'window_covering_type', 'value': 'value'},
+                      0x0001: {'name': 'physical_close_limit_lift_cm', 'value': 'value'},
+                      0x0002: {'name': 'physical_close_limit_tilt_ddegree', 'value': 'value'},
+                      0x0003: {'name': 'current_position_lift_cm', 'value': 'value'},
+                      0x0004: {'name': 'current_position_tilt_ddegree', 'value': 'value'},
+                      0x0005: {'name': 'num_of_actuation_lift', 'value': 'value'},
+                      0x0007: {'name': 'config_status', 'value': 'value'},
+                      0x0008: {'name': 'current_position_lift_percentage', 'value': 'value'},
+                      0x0009: {'name': 'current_position_tilt_percentage', 'value': 'value'},
+                      }
+
+
+@register_cluster
+class C0201(Cluster):
+    cluster_id = 0x0201
+    type = 'Thermostat'
+    attributes_def = {0x0000: {'name': 'local_temperature', 'value': 'value/100.',
+                               'unit': '°C', 'type': float},
+                      0x0008: {'name': 'heating_demand', 'value': 'value'},
+                      0x0012: {'name': 'heating_setpoint', 'value': 'value/100.',
+                               'unit': '°C', 'type': float},
+                      0x001C: {'name': 'system_mode', 'value': 'value'},
                       }
 
 
@@ -308,14 +393,14 @@ class C0101(Cluster):
 class C0300(Cluster):
     cluster_id = 0x0300
     type = 'Lighting: Color Control'
-    attributes_def = {0x0000: {'name': 'current_hue', 'value': 'int(value*360/254)'},
-                      0x0001: {'name': 'current_saturation', 'value': 'int(value*100/254)'},
+    attributes_def = {0x0000: {'name': 'current_hue', 'value': 'int(value*360/254)', 'type': int},
+                      0x0001: {'name': 'current_saturation', 'value': 'int(value*100/254)', 'type': int},
                       0x0002: {'name': 'remaining_time', 'value': 'value'},
-                      0x0003: {'name': 'current_x', 'value': 'value/65536'},
-                      0x0004: {'name': 'current_y', 'value': 'value/65536'},
+                      0x0003: {'name': 'current_x', 'value': 'value/65536', 'type': int},
+                      0x0004: {'name': 'current_y', 'value': 'value/65536', 'type': int},
                       0x0005: {'name': 'drift', 'value': 'value'},
                       0x0006: {'name': 'compensation', 'value': 'value'},
-                      0x0007: {'name': 'colour_temperature', 'value': '1000000//value'},
+                      0x0007: {'name': 'colour_temperature', 'value': 'value', 'type': int},
                       0x0008: {'name': 'colour_mode', 'value': 'value'},
                       0x0010: {'name': 'nb_primaries', 'value': 'value'},
                       0x0011: {'name': 'primary_1_x', 'value': 'value'},
@@ -351,7 +436,7 @@ class C0402(Cluster):
     cluster_id = 0x0402
     type = 'Measurement: Temperature'
     attributes_def = {0x0000: {'name': 'temperature', 'value': 'value/100.',
-                               'unit': '°C'},
+                               'unit': '°C', 'type': float},
                       }
 
 
@@ -360,9 +445,9 @@ class C0403(Cluster):
     cluster_id = 0x0403
     type = 'Measurement: Atmospheric Pressure'
     attributes_def = {0x0000: {'name': 'pressure', 'value': 'value',
-                               'unit': 'mb'},
+                               'unit': 'mb', 'type': int},
                       0x0010: {'name': 'pressure2', 'value': 'value/10.',
-                               'unit': 'mb'},
+                               'unit': 'mb', 'type': float},
                       }
 
 
@@ -371,7 +456,7 @@ class C0405(Cluster):
     cluster_id = 0x0405
     type = 'Measurement: Humidity'
     attributes_def = {0x0000: {'name': 'humidity', 'value': 'value/100.',
-                               'unit': '%'},
+                               'unit': '%', 'type': float},
                       }
 
 
@@ -380,7 +465,7 @@ class C0406(Cluster):
     cluster_id = 0x0406
     type = 'Measurement: Occupancy Sensing'
     attributes_def = {0x0000: {'name': 'presence', 'value': 'bool(value)',
-                               'expire': 10},
+                               'expire': 10, 'type': bool},
                       }
 
 
@@ -391,6 +476,9 @@ class C0500(Cluster):
     attributes_def = {255: {'name': 'zone_status', 'value': 'self._decode(value[::-1])'}}
 
     def update(self, data):
+        if 'zone_id' not in data:  # loaded from persistent
+            data['zone_id'] = data['attribute']
+            data['zone_status'] = data.get('data', '0000000000')
         zone_id = data['zone_id']
         data['attribute'] = zone_id
         data['data'] = data['zone_status']

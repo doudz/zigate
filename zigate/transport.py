@@ -15,7 +15,10 @@ import socket
 import select
 from pydispatch import dispatcher
 import sys
-from .const import ZIGATE_PACKET_RECEIVED, ZIGATE_FAILED_TO_CONNECT
+from .const import ZIGATE_FAILED_TO_CONNECT
+import struct
+from binascii import unhexlify
+
 
 LOGGER = logging.getLogger('zigate')
 
@@ -28,16 +31,154 @@ class ZIGATE_CANNOT_CONNECT(Exception):
     pass
 
 
-class ThreadSerialConnection(object):
-    def __init__(self, device, port=None):
+class BaseTransport(object):
+    def __init__(self):
         self._buffer = b''
+        self.queue = queue.Queue()
+        self.received = queue.Queue()
+
+    def read_data(self, data):
+        '''
+        Read ZiGate output and split messages
+        '''
+        LOGGER.debug('Raw packet received, {}'.format(data))
+        self._buffer += data
+#         print(self._buffer)
+        endpos = self._buffer.find(b'\x03')
+        while endpos != -1:
+            startpos = self._buffer.rfind(b'\x01', 0, endpos)
+            if startpos != -1 and startpos < endpos:
+                raw_message = self._buffer[startpos:endpos + 1]
+                self.received.put(raw_message)
+            else:
+                LOGGER.error('Malformed packet received, ignore it')
+            self._buffer = self._buffer[endpos + 1:]
+            endpos = self._buffer.find(b'\x03')
+
+    def send(self, data):
+        self.queue.put(data)
+
+    def is_connected(self):
+        pass
+
+
+class FakeTransport(BaseTransport):
+    '''
+    Fake transport for test
+    '''
+    def __init__(self):
+        BaseTransport.__init__(self)
+        self.sent = []
+        self.auto_responder = {}
+        self.add_auto_response(0x0010, 0x8010, unhexlify(b'000f3ff0'))
+        self.add_auto_response(0x0009, 0x8009, unhexlify(b'00000123456789abcdef12340123456789abcdef0b'))
+        # by default add a fake xiaomi temp sensor on address abcd
+        self.add_auto_response(0x0015, 0x8015, unhexlify(b'01abcd0123456789abcdef00aa'))
+
+    def start_fake_response(self):
+        def periodic_response():
+            import random
+            while True:
+                time.sleep(5)
+                temp = int(round(random.random() * 40.0, 2) * 100)
+                msg = struct.pack('!BHBHHBBHI', 1, int('abcd', 16), 1, 0x0402, 0, 0, 0x22, 4, temp)
+                enc_msg = self.create_fake_response(0x8102, msg, random.randint(0, 255))
+                self.received.put(enc_msg)
+        t = threading.Thread(target=periodic_response)
+        t.setDaemon(True)
+        t.start()
+
+    def is_connected(self):
+        return True
+
+    def send(self, data):
+        self.sent.append(data)
+        # retrieve cmd
+        data = self.zigate_decode(data[1:-1])
+        cmd = struct.unpack('!H', data[0:2])[0]
+        # reply 0x8000 ok for cmd
+        rssi = 255
+        value = struct.pack('!BBHB', 0, 1, cmd, rssi)
+        length = len(value)
+        checksum = self.checksum(struct.pack('!H', 0x8000),
+                                 struct.pack('!B', length),
+                                 value)
+        raw_message = struct.pack('!HHB{}s'.format(len(value)), 0x8000, length, checksum, value)
+        enc_msg = self.zigate_encode(raw_message)
+        enc_msg.insert(0, 0x01)
+        enc_msg.append(0x03)
+        enc_msg = bytes(enc_msg)
+        self.received.put(enc_msg)
+
+        if cmd in self.auto_responder:
+            self.received.put(self.auto_responder[cmd])
+
+    def add_auto_response(self, cmd, resp, value, rssi=255):
+        enc_msg = self.create_fake_response(resp, value, rssi)
+        self.auto_responder[cmd] = enc_msg
+
+    def create_fake_response(self, resp, value, rssi=255):
+        value += struct.pack('!B', rssi)
+        length = len(value)
+        checksum = self.checksum(struct.pack('!H', resp),
+                                 struct.pack('!B', length),
+                                 value)
+        raw_message = struct.pack('!HHB{}s'.format(len(value)), resp, length, checksum, value)
+        enc_msg = self.zigate_encode(raw_message)
+        enc_msg.insert(0, 0x01)
+        enc_msg.append(0x03)
+        enc_msg = bytes(enc_msg)
+        return enc_msg
+
+    def checksum(self, *args):
+        chcksum = 0
+        for arg in args:
+            if isinstance(arg, int):
+                chcksum ^= arg
+                continue
+            for x in arg:
+                chcksum ^= x
+        return chcksum
+
+    def zigate_encode(self, data):
+        encoded = bytearray()
+        for b in data:
+            if b < 0x10:
+                encoded.extend([0x02, 0x10 ^ b])
+            else:
+                encoded.append(b)
+        return encoded
+
+    def zigate_decode(self, data):
+        flip = False
+        decoded = bytearray()
+        for b in data:
+            if flip:
+                flip = False
+                decoded.append(b ^ 0x10)
+            elif b == 0x02:
+                flip = True
+            else:
+                decoded.append(b)
+        return decoded
+
+    def get_last_cmd(self):
+        if not self.sent:
+            return
+        cmd = self.sent[-1]
+        data = self.zigate_decode(cmd[1:-1])[5:]
+        return data
+
+
+class ThreadSerialConnection(BaseTransport):
+    def __init__(self, device, port=None):
+        BaseTransport.__init__(self)
         self._port = port
         self.device = device
-        self.queue = queue.Queue()
         self._running = True
-        self.reconnect()
-#         self.serial = self.initSerial()
-        self.thread = threading.Thread(target=self.listen)
+        self.reconnect(False)
+        self.thread = threading.Thread(target=self.listen,
+                                       name='ZiGate-Listen')
         self.thread.setDaemon(True)
         self.thread.start()
 
@@ -45,7 +186,7 @@ class ThreadSerialConnection(object):
         self._port = self._find_port(self._port)
         return serial.Serial(self._port, 115200)
 
-    def reconnect(self):
+    def reconnect(self, retry=True):
         delay = 1
         while True:
             try:
@@ -55,31 +196,16 @@ class ThreadSerialConnection(object):
                 LOGGER.error('ZiGate has not been found, please check configuration.')
                 sys.exit(2)
             except Exception:
+                if not retry:
+                    LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))
+                    raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using port {}'.format(self._port))
+                    sys.exit(2)
                 msg = 'Failed to connect, retry in {} sec...'.format(delay)
                 dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
                 LOGGER.error(msg)
                 time.sleep(delay)
                 if delay < 60:
                     delay *= 2
-        return self.serial
-
-    def packet_received(self, raw_message):
-        dispatcher.send(ZIGATE_PACKET_RECEIVED, packet=raw_message)
-
-    def read_data(self, data):
-        '''
-        Read ZiGate output and split messages
-        '''
-        self._buffer += data
-#         print(self._buffer)
-        endpos = self._buffer.find(b'\x03')
-        while endpos != -1:
-            startpos = self._buffer.find(b'\x01')
-            raw_message = self._buffer[startpos:endpos + 1]
-#             print(raw_message)
-            threading.Thread(target=self.packet_received, args=(raw_message,)).start()
-            self._buffer = self._buffer[endpos + 1:]
-            endpos = self._buffer.find(b'\x03')
 
     def listen(self):
         while self._running:
@@ -95,9 +221,6 @@ class ThreadSerialConnection(object):
                 data = self.queue.get()
                 self.serial.write(data)
             time.sleep(0.05)
-
-    def send(self, data):
-        self.queue.put(data)
 
     def _find_port(self, port):
         '''
@@ -145,13 +268,13 @@ class ThreadSocketConnection(ThreadSerialConnection):
         for port in ports:
             try:
                 s = socket.create_connection((host, port), 10)
-                LOGGER.debug('ZiGate found on port {}'.format(port))
+                LOGGER.debug('ZiGate found on {} port {}'.format(host, port))
                 return s
             except Exception:
-                LOGGER.debug('ZiGate not found on port {}'.format(port))
+                LOGGER.debug('ZiGate not found on {} port {}'.format(host, port))
                 continue
-        LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))
-        raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using port {}'.format(self._port))
+        LOGGER.error('Cannot connect to ZiGate using {} port {}'.format(self._host, self._port))
+        raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using {} port {}'.format(self._host, self._port))
 
     def _find_host(self, host):
         host = host or 'auto'

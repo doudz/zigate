@@ -4,16 +4,17 @@
 [![PyPI version](https://badge.fury.io/py/zigate.svg)](https://pypi.python.org/pypi/zigate)
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Percentage of issues still open")
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/sebramage)
 
 Python library for [ZiGate](http://zigate.fr/).
-This library manage communication between python and zigate key, both USB and WiFi key are supported (wifi is almost untested).
+This library manage communication between python and zigate key, both USB and WiFi key are supported.
 
 ZiGate is an universal gateway compatible with a lot of ZigBee device (like Xiaomi, Philipps Hue, Ikea, etc).
 
 Current coverage :
 
-* Commands : 38 / 53
-* Responses : 33 / 40
+* Commands 69 / 91
+* Responses 48 / 52
 
 ## Getting Started
 
@@ -93,8 +94,24 @@ True
  # call action on devices
  z.action_onoff('b8ce', 1, zigate.ON)
 
- or from devices
+ # or from devices
  z.devices[1].action_onoff(zigate.ON)
+
+ # OTA process
+ # Load image and send headers to ZiGate
+ z.ota_load_image('path/to/ota/image_file.ota')
+ # Tell client that image is available
+ z.ota_image_notify('addr')
+ # It will take client usually couple seconds to query headers
+ # from server. Upgrade process start automatically if correct
+ # headers are loaded to ZiGate. If you have logging level debug
+ # enabled you will get automatically progress updates.
+ # Manually check ota status - logging level INFO
+ z.get_ota_status()
+ # Whole upgrade process time depends on device and ota image size
+ # Upgrading ikea bulb took ~15 minutes
+ # Upgrading ikea remote took ~45 minutes
+
 ```
 
 ### Callback
@@ -123,10 +140,10 @@ event can be :
 zigate.ZIGATE_DEVICE_ADDED
 zigate.ZIGATE_DEVICE_UPDATED
 zigate.ZIGATE_DEVICE_REMOVED
-zigate.ZIGATE_DEVICE_RENAMED
+zigate.ZIGATE_DEVICE_ADDRESS_CHANGED
 zigate.ZIGATE_ATTRIBUTE_ADDED
 zigate.ZIGATE_ATTRIBUTE_UPDATED
-zigate.ZIGATE_DEVICE_NEED_REFRESH
+zigate.ZIGATE_DEVICE_NEED_DISCOVERY
 ```
 
 kwargs depends of the event type:
@@ -134,9 +151,10 @@ kwargs depends of the event type:
 * for `zigate.ZIGATE_DEVICE_ADDED` kwargs contains device.
 * for `zigate.ZIGATE_DEVICE_UPDATED` kwargs contains device.
 * for `zigate.ZIGATE_DEVICE_REMOVED` kwargs contains addr (the device short address).
-* for `zigate.ZIGATE_DEVICE_RENAMED` kwargs contains old_addr and new_addr (used when re-pairing an already known device).
+* for `zigate.ZIGATE_DEVICE_ADDRESS_CHANGED` kwargs contains old_addr and new_addr (used when re-pairing an already known device).
 * for `zigate.ZIGATE_ATTRIBUTE_ADDED` kwargs contains device and discovered attribute.
 * for `zigate.ZIGATE_ATTRIBUTE_UPDATED` kwargs contains device and updated attribute.
+* for `zigate.ZIGATE_DEVICE_NEED_DISCOVERY` kwargs contains device.
 
 ## Wifi ZiGate
 
@@ -212,3 +230,31 @@ client.publish('zigate/command', payload)
 payload = '{"function": "action_onoff", "args": ["522a", 1, 0]}'
 client.publish('zigate/command', payload)
 ```
+
+## Flasher
+
+Python tool to flash your Zigate (Jennic JN5168)
+
+Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
+[Original repo](https://github.com/tjikkun/zigate-flasher)
+
+### Flasher Usage
+
+```bash
+usage: python3 -m zigate.flasher [-h] -p {/dev/ttyUSB0} [-w WRITE] [-s SAVE] [-e] [--pdm-only]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p {/dev/ttyUSB0}, --serialport {/dev/ttyUSB0}
+                        Serial port, e.g. /dev/ttyUSB0
+  -w WRITE, --write WRITE
+                        Firmware bin to flash onto the chip
+  -s SAVE, --save SAVE  File to save the currently loaded firmware to
+  -e, --erase           Erase EEPROM
+  --pdm-only            Erase PDM only, use it with --erase
+
+```
+
+
+
+

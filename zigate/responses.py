@@ -8,22 +8,9 @@
 import struct
 from collections import OrderedDict
 from binascii import hexlify
+from .const import DATA_TYPE
 
 RESPONSES = {}
-
-DATA_TYPE = {0x00: None,
-             0x10: '?',  # bool
-             0x18: 'b',
-             0x20: 'B',
-             0x21: 'H',
-             0x22: 'I',
-             0x28: 'b',
-             0x29: 'h',
-             0x2a: 'i',
-             0x30: 'b',
-             0x41: 's',
-             0x42: 's',
-             }
 
 
 def register_response(o):
@@ -88,12 +75,14 @@ class Response(object):
         for k, v in self.s.items():
             if isinstance(v, OrderedDict):
                 keys.remove(k)
+                self.data[k] = []
                 rest = len(msg_data) - struct.calcsize(fmt)
+                if rest == 0:
+                    continue
                 subfmt = '!' + ''.join(v.values())
                 count = rest // struct.calcsize(subfmt)
                 submsg_data = msg_data[-rest:]
                 msg_data = msg_data[:-rest]
-                self.data[k] = []
                 for i in range(count):
                     sdata, submsg_data = self.__decode(subfmt,
                                                        v.keys(),
@@ -249,8 +238,8 @@ class R8009(Response):
     type = 'Network state response'
     s = OrderedDict([('addr', 'H'),
                      ('ieee', 'Q'),
-                     ('pan', 'H'),
-                     ('extend_pan', 'Q'),
+                     ('panid', 'H'),
+                     ('extended_panid', 'Q'),
                      ('channel', 'B'),
                      ])
 
@@ -315,6 +304,28 @@ class R8024(Response):
 
 
 @register_response
+class R802B(Response):
+    msg = 0x802B
+    type = 'User Descriptor Notify'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H')
+                     ])
+
+
+@register_response
+class R802C(Response):
+    msg = 0x802C
+    type = 'User Descriptor Response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H'),
+                     ('length', 'B'),
+                     ('data', 'rawend')
+                     ])
+
+
+@register_response
 class R8030(Response):
     msg = 0x8030
     type = 'Bind response'
@@ -330,13 +341,33 @@ class R8031(R8030):
 
 
 @register_response
+class R8040(Response):
+    msg = 0x8040
+    type = 'Network Address response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('ieee', 'Q'),
+                     ('addr', 'H'),
+                     ('count', 'B'),
+                     ('index', 'B'),
+                     ('devices', OrderedDict([('addr', 'H')]))
+                     ])
+
+
+@register_response
+class R8041(R8040):
+    msg = 0x8041
+    type = 'IEEE Address response'
+
+
+@register_response
 class R8042(Response):
     msg = 0x8042
     type = 'Node descriptor'
     s = OrderedDict([('sequence', 'B'),
                      ('status', 'B'),
                      ('addr', 'H'),
-                     ('manufacturer', 'H'),
+                     ('manufacturer_code', 'H'),
                      ('max_rx', 'H'),
                      ('max_tx', 'H'),
                      ('server_mask', 'H'),
@@ -346,7 +377,7 @@ class R8042(Response):
                      ('bit_field', 'H')
                      ])
     format = {'addr': '{:04x}',
-              'manufacturer': '{:04x}',
+              'manufacturer_code': '{:04x}',
               'descriptor_capability': '{:08b}',
               'mac_capability': '{:08b}',
               'bit_field': '{:016b}'}
@@ -462,6 +493,27 @@ class R8045(Response):
 
 
 @register_response
+class R8046(Response):
+    msg = 0x8046
+    type = 'Match Descriptor response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('addr', 'H'),
+                     ('match_count', 'B'),
+                     ('matches', OrderedDict([('match', 'B')]))
+                     ])
+
+
+@register_response
+class R8047(Response):
+    msg = 0x8047
+    type = 'Management Leave indication'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ])
+
+
+@register_response
 class R8048(Response):
     msg = 0x8048
     type = 'Leave indication'
@@ -524,7 +576,16 @@ class R8060(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
+                     ('addr', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 7:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -552,11 +613,167 @@ class R8062(Response):
                      ('groups', OrderedDict([('group', 'H')]))
                      ])
 
+    def cleaned_data(self):
+        self.data['groups'] = [g['group'] for g in self.data['groups']]
+        return self.data
+
 
 @register_response
 class R8063(R8061):
     msg = 0x8063
     type = 'Remove group response'
+
+
+@register_response
+class R8085(Response):
+    msg = 0x8085
+    type = 'Remote button pressed (MOVE_TO_LEVEL_UPDATE)'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('cmd', 'B'),
+                     ])
+
+    def decode(self):
+        Response.decode(self)
+        press_type = {2: 'click', 1: 'hold', 3: 'release'}
+        if self.data['cmd'] in (1, 2, 3):
+            self.data['button'] = 'down'
+            self.data['type'] = press_type.get(self.data['cmd'], self.data['cmd'])
+        elif self.data['cmd'] in (5, 6, 7):
+            self.data['button'] = 'up'
+            self.data['type'] = press_type.get(self.data['cmd'] - 4, self.data['cmd'])
+
+    def cleaned_data(self):
+        # fake attribute
+        self.data['attribute'] = 0xfff0
+        self.data['data'] = '{}_{}'.format(self.data['button'],
+                                           self.data['type'])
+        return self._filter_data(['attribute', 'data'])
+
+
+@register_response
+class R8095(Response):
+    msg = 0x8095
+    type = 'Remote button pressed (ONOFF_UPDATE)'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('cmd', 'B'),
+                     ])
+
+    def decode(self):
+        Response.decode(self)
+        press_type = {2: 'click'}
+        self.data['button'] = 'middle'
+        self.data['type'] = press_type.get(self.data['cmd'], self.data['cmd'])
+
+    def cleaned_data(self):
+        # fake attribute
+        self.data['attribute'] = 0xfff0
+        self.data['data'] = '{}_{}'.format(self.data['button'],
+                                           self.data['type'])
+        return self._filter_data(['attribute', 'data'])
+
+
+@register_response
+class R80A0(Response):
+    msg = 0x80A0
+    type = 'View Scene response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
+                     ('scene', 'B'),
+                     ('transition', 'H'),
+                     ])
+
+
+@register_response
+class R80A1(Response):
+    msg = 0x80A1
+    type = 'Add Scene response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
+                     ('scene', 'B'),
+                     ])
+
+
+@register_response
+class R80A2(R80A1):
+    msg = 0x80A2
+    type = 'Remove Scene response'
+
+
+@register_response
+class R80A3(Response):
+    msg = 0x80A3
+    type = 'Remove all Scenes response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('group', 'H'),
+                     ])
+
+
+@register_response
+class R80A4(R80A1):
+    msg = 0x80A4
+    type = 'Store Scene response'
+
+
+@register_response
+class R80A6(Response):
+    msg = 0x80A6
+    type = 'Scene membership response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('status', 'B'),
+                     ('capacity', 'B'),
+                     ('group', 'H'),
+                     ('scene_count', 'B'),
+                     ('scenes', OrderedDict([('scene', 'B')]))
+                     ])
+
+
+@register_response
+class R80A7(Response):
+    msg = 0x80A7
+    type = 'Remote button pressed (LEFT/RIGHT)'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('cmd', 'B'),
+                     ('direction', 'B'),
+                     ])
+
+    def decode(self):
+        Response.decode(self)
+        directions = {0: 'right', 1: 'left', 2: 'middle'}
+        press_type = {7: 'click', 8: 'hold', 9: 'release'}
+        self.data['button'] = directions.get(self.data['direction'], self.data['direction'])
+        self.data['type'] = press_type.get(self.data['cmd'], self.data['cmd'])
+        if self.data['type'] == 'release':
+            self.data['button'] = 'previous'
+
+    def cleaned_data(self):
+        # fake attribute
+        self.data['attribute'] = 0xfff0
+        self.data['data'] = '{}_{}'.format(self.data['button'],
+                                           self.data['type'])
+        return self._filter_data(['attribute', 'data'])
 
 
 @register_response
@@ -577,7 +794,12 @@ class R8100(Response):
     def decode(self):
         Response.decode(self)
         fmt = DATA_TYPE.get(self.data['data_type'], 's')
-        fmt = '!{}{}'.format(self.data['size'] // struct.calcsize(fmt), fmt)
+        length = self.data['size']
+        # https://github.com/fairecasoimeme/ZiGate/issues/134
+        # workaround because of type 0x25 unsupported
+        if self.data['data_type'] not in DATA_TYPE:
+            length = len(self.data['data'])
+        fmt = '!{}{}'.format(length // struct.calcsize(fmt), fmt)
         data = struct.unpack(fmt, self.data['data'])[0]
         if isinstance(data, bytes):
             try:
@@ -627,6 +849,30 @@ class R8120(Response):
 
 
 @register_response
+class R8140(Response):
+    msg = 0x8140
+    type = 'Attribute Discovery response'
+    s = OrderedDict([('complete', 'B'),
+                     ('data_type', 'B'),
+                     ('attribute', 'H'),
+                     ('addr', 'H'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ])
+
+    def decode(self):
+        if len(self.msg_data) == 4:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+            del self.s['endpoint']
+            del self.s['cluster']
+        Response.decode(self)
+
+    def cleaned_data(self):
+        return self._filter_data(['attribute'])
+
+
+@register_response
 class R8401(Response):
     msg = 0x8401
     type = 'IAS Zone Status Change'
@@ -649,6 +895,42 @@ class R8401(Response):
 
 
 @register_response
+class R8501(Response):
+    msg = 0x8501
+    type = 'OTA image block request'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('node_address', 'Q'),
+                     ('file_offset', 'L'),
+                     ('image_version', 'L'),
+                     ('image_type', 'H'),
+                     ('manufacturer_code', 'H'),
+                     ('block_request_delay', 'H'),
+                     ('max_data_size', 'B'),
+                     ('field_control', 'B')
+                     ])
+
+
+@register_response
+class R8503(Response):
+    msg = 0x8503
+    type = 'OTA upgrade end request'
+    s = OrderedDict([('sequence', 'B'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('file_version', 'L'),
+                     ('image_type', 'H'),
+                     ('manufacture_code', 'H'),
+                     ('status', 'B')
+                     ])
+
+
+@register_response
 class R8701(Response):
     msg = 0x8701
     type = 'Route Discovery Confirmation'
@@ -668,3 +950,8 @@ class R8702(Response):
                      ('dst_address', 'Q'),
                      ('sequence', 'B')
                      ])
+
+    def decode(self):
+        Response.decode(self)
+        if self.data['dst_address_mode'] == 2:
+            self.data['dst_address'] = hex(self.data['dst_address'])[:6]
