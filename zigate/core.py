@@ -540,7 +540,11 @@ class ZiGate(object):
                               0x8085, 0x8095, 0x80A7):  # attribute report or IAS Zone status change
             if response.get('status', 0) != 0:
                 LOGGER.debug('Received Bad status')
-                return
+                # handle special case, no model identifier
+                if response['status'] == 0x86 and response['cluster'] == 0 and response['attribute'] == 5:
+                    response['data'] = 'unsupported'
+                else:
+                    return
             device = self._get_device(response['addr'])
             device.rssi = response['rssi']
             r = device.set_attribute(response['endpoint'],

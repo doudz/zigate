@@ -708,6 +708,17 @@ class TestCore(unittest.TestCase):
         self.zigate.build_network_map(filename)
         self.assertTrue(os.path.exists(filename))
 
+    def test_unsupported_attribute(self):
+        # some device like profalux doesn't have model identifier
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        r = responses.R8102(unhexlify(b'2f1234010000000586ff0000'), 255)
+        r = self.zigate.interpret_response(r)
+        self.assertEqual(device.properties,
+                         [{'attribute': 5, 'data': 'unsupported', 'name': 'type',
+                           'value': 'unsupported', 'type': str}])
+
 
 if __name__ == '__main__':
     unittest.main()
