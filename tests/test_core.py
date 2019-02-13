@@ -695,6 +695,17 @@ class TestCore(unittest.TestCase):
         self.assertEqual(self.zigate.ieee, 'fedcba9876543210')
         self.assertEqual(self.zigate.channel, 11)
 
+    def test_build_neighbours_table(self):
+        self.zigate.connection.add_auto_response(0x004e, 0x804e,
+                                                 unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b626'))
+        table = self.zigate.build_neighbours_table()
+        self.assertEqual(table, [('0000', 'abcd', 182)])
+
+    def test_build_network_map(self):
+        self.zigate.connection.add_auto_response(0x004e, 0x804e,
+                                                 unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b626'))
+        self.zigate.build_network_map(os.path.join(self.test_dir, 'test.png'))
+
 
 if __name__ == '__main__':
     unittest.main()

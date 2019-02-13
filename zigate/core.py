@@ -1078,11 +1078,13 @@ class ZiGate(object):
         '''
         table = self.build_neighbours_table()
         dot = Digraph('G', comment='ZiGate Network', filename=filename, format='png')
+        dot.node(self.addr, 'ZiGate ({})'.format(self.addr))
         for device in self.devices:
             name = labels.get(device.addr, str(device))
             dot.node(device.addr, name)
-        for entry in table:
-            dot.edge(entry[0], entry[1], str(entry[2]))
+        if table:
+            for entry in table:
+                dot.edge(entry[0], entry[1], str(entry[2]))
         dot.render()
 
     def refresh_device(self, addr):
