@@ -1120,9 +1120,9 @@ class ZiGate(object):
             if not values.get('device'):
                 self.simple_descriptor_request(addr, endpoint)
                 return
-            if not values.get('in_clusters'):
-                self.simple_descriptor_request(addr, endpoint)
-                return
+#             if not values.get('in_clusters'):
+#                 self.simple_descriptor_request(addr, endpoint)
+#                 return
         typ = device.get_type(False)
         if not typ:
             return
