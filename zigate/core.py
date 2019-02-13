@@ -1082,7 +1082,7 @@ class ZiGate(object):
             name = labels.get(device.addr, str(device))
             dot.node(device.addr, name)
         for entry in table:
-            dot.edge(entry[0], entry[1])
+            dot.edge(entry[0], entry[1], str(entry[2]))
         dot.render()
 
     def refresh_device(self, addr):
