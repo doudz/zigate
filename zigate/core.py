@@ -1074,14 +1074,14 @@ class ZiGate(object):
             index += data['count']
         return neighbours
 
-    def build_network_map(self, filename, labels={}):
+    def build_network_map(self, directory, labels={}):
         '''
         create PNG network map
         filename is destination file
         labels:optionnal dict for node name {addr: nodename, addr2: nodename2}
         '''
         table = self.build_neighbours_table()
-        dot = Digraph('G', comment='ZiGate Network', filename=filename, format='png')
+        dot = Digraph('zigate_network', comment='ZiGate Network', directory=directory, format='png')
         dot.node(self.addr, 'ZiGate ({})'.format(self.addr))
         for device in self.devices:
             name = labels.get(device.addr, str(device))
@@ -1089,7 +1089,7 @@ class ZiGate(object):
         if table:
             for entry in table:
                 dot.edge(entry[0], entry[1], str(entry[2]))
-        dot.render()
+        dot.render('zigate_network', cleanup=True)
 
     def refresh_device(self, addr):
         '''

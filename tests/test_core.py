@@ -702,10 +702,10 @@ class TestCore(unittest.TestCase):
         self.assertEqual(table, [('0000', 'abcd', 182)])
 
     def test_build_network_map(self):
-        filename = os.path.join(self.test_dir, 'test.png')
+        filename = os.path.join(self.test_dir, 'zigate_network.png')
         self.zigate.connection.add_auto_response(0x004e, 0x804e,
                                                  unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b626'))
-        self.zigate.build_network_map(filename)
+        self.zigate.build_network_map(self.test_dir)
         self.assertTrue(os.path.exists(filename))
 
     def test_unsupported_attribute(self):
