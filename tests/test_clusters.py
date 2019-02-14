@@ -11,6 +11,8 @@ import json
 class TestResponses(unittest.TestCase):
     def test_cluster_C0012(self):
         # xiaomi cube status
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.sensor_cube'})
         endpoint = {'device': 24322}
         data = {"attributes": [{"attribute": 85,
                                 "data": 4,
@@ -20,7 +22,7 @@ class TestResponses(unittest.TestCase):
                                 "value": ""}],
                 "cluster": 18
                 }
-        c = clusters.C0012.from_json(data, endpoint)
+        c = clusters.C0012.from_json(data, endpoint, device)
         self.assertEqual(c.attributes,
                          {85: {'attribute': 85, 'data': 4,
                                'expire': 2, 'expire_value': '',
