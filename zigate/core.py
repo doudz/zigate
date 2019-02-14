@@ -1082,7 +1082,7 @@ class ZiGate(object):
         '''
         table = self.build_neighbours_table()
         dot = Graph('zigate_network', comment='ZiGate Network',
-                      directory=directory, format='png', engine='neato')
+                    directory=directory, format='png', engine='neato')
         dot.node(self.addr, 'ZiGate ({})'.format(self.addr))
         for device in self.devices:
             name = labels.get(device.addr, str(device))
@@ -1090,6 +1090,9 @@ class ZiGate(object):
         if table:
             for entry in table:
                 dot.edge(entry[0], entry[1], str(entry[2]))
+        fname = os.path.join(directory, 'zigate_network.png')
+        if os.path.exists(fname):
+            os.remove(fname)
         dot.render('zigate_network', cleanup=True)
 
     def refresh_device(self, addr):
