@@ -53,9 +53,9 @@ def register_cluster(o):
     return o
 
 
-def get_cluster(cluster_id, endpoint=None):
+def get_cluster(cluster_id, endpoint=None, device=None):
     cls_cluster = CLUSTERS.get(cluster_id, Cluster)
-    cluster = cls_cluster(endpoint)
+    cluster = cls_cluster(endpoint, device)
     if type(cluster) == Cluster:
         cluster.cluster_id = cluster_id
     return cluster
@@ -129,10 +129,10 @@ class Cluster(object):
                 }
 
     @staticmethod
-    def from_json(data, endpoint=None):
+    def from_json(data, endpoint=None, device=None):
         cluster_id = data['cluster']
         cluster = CLUSTERS.get(cluster_id, Cluster)
-        cluster = cluster(endpoint)
+        cluster = cluster(endpoint, device)
         if type(cluster) == Cluster:
             cluster.cluster_id = cluster_id
         for attribute in data['attributes']:
@@ -309,9 +309,10 @@ class C0012(Cluster):
                                'expire': 2, 'type': str}
                       }
 
-    def __init__(self, endpoint=None):
-        Cluster.__init__(self, endpoint=endpoint)
-        if self._endpoint['device'] == 0x5f02:  # xiaomi cube
+    def __init__(self, endpoint=None, device=None):
+        Cluster.__init__(self, endpoint=endpoint, device=device)
+#         if self._endpoint['device'] == 0x5f02:  # xiaomi cube
+        if self._device and 'cube' in self._device.get_value('type', ''):
             self.attributes_def = {0x0055: {'name': 'movement',
                                             'value': 'cube_decode(value)',
                                             'expire': 2, 'expire_value': '',

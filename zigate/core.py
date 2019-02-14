@@ -2286,7 +2286,7 @@ class Device(object):
                 endpoint['in_clusters'] = ep.get('in_clusters', [])
                 endpoint['out_clusters'] = ep.get('out_clusters', [])
                 for cl in ep['clusters']:
-                    cluster = Cluster.from_json(cl, endpoint)
+                    cluster = Cluster.from_json(cl, endpoint, d)
                     endpoint['clusters'][cluster.cluster_id] = cluster
         if 'power_source' in d.info:  # old version
             d.info['power_type'] = d.info.pop('power_source')
@@ -2502,7 +2502,7 @@ class Device(object):
         endpoint = self.get_endpoint(endpoint_id)
         self._lock_acquire()
         if cluster_id not in endpoint['clusters']:
-            cluster = get_cluster(cluster_id, endpoint)
+            cluster = get_cluster(cluster_id, endpoint, self)
             endpoint['clusters'][cluster_id] = cluster
         self._lock_release()
         return endpoint['clusters'][cluster_id]

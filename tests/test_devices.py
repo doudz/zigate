@@ -146,7 +146,6 @@ class TestCore(unittest.TestCase):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.remote.b286acn01'})
         self.assertTrue(device.load_template())
-        print(device.attributes)
         self.assertCountEqual(device.attributes,
                               [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.remote.b286acn01',
                                 'name': 'type', 'value': 'lumi.remote.b286acn01', 'type': str},
