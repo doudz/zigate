@@ -1,0 +1,66 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 5,
+                            "data": "lumi.sensor_86sw2"
+                        }
+                    ],
+                    "cluster": 0
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 24321,
+            "endpoint": 1,
+            "in_clusters": [
+                0,
+                3,
+                25,
+                65535,
+                18
+            ],
+            "out_clusters": [
+                0,
+                4,
+                3,
+                5,
+                25,
+                65535,
+                18
+            ],
+            "profile": 260
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 0,
+            "endpoint": 2,
+            "in_clusters": [],
+            "out_clusters": [],
+            "profile": 0
+        }
+    ],
+    "generictype": "",
+    "info": {
+        "mac_capability": "10000000",
+        "power_type": 0
+    }
+}
