@@ -35,7 +35,7 @@ import random
 from enum import Enum
 import colorsys
 import datetime
-from graphviz import Digraph
+from graphviz import Graph
 
 
 LOGGER = logging.getLogger('zigate')
@@ -1081,7 +1081,8 @@ class ZiGate(object):
         labels:optionnal dict for node name {addr: nodename, addr2: nodename2}
         '''
         table = self.build_neighbours_table()
-        dot = Digraph('zigate_network', comment='ZiGate Network', directory=directory, format='png')
+        dot = Graph('zigate_network', comment='ZiGate Network',
+                      directory=directory, format='png', engine='neato')
         dot.node(self.addr, 'ZiGate ({})'.format(self.addr))
         for device in self.devices:
             name = labels.get(device.addr, str(device))
