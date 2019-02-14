@@ -1,0 +1,98 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 5,
+                            "data": "lumi.remote.b286acn01"
+                        }
+                    ],
+                    "cluster": 0
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 85
+                        }
+                    ],
+                    "cluster": 18
+                }
+            ],
+            "device": 24321,
+            "endpoint": 1,
+            "in_clusters": [
+                0,
+                3,
+                25,
+                65535,
+                18
+            ],
+            "out_clusters": [
+                0,
+                4,
+                3,
+                5,
+                25,
+                65535,
+                18
+            ],
+            "profile": 260
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 85
+                        }
+                    ],
+                    "cluster": 18
+                }
+            ],
+            "device": 24322,
+            "endpoint": 2,
+            "in_clusters": [
+                3,
+                18
+            ],
+            "out_clusters": [
+                4,
+                3,
+                5,
+                18
+            ],
+            "profile": 260
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 85
+                        }
+                    ],
+                    "cluster": 18
+                }
+            ],
+            "device": 24323,
+            "endpoint": 3,
+            "in_clusters": [
+                3,
+                18
+            ],
+            "out_clusters": [
+                4,
+                3,
+                5,
+                18
+            ],
+            "profile": 260
+        }
+    ],
+    "generictype": "switch",
+    "info": {
+        "mac_capability": "10000000"
+    }
+}

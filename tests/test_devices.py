@@ -115,6 +115,49 @@ class TestCore(unittest.TestCase):
                               'test_mode': False, 'battery_defect': False}
                              )
 
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.sensor_cube'})
+        self.assertTrue(device.load_template())
+        self.assertCountEqual(device.attributes,
+                              [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.sensor_cube',
+                                'name': 'type', 'value': 'lumi.sensor_cube', 'type': str},
+                               {'endpoint': 1, 'cluster': 0, 'attribute': 4, 'data': 'LUMI',
+                                'name': 'manufacturer', 'value': 'LUMI'},
+                               {'endpoint': 1, 'cluster': 0, 'attribute': 7, 'data': 3,
+                                'name': 'power_source', 'value': 3},
+                               {'endpoint': 2, 'cluster': 18, 'attribute': 85, 'name': 'movement',
+                                'value': '', 'expire': 2, 'expire_value': '', 'type': str},
+                               {'endpoint': 3, 'cluster': 12, 'attribute': 65285, 'name': 'rotation_time',
+                                'value': 0, 'unit': 'ms', 'expire': 2, 'type': int},
+                               {'endpoint': 3, 'cluster': 12, 'attribute': 85, 'name': 'rotation',
+                                'value': 0.0, 'unit': '°', 'expire': 2, 'type': float}]
+                              )
+
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.remote.b186acn01'})
+        self.assertTrue(device.load_template())
+        self.assertCountEqual(device.attributes,
+                              [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.remote.b186acn01',
+                                'name': 'type', 'value': 'lumi.remote.b186acn01', 'type': str},
+                               {'endpoint': 1, 'cluster': 18, 'attribute': 85, 'name': 'multiclick',
+                                'value': '', 'expire': 2, 'type': str}]
+                              )
+
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.remote.b286acn01'})
+        self.assertTrue(device.load_template())
+        print(device.attributes)
+        self.assertCountEqual(device.attributes,
+                              [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.remote.b286acn01',
+                                'name': 'type', 'value': 'lumi.remote.b286acn01', 'type': str},
+                               {'endpoint': 1, 'cluster': 18, 'attribute': 85, 'name': 'multiclick',
+                                'value': '', 'expire': 2, 'type': str},
+                               {'endpoint': 2, 'cluster': 18, 'attribute': 85, 'name': 'multiclick2',
+                                'value': '', 'expire': 2, 'type': str},
+                               {'endpoint': 3, 'cluster': 18, 'attribute': 85, 'name': 'multiclick3',
+                                'value': '', 'expire': 2, 'type': str}]
+                              )
+
     def test_inverse_bool(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
         device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.sensor_switch.aq2'})
