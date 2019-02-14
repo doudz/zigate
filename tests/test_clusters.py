@@ -94,6 +94,30 @@ class TestResponses(unittest.TestCase):
                          ('{"attributes": [{"attribute": 5, "data": "test.test", "name": "type", '
                           '"type": "str", "value": "test.test"}], "cluster": 0}'))
 
+        endpoint = {'device': 1}
+        data = {"attributes": [{"attribute": 65282,
+                                "data": '100121e50b21a801240000000000217c012067',
+                                }],
+                "cluster": 0
+                }
+        c = clusters.C0000.from_json(data, endpoint)
+        self.assertEqual(c.attributes,
+                         {65282: {'attribute': 65282, 'data': '100121e50b21a801240000000000217c012067',
+                                  'name': 'battery_voltage', 'value': 3.045, 'type': float, 'unit': 'V'}}
+                         )
+
+        endpoint = {'device': 1}
+        data = {"attributes": [{"attribute": 65282,
+                                "data": '100021ef0b21a8012400000000002106002059',
+                                }],
+                "cluster": 0
+                }
+        c = clusters.C0000.from_json(data, endpoint)
+        self.assertEqual(c.attributes,
+                         {65282: {'attribute': 65282, 'data': '100021ef0b21a8012400000000002106002059',
+                                  'name': 'battery_voltage', 'value': 3.055, 'type': float, 'unit': 'V'}}
+                         )
+
     def test_cluster_C0101(self):
         endpoint = {'device': 1}
         data = {"attributes": [{"attribute": 0x0503,

@@ -72,9 +72,10 @@ class Cluster(object):
     type = 'Unknown cluster'
     attributes_def = {}
 
-    def __init__(self, endpoint=None):
+    def __init__(self, endpoint=None, device=None):
         self.attributes = {}
         self._endpoint = endpoint
+        self._device = device
 
     def update(self, data):
         attribute_id = data['attribute']
@@ -173,14 +174,16 @@ class C0000(Cluster):
                                'value': 'clean_str(value)'},
                       0xff01: {'name': 'battery_voltage',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
-                               'unit': 'V'},
+                               'unit': 'V', 'type': float},
                       0xff02: {'name': 'battery_voltage',
-                               'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
-                               'unit': 'V'},
+                               'value': "struct.unpack('H', unhexlify(value)[3:5])[0]/1000.",
+                               'unit': 'V', 'type': float},
                       }
 
     def update(self, data):
-        if data['attribute'] in (0xff01, 0xff02) and not data.get('data', '').startswith('0121'):
+        if data['attribute'] == 0xff01 and not data.get('data', '').startswith('0121'):
+            return
+        if data['attribute'] == 0xff02 and not data.get('data', '').startswith('10'):
             return
         return Cluster.update(self, data)
 
