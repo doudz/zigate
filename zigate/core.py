@@ -539,7 +539,11 @@ class ZiGate(object):
                               0x8085, 0x8095, 0x80A7):  # attribute report or IAS Zone status change
             if response.get('status', 0) != 0:
                 LOGGER.debug('Received Bad status')
-                return
+                # handle special case, no model identifier
+                if response['status'] == 0x86 and response['cluster'] == 0 and response['attribute'] == 5:
+                    response['data'] = 'unsupported'
+                else:
+                    return
             device = self._get_device(response['addr'])
             device.rssi = response['rssi']
             r = device.set_attribute(response['endpoint'],
@@ -1067,9 +1071,9 @@ class ZiGate(object):
             if not values.get('device'):
                 self.simple_descriptor_request(addr, endpoint)
                 return
-            if not values.get('in_clusters'):
-                self.simple_descriptor_request(addr, endpoint)
-                return
+#             if not values.get('in_clusters'):
+#                 self.simple_descriptor_request(addr, endpoint)
+#                 return
         typ = device.get_type(False)
         if not typ:
             return
@@ -2206,6 +2210,9 @@ class Device(object):
                     self._zigate.reporting_request(self.addr,
                                                    endpoint_id,
                                                    0x0300, (0x0004, 0x21))
+            if 0xFC00 in endpoint['in_clusters']:
+                LOGGER.debug('bind for cluster 0xFC00')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0xFC00)
 
     @staticmethod
     def from_json(data, zigate_instance=None):

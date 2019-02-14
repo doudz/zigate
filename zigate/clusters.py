@@ -189,7 +189,7 @@ class C0000(Cluster):
 class C0001(Cluster):
     cluster_id = 0x0001
     type = 'General: Power Config'
-    attributes_def = {0x0000: {'name': 'voltage', 'value': 'value'},
+    attributes_def = {0x0000: {'name': 'voltage', 'value': 'value/10.', 'type': float},
                       0x0020: {'name': 'battery_voltage', 'value': 'value/10.', 'type': float},
                       0x0021: {'name': 'battery_percent', 'value': 'value', 'type': int},
                       0x0030: {'name': 'battery_manufacturer', 'value': 'value'},
