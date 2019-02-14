@@ -1416,7 +1416,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBBB', addr_mode, addr, 1, endpoint, effects[effect], effect_variant)
         return self.send_data(0x00E0, data)
 
-    def read_attribute_request(self, addr, endpoint, cluster, attribute,
+    def read_attribute_request(self, addr, endpoint, cluster, attributes,
                                direction=0, manufacturer_code=0):
         '''
         Read Attribute request
@@ -1424,17 +1424,17 @@ class ZiGate(object):
         '''
         addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        if not isinstance(attribute, list):
-            attribute = [attribute]
-        length = len(attribute)
+        if not isinstance(attributes, list):
+            attributes = [attributes]
+        length = len(attributes)
         manufacturer_specific = manufacturer_code != 0
         for i in range(0, length, 10):
-            sub_attribute = attribute[i: i + 10]
-            sub_length = len(sub_attribute)
+            sub_attributes = attributes[i: i + 10]
+            sub_length = len(sub_attributes)
             data = struct.pack('!BHBBHBBHB{}H'.format(sub_length), addr_mode, addr, 1,
                                endpoint, cluster,
                                direction, manufacturer_specific,
-                               manufacturer_code, sub_length, *sub_attribute)
+                               manufacturer_code, sub_length, *sub_attributes)
             self.send_data(0x0100, data)
 
     def write_attribute_request(self, addr, endpoint, cluster, attributes,
@@ -2378,7 +2378,7 @@ class Device(object):
                     self._zigate.read_attribute_request(self.addr,
                                                         endpoint,
                                                         0x0000,
-                                                        0x0005
+                                                        [0x0004, 0x0005]
                                                         )
                     break
             if not wait:
