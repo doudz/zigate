@@ -87,7 +87,6 @@ class Response(object):
                     sdata, submsg_data = self.__decode(subfmt,
                                                        v.keys(),
                                                        submsg_data)
-                    self._format(sdata)
                     self.data[k].append(sdata)
             elif v == 'rawend':
                 fmt += '{}s'.format(len(msg_data) - struct.calcsize(fmt))
@@ -112,6 +111,10 @@ class Response(object):
         for k in data.keys():
             if k in self.format:
                 data[k] = self.format[k].format(data[k])
+            elif isinstance(data[k], list):
+                if data[k] and isinstance(data[k][0], dict):
+                    for subdata in data[k]:
+                        self._format(subdata)
 
     def _filter_data(self, include=[], exclude=[]):
         if include:
@@ -579,9 +582,9 @@ class R8060(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
-                     ('addr', 'H'),
                      ('status', 'B'),
                      ('group', 'H'),
+                     ('addr', 'H'),
                      ])
 
     def decode(self):
@@ -600,7 +603,14 @@ class R8061(Response):
                      ('cluster', 'H'),
                      ('status', 'B'),
                      ('group', 'H'),
+                     ('addr', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 7:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -610,11 +620,30 @@ class R8062(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
-                     ('addr', 'H'),
+                     # ('addr', 'H'),  # firmware < 3.0f
                      ('capacity', 'B'),
                      ('group_count', 'B'),
-                     ('groups', OrderedDict([('group', 'H')]))
+                     # ('groups', OrderedDict([('group', 'H')])),
                      ])
+
+    def decode(self):
+        try:
+            Response.decode(self)
+            additionnal = self.data.pop('additionnal')
+            d = struct.unpack('!{}HH'.format(self.data['group_count']), additionnal)
+            self.data['groups'] = [{'group': gaddr} for gaddr in d[:-1]]
+            self.data['addr'] = d[-1]
+            self._format(self.data)
+        except struct.error:  # probably old firmware < 3.0f
+            self.s = OrderedDict([('sequence', 'B'),
+                                  ('endpoint', 'B'),
+                                  ('cluster', 'H'),
+                                  ('addr', 'H'),  # firmware < 3.0f
+                                  ('capacity', 'B'),
+                                  ('group_count', 'B'),
+                                  ('groups', OrderedDict([('group', 'H')])),
+                                  ])
+            Response.decode(self)
 
     def cleaned_data(self):
         self.data['groups'] = [g['group'] for g in self.data['groups']]

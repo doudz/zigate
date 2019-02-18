@@ -59,29 +59,90 @@ class TestResponses(unittest.TestCase):
                                           ]))
 
     def test_response_8062(self):
-        msg_data = b'\x01\x01\x00\x04\x124\x10\x01\x98v'
+        msg_data = unhexlify(b'01010004123410019876')
         r = responses.R8062(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([('groups', ['9876']),
+                             OrderedDict([
                                           ('sequence', 1),
                                           ('endpoint', 1),
                                           ('cluster', 4),
-                                          ('addr', '1234'),
                                           ('capacity', 16),
                                           ('group_count', 1),
-                                          ('rssi', 255)]))
+                                          ('rssi', 255),
+                                          ('groups', ['9876']),
+                                          ('addr', '1234'),
+                                          ]))
 
-        msg_data = b'\x01\x01\x00\x04\x124\x10\x00'
+        msg_data = unhexlify(b'0101000412341000')
         r = responses.R8062(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([('groups', []),
+                             OrderedDict([
                                           ('sequence', 1),
                                           ('endpoint', 1),
                                           ('cluster', 4),
-                                          ('addr', '1234'),
                                           ('capacity', 16),
                                           ('group_count', 0),
-                                          ('rssi', 255)]))
+                                          ('rssi', 255),
+                                          ('groups', []),
+                                          ('addr', '1234'),
+                                          ]))
+
+        msg_data = unhexlify(b'0101000412341002abcd9876')
+        r = responses.R8062(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([
+                                          ('sequence', 1),
+                                          ('endpoint', 1),
+                                          ('cluster', 4),
+                                          ('capacity', 16),
+                                          ('group_count', 2),
+                                          ('rssi', 255),
+                                          ('groups', ['abcd', '9876']),
+                                          ('addr', '1234'),
+                                          ]))
+
+    def test_response_8062_30f(self):
+        msg_data = unhexlify(b'01010004100198761234')
+        r = responses.R8062(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([
+                                          ('sequence', 1),
+                                          ('endpoint', 1),
+                                          ('cluster', 4),
+                                          ('capacity', 16),
+                                          ('group_count', 1),
+                                          ('rssi', 255),
+                                          ('groups', ['9876']),
+                                          ('addr', '1234'),
+                                          ]))
+
+        msg_data = unhexlify(b'0101000410001234')
+        r = responses.R8062(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([
+                                          ('sequence', 1),
+                                          ('endpoint', 1),
+                                          ('cluster', 4),
+                                          ('capacity', 16),
+                                          ('group_count', 0),
+                                          ('rssi', 255),
+                                          ('groups', []),
+                                          ('addr', '1234'),
+                                          ]))
+
+        msg_data = unhexlify(b'010100041002abcd98761234')
+        r = responses.R8062(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([
+                                          ('sequence', 1),
+                                          ('endpoint', 1),
+                                          ('cluster', 4),
+                                          ('capacity', 16),
+                                          ('group_count', 2),
+                                          ('rssi', 255),
+                                          ('groups', ['abcd', '9876']),
+                                          ('addr', '1234'),
+                                          ]))
 
     def test_response_8060(self):
         msg_data = b'\x01\x01\x00\x04\x004\x10'
@@ -96,15 +157,15 @@ class TestResponses(unittest.TestCase):
                              )
 
     def test_response_8060_30f(self):
-        msg_data = b'A\x03\x00\x04\x93-\x00\x124'
+        msg_data = unhexlify(b'0a03000400932d1234')
         r = responses.R8060(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([('sequence', 65),
+                             OrderedDict([('sequence', 10),
                                           ('endpoint', 3),
                                           ('cluster', 4),
-                                          ('addr', '932d'),
                                           ('status', 0),
-                                          ('group', '1234'),
+                                          ('group', '932d'),
+                                          ('addr', '1234'),
                                           ('rssi', 255)])
                              )
 
