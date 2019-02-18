@@ -181,6 +181,18 @@ class TestResponses(unittest.TestCase):
                               'name': 'onoff', 'value': False, 'type': bool}}
                          )
 
+    def test_cluster_CFC00(self):
+        data = {"attributes": [{"attribute": 1,
+                                "data": '1'
+                                }],
+                "cluster": 0xFC00
+                }
+        c = clusters.CFC00.from_json(data)
+        self.assertEqual(c.attributes,
+                         {1: {'attribute': 1, 'data': '1', 'expire': 2,
+                              'name': 'button_on', 'value': '1', 'type': str}}
+                         )
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -546,3 +546,19 @@ class C0500(Cluster):
 # 0 - Battery OK
 # 10-15
 # Reserved
+
+
+@register_cluster
+class CFC00(Cluster):
+    cluster_id = 0xFC00
+    type = 'Hue remote'
+    attributes_def = {0x0001: {'name': 'button_on', 'value': 'value',
+                               'expire': 2, 'type': str},
+                      0x0002: {'name': 'button_up', 'value': 'value',
+                               'expire': 2, 'type': str},
+                      0x0003: {'name': 'button_off', 'value': 'value',
+                               'expire': 2, 'type': str},
+                      0x0004: {'name': 'button_down', 'value': 'value',
+                               'expire': 2, 'type': str},
+                      }
+# 0 = short press / 1 = long press / 2 = release (short press) / 3 = release (long press)
