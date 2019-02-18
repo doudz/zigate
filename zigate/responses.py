@@ -107,8 +107,9 @@ class Response(object):
         data = data[size:]
         return sdata, data
 
-    def _format(self, data):
-        for k in data.keys():
+    def _format(self, data, keys=[]):
+        keys = keys or data.keys()
+        for k in keys:
             if k in self.format:
                 data[k] = self.format[k].format(data[k])
             elif isinstance(data[k], list):
@@ -723,7 +724,14 @@ class R80A0(Response):
                      ('group', 'H'),
                      ('scene', 'B'),
                      ('transition', 'H'),
+                     ('addr', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 10:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -736,7 +744,14 @@ class R80A1(Response):
                      ('status', 'B'),
                      ('group', 'H'),
                      ('scene', 'B'),
+                     ('addr', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 8:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -754,7 +769,14 @@ class R80A3(Response):
                      ('cluster', 'H'),
                      ('status', 'B'),
                      ('group', 'H'),
+                     ('addr', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 9:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -774,8 +796,33 @@ class R80A6(Response):
                      ('capacity', 'B'),
                      ('group', 'H'),
                      ('scene_count', 'B'),
-                     ('scenes', OrderedDict([('scene', 'B')]))
+                     # ('scenes', OrderedDict([('scene', 'B')])),
+                     # ('addr', 'H'),
                      ])
+
+    def decode(self):
+        try:
+            Response.decode(self)
+            additionnal = self.data.pop('additionnal')
+            d = struct.unpack('!{}BH'.format(self.data['scene_count']), additionnal)
+            self.data['scenes'] = [{'scene': gaddr} for gaddr in d[:-1]]
+            self.data['addr'] = d[-1]
+            self._format(self.data, ['addr'])
+        except (struct.error,  KeyError):  # probably old firmware < 3.0f
+            self.s = OrderedDict([('sequence', 'B'),
+                                  ('endpoint', 'B'),
+                                  ('cluster', 'H'),
+                                  ('status', 'B'),
+                                  ('capacity', 'B'),
+                                  ('group', 'H'),
+                                  ('scene_count', 'B'),
+                                  ('scenes', OrderedDict([('scene', 'B')])),
+                                  ])
+            Response.decode(self)
+
+    def cleaned_data(self):
+        self.data['scenes'] = [g['scene'] for g in self.data['scenes']]
+        return self.data
 
 
 @register_response
@@ -785,10 +832,12 @@ class R80A7(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
-                     ('address_mode', 'B'),
-                     ('addr', 'H'),
                      ('cmd', 'B'),
                      ('direction', 'B'),
+                     ('attr1', 'B'),
+                     ('attr2', 'B'),
+                     ('attr3', 'B'),
+                     ('addr', 'H'),
                      ])
 
     def decode(self):
