@@ -2008,7 +2008,7 @@ class ZiGate(object):
         '''
         Set TX Power between 0-100%
         '''
-        percent = percent*255//100
+        percent = percent * 255 // 100
         data = struct.pack('!B', percent)
         return self.send_data(0x0806, data)
 

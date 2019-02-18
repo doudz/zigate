@@ -62,8 +62,7 @@ class TestResponses(unittest.TestCase):
         msg_data = unhexlify(b'01010004123410019876')
         r = responses.R8062(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([
-                                          ('sequence', 1),
+                             OrderedDict([('sequence', 1),
                                           ('endpoint', 1),
                                           ('cluster', 4),
                                           ('capacity', 16),
@@ -76,8 +75,7 @@ class TestResponses(unittest.TestCase):
         msg_data = unhexlify(b'0101000412341000')
         r = responses.R8062(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([
-                                          ('sequence', 1),
+                             OrderedDict([('sequence', 1),
                                           ('endpoint', 1),
                                           ('cluster', 4),
                                           ('capacity', 16),
@@ -90,8 +88,7 @@ class TestResponses(unittest.TestCase):
         msg_data = unhexlify(b'0101000412341002abcd9876')
         r = responses.R8062(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([
-                                          ('sequence', 1),
+                             OrderedDict([('sequence', 1),
                                           ('endpoint', 1),
                                           ('cluster', 4),
                                           ('capacity', 16),
@@ -105,8 +102,7 @@ class TestResponses(unittest.TestCase):
         msg_data = unhexlify(b'01010004100198761234')
         r = responses.R8062(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([
-                                          ('sequence', 1),
+                             OrderedDict([('sequence', 1),
                                           ('endpoint', 1),
                                           ('cluster', 4),
                                           ('capacity', 16),
@@ -119,8 +115,7 @@ class TestResponses(unittest.TestCase):
         msg_data = unhexlify(b'0101000410001234')
         r = responses.R8062(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([
-                                          ('sequence', 1),
+                             OrderedDict([('sequence', 1),
                                           ('endpoint', 1),
                                           ('cluster', 4),
                                           ('capacity', 16),
@@ -133,8 +128,7 @@ class TestResponses(unittest.TestCase):
         msg_data = unhexlify(b'010100041002abcd98761234')
         r = responses.R8062(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([
-                                          ('sequence', 1),
+                             OrderedDict([('sequence', 1),
                                           ('endpoint', 1),
                                           ('cluster', 4),
                                           ('capacity', 16),
