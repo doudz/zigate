@@ -876,8 +876,15 @@ class R8120(Response):
                      ('addr', 'H'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
+                     ('attribute', 'H'),
                      ('status', 'B'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 7:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['attribute']
+        Response.decode(self)
 
 
 @register_response

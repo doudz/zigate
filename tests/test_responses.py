@@ -215,6 +215,28 @@ class TestResponses(unittest.TestCase):
                                           ('rssi', 255)])
                              )
 
+    def test_response_8120(self):
+        msg_data = unhexlify(b'011234010006000000')
+        r = responses.R8120(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('sequence', 1),
+                                          ('addr', '1234'),
+                                          ('endpoint', 1),
+                                          ('cluster', 6),
+                                          ('attribute', 0),
+                                          ('status', 0),
+                                          ('rssi', 255)]))
+
+        msg_data = unhexlify(b'01123401000600')
+        r = responses.R8120(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('sequence', 1),
+                                          ('addr', '1234'),
+                                          ('endpoint', 1),
+                                          ('cluster', 6),
+                                          ('status', 0),
+                                          ('rssi', 255)]))
+
 
 if __name__ == '__main__':
     unittest.main()
