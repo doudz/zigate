@@ -812,6 +812,13 @@ class ZiGate(object):
             dt = datetime.datetime(2000, 1, 1) + datetime.timedelta(seconds=timestamp)
         return dt
 
+    def set_led(self, on=True):
+        '''
+        Set Blue Led state ON/OFF
+        '''
+        data = struct.pack('!?', on)
+        return self.send_data(0x0018, data)
+
     def permit_join(self, duration=30):
         '''
         start permit join
