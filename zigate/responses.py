@@ -808,7 +808,7 @@ class R80A6(Response):
             self.data['scenes'] = [{'scene': gaddr} for gaddr in d[:-1]]
             self.data['addr'] = d[-1]
             self._format(self.data, ['addr'])
-        except (struct.error,  KeyError):  # probably old firmware < 3.0f
+        except (struct.error, KeyError):  # probably old firmware < 3.0f
             self.s = OrderedDict([('sequence', 'B'),
                                   ('endpoint', 'B'),
                                   ('cluster', 'H'),
