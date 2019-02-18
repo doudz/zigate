@@ -1997,6 +1997,14 @@ class ZiGate(object):
                            profile, cluster, security, radius, length, payload)
         return self.send_data(0x0530, data)
 
+    def set_TX_power(self, percent=100):
+        '''
+        Set TX Power between 0-100%
+        '''
+        percent = percent*255//100
+        data = struct.pack('!B', percent)
+        return self.send_data(0x0806, data)
+
     def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
         '''
         Start a MQTT broker in a new thread
