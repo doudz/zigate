@@ -121,7 +121,6 @@ For Ikea, you could download available OTA files using the following command :
 
 `python3 zigate.ikea_ota_download`
 
-
 ```python
  # OTA process
  # Load image and send headers to ZiGate
@@ -139,7 +138,6 @@ For Ikea, you could download available OTA files using the following command :
  # Upgrading ikea remote took ~45 minutes
 
 ```
-
 
 ### Callback
 
