@@ -446,24 +446,24 @@ class ZiGate(object):
         '''
         try:
             decoded = self.zigate_decode(packet[1:-1])
-            msg_type, length, checksum, value, rssi = \
+            msg_type, length, checksum, value, lqi = \
                 struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
         except Exception:
             LOGGER.error('Failed to decode packet : {}'.format(hexlify(packet)))
             return
-        if length != len(value) + 1:  # add rssi length
+        if length != len(value) + 1:  # add lqi length
             LOGGER.error('Bad length {} != {} : {}'.format(length,
                                                            len(value) + 1,
                                                            value))
             return
-        computed_checksum = self.checksum(decoded[:4], rssi, value)
+        computed_checksum = self.checksum(decoded[:4], lqi, value)
         if checksum != computed_checksum:
             LOGGER.error('Bad checksum {} != {}'.format(checksum,
                                                         computed_checksum))
             return
         LOGGER.debug('Received response 0x{:04x}: {}'.format(msg_type, hexlify(value)))
         try:
-            response = RESPONSES.get(msg_type, Response)(value, rssi)
+            response = RESPONSES.get(msg_type, Response)(value, lqi)
         except Exception:
             LOGGER.error('Error decoding response 0x{:04x}: {}'.format(msg_type, hexlify(value)))
             LOGGER.error(traceback.format_exc())
@@ -546,7 +546,7 @@ class ZiGate(object):
                 else:
                     return
             device = self._get_device(response['addr'])
-            device.rssi = response['rssi']
+            device.lqi = response['lqi']
             r = device.set_attribute(response['endpoint'],
                                      response['cluster'],
                                      response.cleaned_data())
@@ -1079,7 +1079,7 @@ class ZiGate(object):
                 is_parent = n['bit_field'][2:4] == '00'
                 if is_parent:
                     continue
-                neighbours.append((addr, n['addr'], n['rssi']))
+                neighbours.append((addr, n['addr'], n['lqi']))
                 is_router = n['bit_field'][6:8] == '01'
                 if is_router:
                     n2 = self.build_neighbours_table(n['addr'])
@@ -2044,7 +2044,7 @@ class FakeZiGate(ZiGate):
         self._ieee = '0123456789abcdef'
         # by default add a fake xiaomi temp sensor on address abcd
         device = Device({'addr': 'abcd', 'ieee': '0123456789abcdef'}, self)
-        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 170, 'data': 'lumi.weather'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 170, 'data': 'lumi.weather'})
         device.load_template()
         self._devices['abcd'] = device
 
@@ -2358,12 +2358,20 @@ class Device(object):
         return ieee
 
     @property
-    def rssi(self):
-        return self.info.get('rssi', 0)
+    def rssi(self):  # compat
+        return self.lqi
 
     @rssi.setter
-    def rssi(self, value):
-        self.info['rssi'] = value
+    def rssi(self, value):  # compat
+        self.lqi = value
+
+    @property
+    def lqi(self):
+        return self.info.get('lqi', 0)
+
+    @lqi.setter
+    def lqi(self, value):
+        self.info['lqi'] = value
 
     @property
     def last_seen(self):
@@ -2389,8 +2397,12 @@ class Device(object):
         return percent
 
     @property
-    def rssi_percent(self):
-        return round(100 * self.rssi / 255)
+    def rssi_percent(self):  # compat
+        return self.lqi_percent
+
+    @property
+    def lqi_percent(self):
+        return round(100 * self.lqi / 255)
 
     def get_type(self, wait=True):
         typ = self.get_value('type')
@@ -2535,9 +2547,9 @@ class Device(object):
 
     def set_attribute(self, endpoint_id, cluster_id, data):
         added = False
-        rssi = data.pop('rssi', 0)
-        if rssi > 0:
-            self.info['rssi'] = rssi
+        lqi = data.pop('lqi', 0)
+        if lqi > 0:
+            self.info['lqi'] = lqi
         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
         self.missing = False
         cluster = self.get_cluster(endpoint_id, cluster_id)
@@ -2786,7 +2798,7 @@ class Device(object):
         jdata = json.loads(jdata)
         del jdata['addr']
         del jdata['discovery']
-        for key in ('id', 'addr', 'ieee', 'rssi', 'last_seen', 'max_rx', 'max_tx', 'max_buffer'):
+        for key in ('id', 'addr', 'ieee', 'lqi', 'last_seen', 'max_rx', 'max_tx', 'max_buffer'):
             if key in jdata['info']:
                 del jdata['info'][key]
         for endpoint in jdata.get('endpoints', []):

@@ -16,7 +16,7 @@ class TestResponses(unittest.TestCase):
         r = responses.R8024(msg_data, 255)
         self.assertEqual(r.cleaned_data(),
                          OrderedDict([('status', 1),
-                                      ('rssi', 255),
+                                      ('lqi', 255),
                                       ('addr', '1234'),
                                       ('ieee', '0000000000000000'),
                                       ('channel', 1),
@@ -27,7 +27,7 @@ class TestResponses(unittest.TestCase):
         r = responses.R8024(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
                              OrderedDict([('status', 4),
-                                          ('rssi', 255)]),
+                                          ('lqi', 255)]),
                              )
 
     def test_response_8140(self):
@@ -37,7 +37,7 @@ class TestResponses(unittest.TestCase):
                              OrderedDict([('complete', 1),
                                           ('data_type', 16),
                                           ('attribute', 18),
-                                          ('rssi', 255)]))
+                                          ('lqi', 255)]))
         self.assertDictEqual(r.cleaned_data(),
                              OrderedDict([('attribute', 18),
                                           ]))
@@ -53,7 +53,7 @@ class TestResponses(unittest.TestCase):
                                           ('addr', '932d'),
                                           ('endpoint', 3),
                                           ('cluster', 768),
-                                          ('rssi', 255)]))
+                                          ('lqi', 255)]))
         self.assertDictEqual(r.cleaned_data(),
                              OrderedDict([('attribute', 8),
                                           ]))
@@ -67,7 +67,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 4),
                                           ('capacity', 16),
                                           ('group_count', 1),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('groups', ['9876']),
                                           ('addr', '1234'),
                                           ]))
@@ -80,7 +80,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 4),
                                           ('capacity', 16),
                                           ('group_count', 0),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('groups', []),
                                           ('addr', '1234'),
                                           ]))
@@ -93,7 +93,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 4),
                                           ('capacity', 16),
                                           ('group_count', 2),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('groups', ['abcd', '9876']),
                                           ('addr', '1234'),
                                           ]))
@@ -107,7 +107,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 4),
                                           ('capacity', 16),
                                           ('group_count', 1),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('groups', ['9876']),
                                           ('addr', '1234'),
                                           ]))
@@ -120,7 +120,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 4),
                                           ('capacity', 16),
                                           ('group_count', 0),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('groups', []),
                                           ('addr', '1234'),
                                           ]))
@@ -133,7 +133,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 4),
                                           ('capacity', 16),
                                           ('group_count', 2),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('groups', ['abcd', '9876']),
                                           ('addr', '1234'),
                                           ]))
@@ -147,7 +147,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 4),
                                           ('status', 0),
                                           ('group', '3410'),
-                                          ('rssi', 255)])
+                                          ('lqi', 255)])
                              )
 
     def test_response_8060_30f(self):
@@ -160,7 +160,7 @@ class TestResponses(unittest.TestCase):
                                           ('status', 0),
                                           ('group', '932d'),
                                           ('addr', '1234'),
-                                          ('rssi', 255)])
+                                          ('lqi', 255)])
                              )
 
     def test_reponse_8102_vibration(self):
@@ -176,7 +176,7 @@ class TestResponses(unittest.TestCase):
                                           ('data_type', 37),
                                           ('size', 8),
                                           ('data', '\x00\x00\x04H'),
-                                          ('rssi', 255)])
+                                          ('lqi', 255)])
                              )
 
     def test_response_8009(self):
@@ -188,7 +188,7 @@ class TestResponses(unittest.TestCase):
                                           ('panid', 4660),
                                           ('extended_panid', 81985529216486895),
                                           ('channel', 11),
-                                          ('rssi', 255)])
+                                          ('lqi', 255)])
                              )
 
     def test_response_804E(self):
@@ -199,14 +199,14 @@ class TestResponses(unittest.TestCase):
                              OrderedDict([('neighbours', [OrderedDict([('addr', '1d4d'),
                                                                       ('extended_panid', 15822734423051652312),
                                                                       ('ieee', '00158d0001e56372'), ('depth', 1),
-                                                                      ('rssi', 176), ('bit_field', '00011010')]),
+                                                                      ('lqi', 176), ('bit_field', '00011010')]),
                                                           OrderedDict([('addr', '1e02'),
                                                                       ('extended_panid', 15822734423051652312),
                                                                       ('ieee', '00158d0001e45b44'), ('depth', 1),
-                                                                      ('rssi', 111), ('bit_field', '00011010')])]),
+                                                                      ('lqi', 111), ('bit_field', '00011010')])]),
                                           ('sequence', 230), ('status', 0), ('entries', 14),
                                           ('count', 2), ('index', 0),
-                                          ('rssi', 255)])
+                                          ('lqi', 255)])
                              )
 
     def test_response_8120(self):
@@ -219,7 +219,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 6),
                                           ('attribute', 0),
                                           ('status', 0),
-                                          ('rssi', 255)]))
+                                          ('lqi', 255)]))
 
         msg_data = unhexlify(b'01123401000600')
         r = responses.R8120(msg_data, 255)
@@ -229,7 +229,7 @@ class TestResponses(unittest.TestCase):
                                           ('endpoint', 1),
                                           ('cluster', 6),
                                           ('status', 0),
-                                          ('rssi', 255)]))
+                                          ('lqi', 255)]))
 
     def test_response_80A0(self):
         msg_data = unhexlify(b'0101000500abcd0200001234')
@@ -243,7 +243,7 @@ class TestResponses(unittest.TestCase):
                                           ('scene', 2),
                                           ('transition', 0),
                                           ('addr', '1234'),
-                                          ('rssi', 255)])
+                                          ('lqi', 255)])
                              )
         msg_data = unhexlify(b'0101000500abcd020000')
         r = responses.R80A0(msg_data, 255)
@@ -255,7 +255,7 @@ class TestResponses(unittest.TestCase):
                                           ('group', 'abcd'),
                                           ('scene', 2),
                                           ('transition', 0),
-                                          ('rssi', 255)])
+                                          ('lqi', 255)])
                              )
 
     def test_response_80A6_30f(self):
@@ -269,7 +269,7 @@ class TestResponses(unittest.TestCase):
                                           ('capacity', 16),
                                           ('group', 'abcd'),
                                           ('scene_count', 1),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('scenes', [2]),
                                           ('addr', '1234'),
                                           ]))
@@ -284,7 +284,7 @@ class TestResponses(unittest.TestCase):
                                           ('capacity', 16),
                                           ('group', 'abcd'),
                                           ('scene_count', 0),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('scenes', []),
                                           ('addr', '1234'),
                                           ]))
@@ -299,7 +299,7 @@ class TestResponses(unittest.TestCase):
                                           ('capacity', 16),
                                           ('group', 'abcd'),
                                           ('scene_count', 2),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('scenes', [1, 2]),
                                           ('addr', '1234'),
                                           ]))
@@ -315,7 +315,7 @@ class TestResponses(unittest.TestCase):
                                           ('capacity', 16),
                                           ('group', 'abcd'),
                                           ('scene_count', 1),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('scenes', [2]),
                                           ]))
 
@@ -329,7 +329,7 @@ class TestResponses(unittest.TestCase):
                                           ('capacity', 16),
                                           ('group', 'abcd'),
                                           ('scene_count', 0),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('scenes', []),
                                           ]))
 
@@ -343,7 +343,7 @@ class TestResponses(unittest.TestCase):
                                           ('capacity', 16),
                                           ('group', 'abcd'),
                                           ('scene_count', 2),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('scenes', [1, 2]),
                                           ]))
 
@@ -360,7 +360,7 @@ class TestResponses(unittest.TestCase):
                                           ('attr2', 2),
                                           ('attr3', 3),
                                           ('addr', '1234'),
-                                          ('rssi', 255),
+                                          ('lqi', 255),
                                           ('button', 'middle'),
                                           ('type', 1),
                                           ]))

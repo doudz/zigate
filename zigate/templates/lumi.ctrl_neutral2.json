@@ -91,7 +91,6 @@
         "mac_capability": "10000100",
         "manufacturer_code": "1037",
         "power_type": 1,
-        "rssi": 105,
         "server_mask": 1
     }
 }

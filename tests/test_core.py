@@ -142,7 +142,7 @@ class TestCore(unittest.TestCase):
                 "mac_capability": "10000000",
                 "manufacturer_code": "1037",
                 "power_type": 0,
-                "rssi": 135,
+                "lqi": 135,
                 "server_mask": 0
             }
         },
@@ -208,7 +208,7 @@ class TestCore(unittest.TestCase):
                 "ieee": "00158d000214f45c",
                 "last_seen": "2019-01-05 20:39:07",
                 "power_type": 0,
-                "rssi": 207
+                "lqi": 207
             }
         },
         {
@@ -471,7 +471,7 @@ class TestCore(unittest.TestCase):
                 "max_rx": 100,
                 "max_tx": 100,
                 "power_type": 1,
-                "rssi": 96,
+                "lqi": 96,
                 "server_mask": 0
             }
         }
@@ -617,7 +617,7 @@ class TestCore(unittest.TestCase):
 
     def test_assumed_state(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
-        device.set_attribute(3, 6, {'attribute': 0, 'rssi': 255, 'data': False})
+        device.set_attribute(3, 6, {'attribute': 0, 'lqi': 255, 'data': False})
         self.zigate._devices['1234'] = device
         self.zigate.connection.add_auto_response(0x0120, 0x8120, unhexlify(b'01123403000600'))
         r = self.zigate.reporting_request('1234', 3, 6, (0x0000, 0x20))

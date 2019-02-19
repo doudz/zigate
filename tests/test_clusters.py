@@ -12,7 +12,7 @@ class TestResponses(unittest.TestCase):
     def test_cluster_C0012(self):
         # xiaomi cube status
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
-        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.sensor_cube'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_cube'})
         endpoint = {'device': 24322}
         data = {"attributes": [{"attribute": 85,
                                 "data": 4,

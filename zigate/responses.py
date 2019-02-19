@@ -26,9 +26,9 @@ class Response(object):
               'ieee': '{:016x}',
               'group': '{:04x}'}
 
-    def __init__(self, msg_data, rssi):
+    def __init__(self, msg_data, lqi):
         self.msg_data = msg_data
-        self.rssi = rssi
+        self.lqi = lqi
         self.data = OrderedDict()
         self.decode()
 
@@ -99,7 +99,7 @@ class Response(object):
 
         # reformat output, TODO: do it live
         self._format(self.data)
-        self.data['rssi'] = self.rssi
+        self.data['lqi'] = self.lqi
 
     def __decode(self, fmt, keys, data):
         size = struct.calcsize(fmt)
@@ -278,7 +278,7 @@ class R8015(Response):
                                               ('addr', 'H'),
                                               ('ieee', 'Q'),
                                               ('power_type', 'B'),
-                                              ('rssi', 'B')]))])
+                                              ('lqi', 'B')]))])
 
 
 @register_response
@@ -560,7 +560,7 @@ class R804E(Response):
                                                 ('extended_panid', 'Q'),
                                                 ('ieee', 'Q'),
                                                 ('depth', 'B'),
-                                                ('rssi', 'B'),
+                                                ('lqi', 'B'),
                                                 ('bit_field', 'B')]))])
     format = {'addr': '{:04x}',
               'ieee': '{:016x}',
