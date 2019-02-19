@@ -2321,6 +2321,8 @@ class Device(object):
             d.info['power_type'] = d.info.pop('power_source')
         if 'manufacturer' in d.info:  # old version
             d.info['manufacturer_code'] = d.info.pop('manufacturer')
+        if 'rssi' in d.info:  # old version
+            d.info['lqi'] = d.info.pop('rssi')
         d._avoid_duplicate()
         return d
 
