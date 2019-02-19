@@ -1076,7 +1076,8 @@ class ZiGate(object):
                 is_router = n['bit_field'][6:8] == '01'
                 if is_child:
                     neighbours.append((addr, n['addr'], n['lqi']))
-                if is_child and is_router:
+#                 if is_child and is_router:
+                if is_router:
                     LOGGER.debug('{} is a router, search for children'.format(n['addr']))
                     n2 = self.build_neighbours_table(n['addr'])
                     if n2:
@@ -1096,7 +1097,7 @@ class ZiGate(object):
                     directory=directory, format='png', engine='neato')
         dot.node(self.addr, 'ZiGate ({})'.format(self.addr))
         for device in self.devices:
-            name = labels.get(device.addr, str(device).replace(' ', '\n'))
+            name = labels.get(device.addr, str(device))
             dot.node(device.addr, name)
         if table:
             for entry in table:
