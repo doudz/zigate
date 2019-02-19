@@ -1091,6 +1091,7 @@ class ZiGate(object):
         labels:optionnal dict for node name {addr: nodename, addr2: nodename2}
         '''
         table = self.build_neighbours_table()
+        LOGGER.debug('Neighbours Table : {}'.format(table))
         dot = Graph('zigate_network', comment='ZiGate Network',
                     directory=directory, format='png', engine='neato')
         dot.node(self.addr, 'ZiGate ({})'.format(self.addr))
