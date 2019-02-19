@@ -1093,7 +1093,7 @@ class ZiGate(object):
                     directory=directory, format='png', engine='neato')
         dot.node(self.addr, 'ZiGate ({})'.format(self.addr))
         for device in self.devices:
-            name = labels.get(device.addr, str(device))
+            name = labels.get(device.addr, str(device).replace(' ', '\n'))
             dot.node(device.addr, name)
         if table:
             for entry in table:
