@@ -97,8 +97,8 @@ class FakeTransport(BaseTransport):
         data = self.zigate_decode(data[1:-1])
         cmd = struct.unpack('!H', data[0:2])[0]
         # reply 0x8000 ok for cmd
-        rssi = 255
-        value = struct.pack('!BBHB', 0, 1, cmd, rssi)
+        lqi = 255
+        value = struct.pack('!BBHB', 0, 1, cmd, lqi)
         length = len(value)
         checksum = self.checksum(struct.pack('!H', 0x8000),
                                  struct.pack('!B', length),
@@ -113,12 +113,12 @@ class FakeTransport(BaseTransport):
         if cmd in self.auto_responder:
             self.received.put(self.auto_responder[cmd])
 
-    def add_auto_response(self, cmd, resp, value, rssi=255):
-        enc_msg = self.create_fake_response(resp, value, rssi)
+    def add_auto_response(self, cmd, resp, value, lqi=255):
+        enc_msg = self.create_fake_response(resp, value, lqi)
         self.auto_responder[cmd] = enc_msg
 
-    def create_fake_response(self, resp, value, rssi=255):
-        value += struct.pack('!B', rssi)
+    def create_fake_response(self, resp, value, lqi=255):
+        value += struct.pack('!B', lqi)
         length = len(value)
         checksum = self.checksum(struct.pack('!H', resp),
                                  struct.pack('!B', length),

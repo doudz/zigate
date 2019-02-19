@@ -142,7 +142,7 @@ class TestCore(unittest.TestCase):
                 "mac_capability": "10000000",
                 "manufacturer_code": "1037",
                 "power_type": 0,
-                "rssi": 135,
+                "lqi": 135,
                 "server_mask": 0
             }
         },
@@ -208,7 +208,7 @@ class TestCore(unittest.TestCase):
                 "ieee": "00158d000214f45c",
                 "last_seen": "2019-01-05 20:39:07",
                 "power_type": 0,
-                "rssi": 207
+                "lqi": 207
             }
         },
         {
@@ -471,7 +471,7 @@ class TestCore(unittest.TestCase):
                 "max_rx": 100,
                 "max_tx": 100,
                 "power_type": 1,
-                "rssi": 96,
+                "lqi": 96,
                 "server_mask": 0
             }
         }
@@ -617,7 +617,7 @@ class TestCore(unittest.TestCase):
 
     def test_assumed_state(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
-        device.set_attribute(3, 6, {'attribute': 0, 'rssi': 255, 'data': False})
+        device.set_attribute(3, 6, {'attribute': 0, 'lqi': 255, 'data': False})
         self.zigate._devices['1234'] = device
         self.zigate.connection.add_auto_response(0x0120, 0x8120, unhexlify(b'01123403000600'))
         r = self.zigate.reporting_request('1234', 3, 6, (0x0000, 0x20))
@@ -674,7 +674,7 @@ class TestCore(unittest.TestCase):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
                              self.zigate)
         self.zigate._devices['1234'] = device
-        msg_data = b'\x01\x01\x00\x05\x02\x124\x07\x01'
+        msg_data = b'\x01\x01\x00\x05\x07\x01\x00\x00\x00\x124'
         r = responses.R80A7(msg_data, 255)
         self.zigate.interpret_response(r)
         self.assertEqual(device.get_property_value('remote_scene_button'),
@@ -694,6 +694,30 @@ class TestCore(unittest.TestCase):
         self.assertEqual(self.zigate.addr, '1234')
         self.assertEqual(self.zigate.ieee, 'fedcba9876543210')
         self.assertEqual(self.zigate.channel, 11)
+
+    def test_build_neighbours_table(self):
+        self.zigate.connection.add_auto_response(0x004e, 0x804e,
+                                                 unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b626'))
+        table = self.zigate.build_neighbours_table()
+        self.assertEqual(table, [('0000', 'abcd', 182)])
+
+    def test_build_network_map(self):
+        filename = os.path.join(self.test_dir, 'zigate_network.png')
+        self.zigate.connection.add_auto_response(0x004e, 0x804e,
+                                                 unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b626'))
+        self.zigate.build_network_map(self.test_dir)
+        self.assertTrue(os.path.exists(filename))
+
+    def test_unsupported_attribute(self):
+        # some device like profalux doesn't have model identifier
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        r = responses.R8102(unhexlify(b'2f1234010000000586ff0000'), 255)
+        r = self.zigate.interpret_response(r)
+        self.assertEqual(device.properties,
+                         [{'attribute': 5, 'data': 'unsupported', 'name': 'type',
+                           'value': 'unsupported', 'type': str}])
 
 
 if __name__ == '__main__':

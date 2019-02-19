@@ -26,9 +26,9 @@ class Response(object):
               'ieee': '{:016x}',
               'group': '{:04x}'}
 
-    def __init__(self, msg_data, rssi):
+    def __init__(self, msg_data, lqi):
         self.msg_data = msg_data
-        self.rssi = rssi
+        self.lqi = lqi
         self.data = OrderedDict()
         self.decode()
 
@@ -87,7 +87,6 @@ class Response(object):
                     sdata, submsg_data = self.__decode(subfmt,
                                                        v.keys(),
                                                        submsg_data)
-                    self._format(sdata)
                     self.data[k].append(sdata)
             elif v == 'rawend':
                 fmt += '{}s'.format(len(msg_data) - struct.calcsize(fmt))
@@ -100,7 +99,7 @@ class Response(object):
 
         # reformat output, TODO: do it live
         self._format(self.data)
-        self.data['rssi'] = self.rssi
+        self.data['lqi'] = self.lqi
 
     def __decode(self, fmt, keys, data):
         size = struct.calcsize(fmt)
@@ -108,10 +107,15 @@ class Response(object):
         data = data[size:]
         return sdata, data
 
-    def _format(self, data):
-        for k in data.keys():
+    def _format(self, data, keys=[]):
+        keys = keys or data.keys()
+        for k in keys:
             if k in self.format:
                 data[k] = self.format[k].format(data[k])
+            elif isinstance(data[k], list):
+                if data[k] and isinstance(data[k][0], dict):
+                    for subdata in data[k]:
+                        self._format(subdata)
 
     def _filter_data(self, include=[], exclude=[]):
         if include:
@@ -274,7 +278,7 @@ class R8015(Response):
                                               ('addr', 'H'),
                                               ('ieee', 'Q'),
                                               ('power_type', 'B'),
-                                              ('rssi', 'B')]))])
+                                              ('lqi', 'B')]))])
 
 
 @register_response
@@ -552,12 +556,15 @@ class R804E(Response):
                      ('entries', 'B'),
                      ('count', 'B'),
                      ('index', 'B'),
-                     ('neighbour', OrderedDict([('addr', 'H'),
-                                                ('extend_pan', 'Q'),
+                     ('neighbours', OrderedDict([('addr', 'H'),
+                                                ('extended_panid', 'Q'),
                                                 ('ieee', 'Q'),
                                                 ('depth', 'B'),
-                                                ('rssi', 'B'),
+                                                ('lqi', 'B'),
                                                 ('bit_field', 'B')]))])
+    format = {'addr': '{:04x}',
+              'ieee': '{:016x}',
+              'bit_field': '{:08b}'}
 # Bit map of attributes Described below: uint8_t
 # {bit 0-1 Device Type
 # (0-Coordinator 1-Router 2-End Device)
@@ -576,9 +583,9 @@ class R8060(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
-                     ('addr', 'H'),
                      ('status', 'B'),
                      ('group', 'H'),
+                     ('addr', 'H'),
                      ])
 
     def decode(self):
@@ -597,7 +604,14 @@ class R8061(Response):
                      ('cluster', 'H'),
                      ('status', 'B'),
                      ('group', 'H'),
+                     ('addr', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 7:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -607,11 +621,30 @@ class R8062(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
-                     ('addr', 'H'),
+                     # ('addr', 'H'),  # firmware < 3.0f
                      ('capacity', 'B'),
                      ('group_count', 'B'),
-                     ('groups', OrderedDict([('group', 'H')]))
+                     # ('groups', OrderedDict([('group', 'H')])),
                      ])
+
+    def decode(self):
+        try:
+            Response.decode(self)
+            additionnal = self.data.pop('additionnal')
+            d = struct.unpack('!{}HH'.format(self.data['group_count']), additionnal)
+            self.data['groups'] = [{'group': gaddr} for gaddr in d[:-1]]
+            self.data['addr'] = d[-1]
+            self._format(self.data)
+        except struct.error:  # probably old firmware < 3.0f
+            self.s = OrderedDict([('sequence', 'B'),
+                                  ('endpoint', 'B'),
+                                  ('cluster', 'H'),
+                                  ('addr', 'H'),  # firmware < 3.0f
+                                  ('capacity', 'B'),
+                                  ('group_count', 'B'),
+                                  ('groups', OrderedDict([('group', 'H')])),
+                                  ])
+            Response.decode(self)
 
     def cleaned_data(self):
         self.data['groups'] = [g['group'] for g in self.data['groups']]
@@ -691,7 +724,14 @@ class R80A0(Response):
                      ('group', 'H'),
                      ('scene', 'B'),
                      ('transition', 'H'),
+                     ('addr', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 10:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -704,7 +744,14 @@ class R80A1(Response):
                      ('status', 'B'),
                      ('group', 'H'),
                      ('scene', 'B'),
+                     ('addr', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 8:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -722,7 +769,14 @@ class R80A3(Response):
                      ('cluster', 'H'),
                      ('status', 'B'),
                      ('group', 'H'),
+                     ('addr', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 9:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['addr']
+        Response.decode(self)
 
 
 @register_response
@@ -742,8 +796,33 @@ class R80A6(Response):
                      ('capacity', 'B'),
                      ('group', 'H'),
                      ('scene_count', 'B'),
-                     ('scenes', OrderedDict([('scene', 'B')]))
+                     # ('scenes', OrderedDict([('scene', 'B')])),
+                     # ('addr', 'H'),
                      ])
+
+    def decode(self):
+        try:
+            Response.decode(self)
+            additionnal = self.data.pop('additionnal')
+            d = struct.unpack('!{}BH'.format(self.data['scene_count']), additionnal)
+            self.data['scenes'] = [{'scene': gaddr} for gaddr in d[:-1]]
+            self.data['addr'] = d[-1]
+            self._format(self.data, ['addr'])
+        except (struct.error, KeyError):  # probably old firmware < 3.0f
+            self.s = OrderedDict([('sequence', 'B'),
+                                  ('endpoint', 'B'),
+                                  ('cluster', 'H'),
+                                  ('status', 'B'),
+                                  ('capacity', 'B'),
+                                  ('group', 'H'),
+                                  ('scene_count', 'B'),
+                                  ('scenes', OrderedDict([('scene', 'B')])),
+                                  ])
+            Response.decode(self)
+
+    def cleaned_data(self):
+        self.data['scenes'] = [g['scene'] for g in self.data['scenes']]
+        return self.data
 
 
 @register_response
@@ -753,10 +832,12 @@ class R80A7(Response):
     s = OrderedDict([('sequence', 'B'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
-                     ('address_mode', 'B'),
-                     ('addr', 'H'),
                      ('cmd', 'B'),
                      ('direction', 'B'),
+                     ('attr1', 'B'),
+                     ('attr2', 'B'),
+                     ('attr3', 'B'),
+                     ('addr', 'H'),
                      ])
 
     def decode(self):
@@ -844,8 +925,15 @@ class R8120(Response):
                      ('addr', 'H'),
                      ('endpoint', 'B'),
                      ('cluster', 'H'),
+                     ('attribute', 'H'),
                      ('status', 'B'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 7:  # firmware < 3.0f
+            self.s = self.s.copy()
+            del self.s['attribute']
+        Response.decode(self)
 
 
 @register_response

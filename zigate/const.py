@@ -55,17 +55,23 @@ ACTIONS_COVER = 'cover'
 DATA_TYPE = {0x00: None,
              0x10: '?',  # bool
              0x18: 'b',
-             0x20: 'B',
-             0x21: 'H',
-             0x22: 'I',
-             0x23: 'I',
-             0x28: 'b',
-             0x29: 'h',
-             0x2a: 'i',
-             0x30: 'b',
-             0x39: 'f',
-             0x41: 's',
-             0x42: 's',
+             0x20: 'B',  # uint8
+             0x21: 'H',  # uint16
+             0x22: 'I',  # uint24
+             0x23: 'I',  # uint32
+             # 0x24  # uint40
+             # 0x25  # uint48
+             0x28: 'b',  # int8
+             0x29: 'h',  # int16
+             0x2a: 'i',  # int24
+             0x30: 'b',  # enum8
+             0x38: 'f',  # float semi
+             0x39: 'f',  # float simple
+             0x3a: 'f',  # float double
+             0x41: 's',  # octet string
+             0x42: 's',  # char string
+             0x43: 's',  # long octet string
+             0x44: 's',  # long char string
              }
 
 BASE_PATH = os.path.dirname(__file__)

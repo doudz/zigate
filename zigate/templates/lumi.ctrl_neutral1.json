@@ -5,16 +5,8 @@
                 {
                     "attributes": [
                         {
-                            "attribute": 4,
-                            "data": "LUMI"
-                        },
-                        {
                             "attribute": 5,
-                            "data": "lumi.ctrl_neutral2"
-                        },
-                        {
-                            "attribute": 7,
-                            "data": 4
+                            "data": "lumi.ctrl_neutral1"
                         }
                     ],
                     "cluster": 0
@@ -43,6 +35,9 @@
                     "attributes": [
                         {
                             "attribute": 0
+                        },
+                        {
+                            "attribute": 61440
                         }
                     ],
                     "cluster": 6
@@ -70,13 +65,11 @@
                     "cluster": 6
                 }
             ],
-            "device": 256,
-            "endpoint": 3,
+            "device": 0,
+            "endpoint": 4,
             "in_clusters": [
-                16,
-                6,
-                4,
-                5
+                18,
+                6
             ],
             "out_clusters": [],
             "profile": 260
@@ -84,13 +77,6 @@
     ],
     "generictype": "",
     "info": {
-        "assumed_state": false,
-        "need_report": false,
-        "bit_field": "0100000000000001",
-        "descriptor_capability": "00000000",
-        "mac_capability": "10000100",
-        "manufacturer_code": "1037",
-        "power_type": 1,
-        "server_mask": 1
+        "mac_capability": "10000100"
     }
 }

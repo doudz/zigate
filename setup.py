@@ -55,7 +55,8 @@ setup(
     install_requires=[
         'pyserial',
         'pydispatcher',
-        'bottle'
+        'bottle',
+        'graphviz'
     ],
     extras_require={
         'dev': ['tox'],

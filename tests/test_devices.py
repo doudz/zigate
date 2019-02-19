@@ -30,7 +30,7 @@ class TestCore(unittest.TestCase):
 
     def test_device_dump(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
-        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'test'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'test'})
         last_seen = device.info['last_seen']
         data = json.dumps(device, cls=core.DeviceEncoder, sort_keys=True)
         self.maxDiff = None
@@ -40,24 +40,24 @@ class TestCore(unittest.TestCase):
                           '"test", "name": "type", "type": "str", "value": "test"}], "cluster": 0}], "device": 0, '
                           '"endpoint": 1, "in_clusters": [], "out_clusters": [], "profile": 0}], "generictype": "", '
                           '"info": {"addr": "1234", "ieee": "0123456789abcdef", "last_seen": "' + last_seen + '", '
-                          '"rssi": 255}}'))
+                          '"lqi": 255}}'))
 
     def test_template(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
-        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.test'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.test'})
         self.assertFalse(device.load_template())
 
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         self.assertFalse(device.load_template())
-        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.weather'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.weather'})
 
         self.assertCountEqual(device.properties,
                               [{'attribute': 5, 'data': 'lumi.weather',
                                 'name': 'type', 'value': 'lumi.weather', 'type': str}]
                               )
-        device.set_attribute(1, 0x0402, {'attribute': 0, 'rssi': 255, 'data': 1200})
+        device.set_attribute(1, 0x0402, {'attribute': 0, 'lqi': 255, 'data': 1200})
         self.assertEqual(device.get_property_value('temperature'), 12.0)
-        device.set_attribute(1, 0, {'attribute': 1, 'rssi': 255, 'data': 'test'})
+        device.set_attribute(1, 0, {'attribute': 1, 'lqi': 255, 'data': 'test'})
         self.assertEqual(device.genericType, '')
         self.assertTrue(device.load_template())
         self.assertEqual(device.discovery, 'templated')
@@ -75,8 +75,8 @@ class TestCore(unittest.TestCase):
                                {'attribute': 0, 'name': 'humidity', 'unit': '%', 'value': 0.0, 'type': float}]
                               )
 
-        device.set_attribute(1, 6, {'attribute': 0, 'rssi': 255, 'data': False, 'inverse': True})
-        device.set_attribute(1, 0, {'attribute': 1, 'rssi': 255, 'data': 'test'})
+        device.set_attribute(1, 6, {'attribute': 0, 'lqi': 255, 'data': False, 'inverse': True})
+        device.set_attribute(1, 0, {'attribute': 1, 'lqi': 255, 'data': 'test'})
 
         device.generate_template(self.test_dir)
         with open(os.path.join(self.test_dir, 'lumi.weather.json')) as fp:
@@ -105,7 +105,7 @@ class TestCore(unittest.TestCase):
         # another test
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         self.assertFalse(device.load_template())
-        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.sensor_wleak.aq1'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_wleak.aq1'})
         self.assertTrue(device.load_template())
         self.assertEqual(device.discovery, 'templated')
         self.assertEqual(device.genericType, 'sensor')
@@ -115,13 +115,55 @@ class TestCore(unittest.TestCase):
                               'test_mode': False, 'battery_defect': False}
                              )
 
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_cube'})
+        self.assertTrue(device.load_template())
+        self.assertCountEqual(device.attributes,
+                              [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.sensor_cube',
+                                'name': 'type', 'value': 'lumi.sensor_cube', 'type': str},
+                               {'endpoint': 1, 'cluster': 0, 'attribute': 4, 'data': 'LUMI',
+                                'name': 'manufacturer', 'value': 'LUMI'},
+                               {'endpoint': 1, 'cluster': 0, 'attribute': 7, 'data': 3,
+                                'name': 'power_source', 'value': 3},
+                               {'endpoint': 2, 'cluster': 18, 'attribute': 85, 'name': 'movement',
+                                'value': '', 'expire': 2, 'expire_value': '', 'type': str},
+                               {'endpoint': 3, 'cluster': 12, 'attribute': 65285, 'name': 'rotation_time',
+                                'value': 0, 'unit': 'ms', 'expire': 2, 'type': int},
+                               {'endpoint': 3, 'cluster': 12, 'attribute': 85, 'name': 'rotation',
+                                'value': 0.0, 'unit': '°', 'expire': 2, 'type': float}]
+                              )
+
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.remote.b186acn01'})
+        self.assertTrue(device.load_template())
+        self.assertCountEqual(device.attributes,
+                              [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.remote.b186acn01',
+                                'name': 'type', 'value': 'lumi.remote.b186acn01', 'type': str},
+                               {'endpoint': 1, 'cluster': 18, 'attribute': 85, 'name': 'multiclick',
+                                'value': '', 'expire': 2, 'type': str}]
+                              )
+
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.remote.b286acn01'})
+        self.assertTrue(device.load_template())
+        self.assertCountEqual(device.attributes,
+                              [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.remote.b286acn01',
+                                'name': 'type', 'value': 'lumi.remote.b286acn01', 'type': str},
+                               {'endpoint': 1, 'cluster': 18, 'attribute': 85, 'name': 'multiclick',
+                                'value': '', 'expire': 2, 'type': str},
+                               {'endpoint': 2, 'cluster': 18, 'attribute': 85, 'name': 'multiclick2',
+                                'value': '', 'expire': 2, 'type': str},
+                               {'endpoint': 3, 'cluster': 18, 'attribute': 85, 'name': 'multiclick3',
+                                'value': '', 'expire': 2, 'type': str}]
+                              )
+
     def test_inverse_bool(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
-        device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': 'lumi.sensor_switch.aq2'})
-        device.set_attribute(1, 6, {'attribute': 0, 'rssi': 255, 'data': True})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_switch.aq2'})
+        device.set_attribute(1, 6, {'attribute': 0, 'lqi': 255, 'data': True})
         self.assertTrue(device.get_property_value('onoff'))
         device.load_template()
-        device.set_attribute(1, 6, {'attribute': 0, 'rssi': 255, 'data': True})
+        device.set_attribute(1, 6, {'attribute': 0, 'lqi': 255, 'data': True})
         self.assertFalse(device.get_property_value('onoff'))
 
     def test_templates(self):
@@ -134,7 +176,7 @@ class TestCore(unittest.TestCase):
                 with open(os.path.join(path, f)) as fp:
                     json.load(fp)
                 device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
-                device.set_attribute(1, 0, {'attribute': 5, 'rssi': 255, 'data': f[:-5]})
+                device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': f[:-5]})
                 self.assertTrue(device.load_template())
                 success = True
             except Exception as e:
@@ -143,11 +185,11 @@ class TestCore(unittest.TestCase):
 
     def test_reset_attribute(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
-        device.set_attribute(1, 0x0101, {'attribute': 0x0503, 'rssi': 255, 'data': 12.0})
+        device.set_attribute(1, 0x0101, {'attribute': 0x0503, 'lqi': 255, 'data': 12.0})
         self.assertEqual(device.get_property_value('rotation'), 12.0)
         device._reset_attribute(1, 0x0101, 0x0503)
         self.assertEqual(device.get_property_value('rotation'), 0.0)
-        device.set_attribute(1, 0x0101, {'attribute': 0x0503, 'rssi': 255, 'data': 'test'})
+        device.set_attribute(1, 0x0101, {'attribute': 0x0503, 'lqi': 255, 'data': 'test'})
         self.assertEqual(device.get_property_value('rotation'), 0.0)
         device._reset_attribute(1, 0x0101, 0x0503)
         self.assertEqual(device.get_property_value('rotation'), 0.0)

@@ -53,9 +53,9 @@ def register_cluster(o):
     return o
 
 
-def get_cluster(cluster_id, endpoint=None):
+def get_cluster(cluster_id, endpoint=None, device=None):
     cls_cluster = CLUSTERS.get(cluster_id, Cluster)
-    cluster = cls_cluster(endpoint)
+    cluster = cls_cluster(endpoint, device)
     if type(cluster) == Cluster:
         cluster.cluster_id = cluster_id
     return cluster
@@ -72,9 +72,10 @@ class Cluster(object):
     type = 'Unknown cluster'
     attributes_def = {}
 
-    def __init__(self, endpoint=None):
+    def __init__(self, endpoint=None, device=None):
         self.attributes = {}
         self._endpoint = endpoint
+        self._device = device
 
     def update(self, data):
         attribute_id = data['attribute']
@@ -128,10 +129,10 @@ class Cluster(object):
                 }
 
     @staticmethod
-    def from_json(data, endpoint=None):
+    def from_json(data, endpoint=None, device=None):
         cluster_id = data['cluster']
         cluster = CLUSTERS.get(cluster_id, Cluster)
-        cluster = cluster(endpoint)
+        cluster = cluster(endpoint, device)
         if type(cluster) == Cluster:
             cluster.cluster_id = cluster_id
         for attribute in data['attributes']:
@@ -173,14 +174,16 @@ class C0000(Cluster):
                                'value': 'clean_str(value)'},
                       0xff01: {'name': 'battery_voltage',
                                'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
-                               'unit': 'V'},
+                               'unit': 'V', 'type': float},
                       0xff02: {'name': 'battery_voltage',
-                               'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
-                               'unit': 'V'},
+                               'value': "struct.unpack('H', unhexlify(value)[3:5])[0]/1000.",
+                               'unit': 'V', 'type': float},
                       }
 
     def update(self, data):
-        if data['attribute'] in (0xff01, 0xff02) and not data.get('data', '').startswith('0121'):
+        if data['attribute'] == 0xff01 and not data.get('data', '').startswith('0121'):
+            return
+        if data['attribute'] == 0xff02 and not data.get('data', '').startswith('10'):
             return
         return Cluster.update(self, data)
 
@@ -306,9 +309,10 @@ class C0012(Cluster):
                                'expire': 2, 'type': str}
                       }
 
-    def __init__(self, endpoint=None):
-        Cluster.__init__(self, endpoint=endpoint)
-        if self._endpoint['device'] == 0x5f02:  # xiaomi cube
+    def __init__(self, endpoint=None, device=None):
+        Cluster.__init__(self, endpoint=endpoint, device=device)
+#         if self._endpoint['device'] == 0x5f02:  # xiaomi cube
+        if self._device and 'cube' in self._device.get_value('type', ''):
             self.attributes_def = {0x0055: {'name': 'movement',
                                             'value': 'cube_decode(value)',
                                             'expire': 2, 'expire_value': '',
@@ -542,3 +546,28 @@ class C0500(Cluster):
 # 0 - Battery OK
 # 10-15
 # Reserved
+
+
+@register_cluster
+class C0702(Cluster):
+    cluster_id = 0x0702
+    type = 'Metering'
+    attributes_def = {0x0000: {'name': 'current_delivered', 'value': 'value',
+                               'type': float},
+                      }
+
+
+@register_cluster
+class CFC00(Cluster):
+    cluster_id = 0xFC00
+    type = 'Hue remote'
+    attributes_def = {0x0001: {'name': 'button_on', 'value': 'value',
+                               'expire': 2, 'type': str},
+                      0x0002: {'name': 'button_up', 'value': 'value',
+                               'expire': 2, 'type': str},
+                      0x0003: {'name': 'button_off', 'value': 'value',
+                               'expire': 2, 'type': str},
+                      0x0004: {'name': 'button_down', 'value': 'value',
+                               'expire': 2, 'type': str},
+                      }
+# 0 = short press / 1 = long press / 2 = release (short press) / 3 = release (long press)
