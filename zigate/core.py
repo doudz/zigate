@@ -1071,12 +1071,12 @@ class ZiGate(object):
             data = r.cleaned_data()
             entries = data['entries']
             for n in data['neighbours']:
-                is_parent = n['bit_field'][2:4] == '00'
-                if is_parent:
-                    continue
-                neighbours.append((addr, n['addr'], n['lqi']))
+#                 is_parent = n['bit_field'][2:4] == '00'
+                is_child = n['bit_field'][2:4] == '01'
                 is_router = n['bit_field'][6:8] == '01'
-                if is_router:
+                if is_child:
+                    neighbours.append((addr, n['addr'], n['lqi']))
+                if is_child and is_router:
                     LOGGER.debug('{} is a router, search for children'.format(n['addr']))
                     n2 = self.build_neighbours_table(n['addr'])
                     if n2:
