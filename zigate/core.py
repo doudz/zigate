@@ -2429,7 +2429,7 @@ class Device(object):
             # wait for type
             t1 = time()
             while self.get_value('type') is None:
-                sleep(SLEEP_INTERVAL)
+                sleep(0.01)
                 t2 = time()
                 if t2 - t1 > WAIT_TIMEOUT:
                     LOGGER.warning('No response waiting for type')
