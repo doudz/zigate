@@ -1104,6 +1104,7 @@ class ZiGate(object):
         fname = os.path.join(directory, 'zigate_network.png')
         if os.path.exists(fname):
             os.remove(fname)
+        LOGGER.debug(dot.source)
         dot.render('zigate_network', cleanup=True)
 
     def refresh_device(self, addr):
