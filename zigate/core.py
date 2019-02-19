@@ -1059,6 +1059,7 @@ class ZiGate(object):
         '''
         Build neighbours table
         '''
+        LOGGER.debug('Search for children of {}'.format(addr))
         index = 0
         neighbours = []
         entries = 255
@@ -1076,6 +1077,7 @@ class ZiGate(object):
                 neighbours.append((addr, n['addr'], n['lqi']))
                 is_router = n['bit_field'][6:8] == '01'
                 if is_router:
+                    LOGGER.debug('{} is a router, search for children'.format(n['addr']))
                     n2 = self.build_neighbours_table(n['addr'])
                     if n2:
                         neighbours += n2
