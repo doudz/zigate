@@ -1116,6 +1116,7 @@ class ZiGate(object):
         '''
         starts discovery process
         '''
+        LOGGER.debug('discover_device {}'.format(addr))
         device = self.get_device_from_addr(addr)
         if not device:
             return
@@ -1125,12 +1126,16 @@ class ZiGate(object):
             return
         typ = device.get_type()
         if typ:
+            LOGGER.debug('Found type')
             if device.has_template():
+                LOGGER.debug('Found template, loading it')
                 device.load_template()
                 return
         if 'mac_capability' not in device.info:
+            LOGGER.debug('no mac_capability')
             self.node_descriptor_request(addr)
         if not device.endpoints:
+            LOGGER.debug('no endpoints')
             self.active_endpoint_request(addr)
             return
 #         stop = False
@@ -1143,6 +1148,7 @@ class ZiGate(object):
         if not typ:
             return
         if not device.load_template():
+            LOGGER.debug('Loading template failed, tag as auto-discovered')
             device.discovery = 'auto-discovered'
             for endpoint, values in device.endpoints.items():
                 for cluster in values.get('in_clusters', []):
