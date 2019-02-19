@@ -549,6 +549,15 @@ class C0500(Cluster):
 
 
 @register_cluster
+class C0702(Cluster):
+    cluster_id = 0x0702
+    type = 'Metering'
+    attributes_def = {0x0000: {'name': 'current_delivered', 'value': 'value',
+                               'type': float},
+                      }
+
+
+@register_cluster
 class CFC00(Cluster):
     cluster_id = 0xFC00
     type = 'Hue remote'
