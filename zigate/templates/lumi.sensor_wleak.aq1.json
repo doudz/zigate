@@ -5,6 +5,10 @@
                 {
                     "attributes": [
                         {
+                            "attribute": 4,
+                            "data": "LUMI"
+                        },
+                        {
                             "attribute": 5,
                             "data": "lumi.sensor_wleak.aq1"
                         }

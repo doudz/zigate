@@ -137,7 +137,9 @@ class TestCore(unittest.TestCase):
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.remote.b186acn01'})
         self.assertTrue(device.load_template())
         self.assertCountEqual(device.attributes,
-                              [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.remote.b186acn01',
+                              [{'endpoint': 1, 'cluster': 0, 'attribute': 4, 'data': 'LUMI',
+                                'name': 'manufacturer', 'value': 'LUMI'},
+                                {'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.remote.b186acn01',
                                 'name': 'type', 'value': 'lumi.remote.b186acn01', 'type': str},
                                {'endpoint': 1, 'cluster': 18, 'attribute': 85, 'name': 'multiclick',
                                 'value': '', 'expire': 2, 'type': str}]
@@ -147,7 +149,9 @@ class TestCore(unittest.TestCase):
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.remote.b286acn01'})
         self.assertTrue(device.load_template())
         self.assertCountEqual(device.attributes,
-                              [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.remote.b286acn01',
+                              [{'endpoint': 1, 'cluster': 0, 'attribute': 4, 'data': 'LUMI',
+                                'name': 'manufacturer', 'value': 'LUMI'},
+                               {'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.remote.b286acn01',
                                 'name': 'type', 'value': 'lumi.remote.b286acn01', 'type': str},
                                {'endpoint': 1, 'cluster': 18, 'attribute': 85, 'name': 'multiclick',
                                 'value': '', 'expire': 2, 'type': str},
