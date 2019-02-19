@@ -1138,13 +1138,6 @@ class ZiGate(object):
             LOGGER.debug('no endpoints')
             self.active_endpoint_request(addr)
             return
-#         stop = False
-#         for endpoint, values in device.endpoints.items():
-#             if not values.get('device'):
-#                 self.simple_descriptor_request(addr, endpoint)
-#                 stop = True
-#         if stop:
-#             return
         if not typ:
             return
         if not device.load_template():
