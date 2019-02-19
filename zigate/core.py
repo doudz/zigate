@@ -512,20 +512,14 @@ class ZiGate(object):
                 ep['out_clusters'] = response['out_clusters']
                 self.discover_device(addr)
                 d._create_actions()
-#                 d._bind_report(endpoint)
-#                 # ask for various general information
-#                 for c in response['in_clusters']:
-#                     cluster = CLUSTERS.get(c)
-#                     if cluster:
-#                         # some devices don't answer if more than 8 attributes asked
-#                         attrs = list(cluster.attributes_def.keys())
-#                         for i in range(0, len(attrs), 8):
-#                             self.read_attribute_request(addr, endpoint, c,
-#                                                         attrs[i: i + 8])
         elif response.msg == 0x8045:  # endpoint list
             addr = response['addr']
-            for endpoint in response['endpoints']:
-                self.simple_descriptor_request(addr, endpoint['endpoint'])
+            d = self.get_device_from_addr(addr)
+            if d:
+                for endpoint in response['endpoints']:
+                    ep = d.get_endpoint(endpoint)
+                    self.simple_descriptor_request(addr, endpoint['endpoint'])
+                self.discover_device(addr)
         elif response.msg == 0x8048:  # leave
             device = self.get_device_from_ieee(response['ieee'])
             if response['rejoin_status'] == 1:
@@ -1129,19 +1123,23 @@ class ZiGate(object):
             device.discovery = ''
         if device.discovery:
             return
+        typ = device.get_type()
+        if typ:
+            if device.has_template():
+                device.load_template()
+                return
         if 'mac_capability' not in device.info:
             self.node_descriptor_request(addr)
         if not device.endpoints:
             self.active_endpoint_request(addr)
             return
-        for endpoint, values in device.endpoints.items():
-            if not values.get('device'):
-                self.simple_descriptor_request(addr, endpoint)
-                return
-#             if not values.get('in_clusters'):
+#         stop = False
+#         for endpoint, values in device.endpoints.items():
+#             if not values.get('device'):
 #                 self.simple_descriptor_request(addr, endpoint)
-#                 return
-        typ = device.get_type(False)
+#                 stop = True
+#         if stop:
+#             return
         if not typ:
             return
         if not device.load_template():
@@ -2414,19 +2412,20 @@ class Device(object):
         typ = self.get_value('type')
         if typ is None:
             for endpoint in self.endpoints:
-                if 0 in self.endpoints[endpoint]['in_clusters']:
+                if 0 in self.endpoints[endpoint]['in_clusters'] or not self.endpoints[endpoint]['in_clusters']:
                     self._zigate.read_attribute_request(self.addr,
                                                         endpoint,
                                                         0x0000,
                                                         [0x0004, 0x0005]
                                                         )
-                    break
-            if not wait:
+                    if 0 in self.endpoints[endpoint]['in_clusters']:
+                        break
+            if not wait or not self.endpoints:
                 return
             # wait for type
             t1 = time()
             while self.get_value('type') is None:
-                sleep(0.1)
+                sleep(SLEEP_INTERVAL)
                 t2 = time()
                 if t2 - t1 > WAIT_TIMEOUT:
                     LOGGER.warning('No response waiting for type')
@@ -2759,6 +2758,15 @@ class Device(object):
                                           attribute['attribute'])
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
+
+    def has_template(self):
+        typ = self.get_type()
+        if not typ:
+            LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
+            return
+        typ = typ.replace(' ', '_')
+        path = os.path.join(BASE_PATH, 'templates', typ + '.json')
+        return os.path.exists(path)
 
     def load_template(self):
         typ = self.get_type()
