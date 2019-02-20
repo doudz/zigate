@@ -1055,10 +1055,12 @@ class ZiGate(object):
         r = self.send_data(0x004e, data, wait_response=wait_response)
         return r
 
-    def build_neighbours_table(self, addr='0000', nodes=[]):
+    def build_neighbours_table(self, addr='0000', nodes=None):
         '''
         Build neighbours table
         '''
+        if nodes is None:
+            nodes = []
         LOGGER.debug('Search for children of {}'.format(addr))
         nodes.append(addr)
         index = 0
