@@ -1098,8 +1098,9 @@ class ZiGate(object):
         table = self.build_neighbours_table()
         LOGGER.debug('Neighbours Table : {}'.format(table))
         dot = Graph('zigate_network', comment='ZiGate Network',
-                    directory=directory, format='png', engine='neato')
-        dot.node(self.addr, 'ZiGate ({})'.format(self.addr))
+                    directory=directory, format='png', engine='fdp',
+                    node_attr={'shape': 'box'})
+        dot.node(self.addr, 'ZiGate ({})'.format(self.addr), shape='doubleoctagon')
         for device in self.devices:
             name = labels.get(device.addr, str(device))
             dot.node(device.addr, name)
