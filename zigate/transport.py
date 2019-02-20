@@ -17,7 +17,7 @@ from pydispatch import dispatcher
 import sys
 from .const import ZIGATE_FAILED_TO_CONNECT
 import struct
-from binascii import unhexlify
+from binascii import unhexlify, hexlify
 
 
 LOGGER = logging.getLogger('zigate')
@@ -110,11 +110,16 @@ class FakeTransport(BaseTransport):
         enc_msg = bytes(enc_msg)
         self.received.put(enc_msg)
 
-        if cmd in self.auto_responder:
-            self.received.put(self.auto_responder[cmd])
+        data = hexlify(data[5:])
+        if (cmd, data) in self.auto_responder:
+            self.received.put(self.auto_responder[(cmd, data)])
+        elif (cmd, None) in self.auto_responder:
+            self.received.put(self.auto_responder[(cmd, None)])
 
     def add_auto_response(self, cmd, resp, value, lqi=255):
         enc_msg = self.create_fake_response(resp, value, lqi)
+        if not isinstance(cmd, tuple):
+            cmd = (cmd, None)
         self.auto_responder[cmd] = enc_msg
 
     def create_fake_response(self, resp, value, lqi=255):

@@ -696,15 +696,18 @@ class TestCore(unittest.TestCase):
         self.assertEqual(self.zigate.channel, 11)
 
     def test_build_neighbours_table(self):
-        self.zigate.connection.add_auto_response(0x004e, 0x804e,
-                                                 unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b626'))
+        self.zigate.connection.add_auto_response((0x004e, b'000000'), 0x804e,
+                                                 unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b665'))
+        self.zigate.connection.add_auto_response((0x004e, b'abcd00'), 0x804e,
+                                                 unhexlify(b'010002020000000123456789abcdef0123456789abcdef01b645'
+                                                           b'98760123456789abcdef0123456789abcdef01b616'))
         table = self.zigate.build_neighbours_table()
-        self.assertEqual(table, [('0000', 'abcd', 182)])
+        self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182)])
 
     def test_build_network_map(self):
         filename = os.path.join(self.test_dir, 'zigate_network.png')
         self.zigate.connection.add_auto_response(0x004e, 0x804e,
-                                                 unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b626'))
+                                                 unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b616'))
         self.zigate.build_network_map(self.test_dir)
         self.assertTrue(os.path.exists(filename))
 

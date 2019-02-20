@@ -522,10 +522,10 @@ class ZiGate(object):
                 self.discover_device(addr)
         elif response.msg == 0x8048:  # leave
             device = self.get_device_from_ieee(response['ieee'])
-            if response['rejoin_status'] == 1:
-                device.missing = True
-            else:
-                if device:
+            if device:
+                if response['rejoin_status'] == 1:
+                    device.missing = True
+                else:
                     self._remove_device(device.addr)
         elif response.msg == 0x8062:  # Get group membership response
             data = response.cleaned_data()
@@ -1055,10 +1055,14 @@ class ZiGate(object):
         r = self.send_data(0x004e, data, wait_response=wait_response)
         return r
 
-    def build_neighbours_table(self, addr='0000'):
+    def build_neighbours_table(self, addr='0000', nodes=None):
         '''
         Build neighbours table
         '''
+        if nodes is None:
+            nodes = []
+        LOGGER.debug('Search for children of {}'.format(addr))
+        nodes.append(addr)
         index = 0
         neighbours = []
         entries = 255
@@ -1071,12 +1075,15 @@ class ZiGate(object):
             entries = data['entries']
             for n in data['neighbours']:
                 is_parent = n['bit_field'][2:4] == '00'
-                if is_parent:
-                    continue
-                neighbours.append((addr, n['addr'], n['lqi']))
+                is_child = n['bit_field'][2:4] == '01'
                 is_router = n['bit_field'][6:8] == '01'
-                if is_router:
-                    n2 = self.build_neighbours_table(n['addr'])
+                if is_parent:
+                    neighbours.append((n['addr'], addr, n['lqi']))
+                elif is_child:
+                    neighbours.append((addr, n['addr'], n['lqi']))
+                if is_router and n['addr'] not in nodes:
+                    LOGGER.debug('{} is a router, search for children'.format(n['addr']))
+                    n2 = self.build_neighbours_table(n['addr'], nodes)
                     if n2:
                         neighbours += n2
             index += data['count']
@@ -1089,9 +1096,11 @@ class ZiGate(object):
         labels:optionnal dict for node name {addr: nodename, addr2: nodename2}
         '''
         table = self.build_neighbours_table()
+        LOGGER.debug('Neighbours Table : {}'.format(table))
         dot = Graph('zigate_network', comment='ZiGate Network',
-                    directory=directory, format='png', engine='neato')
-        dot.node(self.addr, 'ZiGate ({})'.format(self.addr))
+                    directory=directory, format='png', engine='fdp',
+                    node_attr={'shape': 'box'})
+        dot.node(self.addr, 'ZiGate ({})'.format(self.addr), shape='doubleoctagon')
         for device in self.devices:
             name = labels.get(device.addr, str(device))
             dot.node(device.addr, name)
@@ -1101,6 +1110,7 @@ class ZiGate(object):
         fname = os.path.join(directory, 'zigate_network.png')
         if os.path.exists(fname):
             os.remove(fname)
+        LOGGER.debug(dot.source)
         dot.render('zigate_network', cleanup=True)
 
     def refresh_device(self, addr):
@@ -2321,6 +2331,8 @@ class Device(object):
             d.info['power_type'] = d.info.pop('power_source')
         if 'manufacturer' in d.info:  # old version
             d.info['manufacturer_code'] = d.info.pop('manufacturer')
+        if 'rssi' in d.info:  # old version
+            d.info['lqi'] = d.info.pop('rssi')
         d._avoid_duplicate()
         return d
 
@@ -2424,7 +2436,7 @@ class Device(object):
             # wait for type
             t1 = time()
             while self.get_value('type') is None:
-                sleep(SLEEP_INTERVAL)
+                sleep(0.01)
                 t2 = time()
                 if t2 - t1 > WAIT_TIMEOUT:
                     LOGGER.warning('No response waiting for type')
