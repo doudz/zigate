@@ -699,7 +699,8 @@ class TestCore(unittest.TestCase):
         self.zigate.connection.add_auto_response((0x004e, b'000000'), 0x804e,
                                                  unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b665'))
         self.zigate.connection.add_auto_response((0x004e, b'abcd00'), 0x804e,
-                                                 unhexlify(b'010002020000000123456789abcdef0123456789abcdef01b64598760123456789abcdef0123456789abcdef01b616'))
+                                                 unhexlify(b'010002020000000123456789abcdef0123456789abcdef01b645'
+                                                           b'98760123456789abcdef0123456789abcdef01b616'))
         table = self.zigate.build_neighbours_table()
         self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182)])
 
