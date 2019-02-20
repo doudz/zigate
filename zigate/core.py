@@ -522,10 +522,10 @@ class ZiGate(object):
                 self.discover_device(addr)
         elif response.msg == 0x8048:  # leave
             device = self.get_device_from_ieee(response['ieee'])
-            if response['rejoin_status'] == 1:
-                device.missing = True
-            else:
-                if device:
+            if device:
+                if response['rejoin_status'] == 1:
+                    device.missing = True
+                else:
                     self._remove_device(device.addr)
         elif response.msg == 0x8062:  # Get group membership response
             data = response.cleaned_data()
