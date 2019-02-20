@@ -365,6 +365,29 @@ class TestResponses(unittest.TestCase):
                                           ('type', 1),
                                           ]))
 
+    def test_response_8702(self):
+        msg_data = unhexlify(b'd40103020123456789abcdefb9')
+        r = responses.R8702(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('status', 212),
+                                          ('source_endpoint', 1),
+                                          ('dst_endpoint', 3),
+                                          ('dst_address_mode', 2),
+                                          ('dst_address', '0123'),
+                                          ('sequence', 185),
+                                          ('lqi', 255)]))
+
+        msg_data = unhexlify(b'd40103030123456789abcdefb9')
+        r = responses.R8702(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('status', 212),
+                                          ('source_endpoint', 1),
+                                          ('dst_endpoint', 3),
+                                          ('dst_address_mode', 3),
+                                          ('dst_address', '0123456789abcdef'),
+                                          ('sequence', 185),
+                                          ('lqi', 255)]))
+
 
 if __name__ == '__main__':
     unittest.main()
