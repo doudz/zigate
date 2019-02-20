@@ -696,7 +696,8 @@ class TestCore(unittest.TestCase):
         self.assertEqual(self.zigate.channel, 11)
 
     def test_build_neighbours_table(self):
-        self.zigate.connection.add_auto_response(0x004e, 0x804e,
+        cmd = (0x004e, b'000000')
+        self.zigate.connection.add_auto_response(cmd, 0x804e,
                                                  unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b616'))
         table = self.zigate.build_neighbours_table()
         self.assertEqual(table, [('0000', 'abcd', 182)])
