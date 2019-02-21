@@ -1074,6 +1074,11 @@ class ZiGate(object):
             data = r.cleaned_data()
             entries = data['entries']
             for n in data['neighbours']:
+                # bit_field
+                # bit 0-1 = u2RxOnWhenIdle 0/1
+                # bit 2-3 = u2Relationship 0/1/2
+                # bit 4-5 = u2PermitJoining 0/1
+                # bit 6-7 = u2DeviceType 0/1/2
                 is_parent = n['bit_field'][2:4] == '00'
                 is_child = n['bit_field'][2:4] == '01'
                 is_router = n['bit_field'][6:8] == '01'
