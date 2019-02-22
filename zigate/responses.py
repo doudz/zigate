@@ -389,6 +389,14 @@ class R8040(Response):
 class R8041(R8040):
     msg = 0x8041
     type = 'IEEE Address response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('ieee', 'Q'),
+                     ('addr', 'H'),
+                     ('count', 'B'),
+                     ('index', 'B'),
+                     ('devices', OrderedDict([('ieee', 'Q')]))
+                     ])
 
 
 @register_response
