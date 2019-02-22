@@ -659,7 +659,6 @@ class TestCore(unittest.TestCase):
         self.zigate.interpret_response(r)
         self.assertTrue(1 in device.endpoints)
 
-
     def test_handle_response_8085(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
                              self.zigate)
