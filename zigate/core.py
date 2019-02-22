@@ -1876,7 +1876,7 @@ class ZiGate(object):
         transition in second
         '''
         rgb = hex_to_rgb(color_hex)
-        return self.actions_move_hue_rgb(addr, endpoint, rgb, transition)
+        return self.action_move_hue_rgb(addr, endpoint, rgb, transition)
 
     @register_actions(ACTIONS_HUE)
     def action_move_hue_rgb(self, addr, endpoint, rgb, transition=0):
@@ -1889,7 +1889,7 @@ class ZiGate(object):
         saturation = int(saturation * 100)
         level = int(level * 100)
         self.action_move_level_onoff(addr, endpoint, ON, level, 0)
-        return self.actions_move_hue_saturation(addr, endpoint, hue, saturation, transition)
+        return self.action_move_hue_saturation(addr, endpoint, hue, saturation, transition)
 
     @register_actions(ACTIONS_COLOR)
     def action_move_colour(self, addr, endpoint, x, y, transition=0):
@@ -1916,7 +1916,7 @@ class ZiGate(object):
         transition in second
         '''
         x, y = hex_to_xy(color_hex)
-        return self.actions_move_colour(addr, endpoint, x, y, transition)
+        return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_COLOR)
     def action_move_colour_rgb(self, addr, endpoint, rgb, transition=0):
@@ -1926,7 +1926,7 @@ class ZiGate(object):
         transition in second
         '''
         x, y = rgb_to_xy(rgb)
-        return self.actions_move_colour(addr, endpoint, x, y, transition)
+        return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
     def action_move_temperature(self, addr, endpoint, mired, transition=0):
@@ -1950,7 +1950,7 @@ class ZiGate(object):
         convenient function to use kelvin instead of mired
         '''
         temperature = int(1000000 // temperature)
-        return self.actions_move_temperature(addr, endpoint, temperature, transition)
+        return self.action_move_temperature(addr, endpoint, temperature, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
     def action_move_temperature_rate(self, addr, endpoint, mode, rate, min_temperature, max_temperature):
