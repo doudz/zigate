@@ -1087,6 +1087,8 @@ class ZiGate(object):
                     neighbours.append((n['addr'], addr, n['lqi']))
                 elif is_child:
                     neighbours.append((addr, n['addr'], n['lqi']))
+                elif n['depth'] == 0:
+                    neighbours.append((self.addr, n['addr'], n['lqi']))
                 if is_router and n['addr'] not in nodes:
                     LOGGER.debug('{} is a router, search for children'.format(n['addr']))
                     n2 = self.build_neighbours_table(n['addr'], nodes)

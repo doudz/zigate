@@ -708,10 +708,12 @@ class TestCore(unittest.TestCase):
         self.zigate.connection.add_auto_response((0x004e, b'000000'), 0x804e,
                                                  unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b665'))
         self.zigate.connection.add_auto_response((0x004e, b'abcd00'), 0x804e,
-                                                 unhexlify(b'010002020000000123456789abcdef0123456789abcdef01b645'
-                                                           b'98760123456789abcdef0123456789abcdef01b616'))
+                                                 unhexlify(b'010003030000000123456789abcdef0123456789abcdef01b645'
+                                                           b'98760123456789abcdef0123456789abcdef01b616'
+                                                           b'12340123456789abcdef0123456789abcdef00b622'))
         table = self.zigate.build_neighbours_table()
-        self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182)])
+        self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182),
+                                 ('0000', '1234', 182)])
 
     def test_build_network_map(self):
         filename = os.path.join(self.test_dir, 'zigate_network.png')
