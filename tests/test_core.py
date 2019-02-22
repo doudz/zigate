@@ -650,6 +650,16 @@ class TestCore(unittest.TestCase):
 #                              {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool,
 #                               'state': 'assumed'})
 
+    def test_handle_response_8045(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        msg_data = unhexlify(b'7e0012340101')
+        r = responses.R8045(msg_data, 255)
+        self.zigate.interpret_response(r)
+        self.assertTrue(1 in device.endpoints)
+
+
     def test_handle_response_8085(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
                              self.zigate)
