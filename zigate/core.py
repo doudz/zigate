@@ -517,7 +517,7 @@ class ZiGate(object):
             d = self.get_device_from_addr(addr)
             if d:
                 for endpoint in response['endpoints']:
-                    ep = d.get_endpoint(endpoint)
+                    ep = d.get_endpoint(endpoint['endpoint'])
                     self.simple_descriptor_request(addr, endpoint['endpoint'])
                 self.discover_device(addr)
         elif response.msg == 0x8048:  # leave
