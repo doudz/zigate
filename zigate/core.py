@@ -332,7 +332,8 @@ class ZiGate(object):
         network_state = self.get_network_state()
         if not network_state:
             LOGGER.error('Failed to get network state')
-        if not network_state or network_state.get('extended_panid') == 0:
+        if not network_state or network_state.get('extended_panid') == 0 or \
+           network_state.get('addr') == 'ffff':
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
 

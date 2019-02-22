@@ -47,7 +47,7 @@ class Response(object):
     def __delitem__(self, key):
         return self.data.__delitem__(key)
 
-    def get(self, key, default):
+    def get(self, key, default=None):
         return self.data.get(key, default)
 
     def __contains__(self, key):
