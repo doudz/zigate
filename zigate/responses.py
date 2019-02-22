@@ -174,18 +174,45 @@ class R8002(Response):
                      ('cluster_id', 'H'),
                      ('source_endpoint', 'B'),
                      ('destination_endpoint', 'B'),
-                     ('source_address_mode', 'B'),
-                     ('source_address', 'H'),
-                     ('dst_address_mode', 'B'),
-                     ('dst_address', 'H'),
-                     ('payload_size', 'B'),
-                     ('payload', 'rawend')
+                     # ('source_address_mode', 'B'),
+                     # ('source_address', 'H'),
+                     # ('dst_address_mode', 'B'),
+                     # ('dst_address', 'H'),
+                     # ('payload_size', 'B'),
+                     # ('payload', 'rawend')
                      ])
 
     def decode(self):
         Response.decode(self)
-        self.data['payload'] = struct.unpack('!{}B'.format(self.data['payload_size']),
-                                             self.data['payload'])[0]
+        additionnal = self.data.pop('additionnal')
+        source_address_mode = struct.unpack('!B', additionnal[:1])[0]
+        self.data['source_address_mode'] = source_address_mode
+        additionnal = additionnal[1:]
+        if source_address_mode == 3:
+            source_address = struct.unpack('!Q', additionnal[:8])[0]
+            source_address = '{:016x}'.format(source_address)
+            additionnal = additionnal[8:]
+        else:
+            source_address = struct.unpack('!H', additionnal[:2])[0]
+            source_address = '{:04x}'.format(source_address)
+            additionnal = additionnal[2:]
+        self.data['source_address'] = source_address
+
+        dst_address_mode = struct.unpack('!B', additionnal[:1])[0]
+        self.data['dst_address_mode'] = dst_address_mode
+        additionnal = additionnal[1:]
+        if dst_address_mode == 3:
+            dst_address = struct.unpack('!Q', additionnal[:8])[0]
+            dst_address = '{:016x}'.format(dst_address)
+            additionnal = additionnal[8:]
+        else:
+            dst_address = struct.unpack('!H', additionnal[:2])[0]
+            dst_address = '{:04x}'.format(dst_address)
+            additionnal = additionnal[2:]
+        self.data['dst_address'] = dst_address
+        payload_size = struct.unpack('!B', additionnal[:1])[0]
+        self.data['payload_size'] = payload_size
+        self.data['payload'] = additionnal[1:]
 
 
 @register_response
