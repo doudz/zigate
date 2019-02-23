@@ -20,6 +20,7 @@ class TestCore(unittest.TestCase):
 #         self.zigate._ieee = '0123456789abcdef'
 #         self.zigate.connection = transport.FakeTransport()
         self.zigate = core.FakeZiGate(auto_start=False)
+        self.zigate._start_event_thread()
         self.zigate.setup_connection()
         self.test_dir = tempfile.mkdtemp()
 
