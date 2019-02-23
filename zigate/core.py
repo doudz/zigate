@@ -767,14 +767,14 @@ class ZiGate(object):
         erase persistent data in zigate
         '''
         self._devices = {}
-        return self.send_data(0x0012)
+        return self.send_data(0x0012, wait_status=False)
 
     def factory_reset(self):
         '''
         ZLO/ZLL "Factory New" Reset
         '''
         self._devices = {}
-        return self.send_data(0x0013)
+        return self.send_data(0x0013, wait_status=False)
 
     def is_permitting_join(self):
         '''
