@@ -1070,7 +1070,13 @@ class ZiGate(object):
         r = self.send_data(0x004e, data, wait_response=wait_response)
         return r
 
-    def build_neighbours_table(self, addr='0000', nodes=None):
+    def build_neighbours_table(self):
+        '''
+        Build neighbours table
+        '''
+        return self._neighbours_table(self.addr)
+
+    def _neighbours_table(self, addr, nodes=None):
         '''
         Build neighbours table
         '''
@@ -1105,7 +1111,7 @@ class ZiGate(object):
                     neighbours.append((self.addr, n['addr'], n['lqi']))
                 if is_router and n['addr'] not in nodes:
                     LOGGER.debug('{} is a router, search for children'.format(n['addr']))
-                    n2 = self.build_neighbours_table(n['addr'], nodes)
+                    n2 = self._neighbours_table(n['addr'], nodes)
                     if n2:
                         neighbours += n2
             index += data['count']
