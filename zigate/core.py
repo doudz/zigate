@@ -495,6 +495,10 @@ class ZiGate(object):
                                                                       response.status_text(),
                                                                       response['error']))
             self._last_status[response['packet_type']] = response
+        elif response.msg == 0x8007:  # factory reset
+            if response['status'] == 0:
+                self._devices = {}
+                self.start_network()
         elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
@@ -778,14 +782,12 @@ class ZiGate(object):
         '''
         erase persistent data in zigate
         '''
-        self._devices = {}
         return self.send_data(0x0012, wait_status=False)
 
     def factory_reset(self):
         '''
         ZLO/ZLL "Factory New" Reset
         '''
-        self._devices = {}
         return self.send_data(0x0013, wait_status=False)
 
     def is_permitting_join(self):
