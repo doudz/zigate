@@ -167,10 +167,10 @@ class ZiGate(object):
         self._started = False
         self._no_response_count = 0
 
-        self._event_thread = threading.Thread(target=self._event_loop,
-                                              name='ZiGate-Event Loop')
-        self._event_thread.setDaemon(True)
-        self._event_thread.start()
+#         self._event_thread = threading.Thread(target=self._event_loop,
+#                                               name='ZiGate-Event Loop')
+#         self._event_thread.setDaemon(True)
+#         self._event_thread.start()
 
         self._ota_reset_local_variables()
 
@@ -178,7 +178,7 @@ class ZiGate(object):
             self.start_adminpanel()
 
         if auto_start:
-            self.autoStart(channel)
+            self.startup(channel)
             if auto_save:
                 self.start_auto_save()
 
@@ -198,7 +198,7 @@ class ZiGate(object):
         start_adminpanel(self)
 
     def _event_loop(self):
-        while True:
+        while not self._closing:
             if self.connection and not self.connection.received.empty():
                 packet = self.connection.received.get()
                 dispatch_signal(ZIGATE_PACKET_RECEIVED, self, packet=packet)
@@ -223,6 +223,7 @@ class ZiGate(object):
         except Exception:
             LOGGER.error('Exception during closing')
             LOGGER.error(traceback.format_exc())
+        self.connection = None
         self._started = False
 
     def save_state(self, path=None):
@@ -310,9 +311,18 @@ class ZiGate(object):
     def __del__(self):
         self.close()
 
+    def _start_event_thread(self):
+        self._event_thread = threading.Thread(target=self._event_loop,
+                                              name='ZiGate-Event Loop')
+        self._event_thread.setDaemon(True)
+        self._event_thread.start()
+
     def autoStart(self, channel=None):
+        self.startup(channel)
+
+    def startup(self, channel=None):
         '''
-        Auto Start sequence:
+        Startup sequence:
             - Load persistent file
             - setup connection
             - Set Channel mask
@@ -322,6 +332,8 @@ class ZiGate(object):
         '''
         if self._started:
             return
+        self._closing = False
+        self._start_event_thread()
         self.load_state()
         self.setup_connection()
         version = self.get_version()
@@ -332,7 +344,8 @@ class ZiGate(object):
         network_state = self.get_network_state()
         if not network_state:
             LOGGER.error('Failed to get network state')
-        if not network_state or network_state.get('extended_panid') == 0:
+        if not network_state or network_state.get('extended_panid') == 0 or \
+           network_state.get('addr') == 'ffff':
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
 
@@ -482,6 +495,10 @@ class ZiGate(object):
                                                                       response.status_text(),
                                                                       response['error']))
             self._last_status[response['packet_type']] = response
+        elif response.msg == 0x8007:  # factory reset
+            if response['status'] == 0:
+                self._devices = {}
+                self.start_network()
         elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
@@ -517,7 +534,7 @@ class ZiGate(object):
             d = self.get_device_from_addr(addr)
             if d:
                 for endpoint in response['endpoints']:
-                    ep = d.get_endpoint(endpoint)
+                    ep = d.get_endpoint(endpoint['endpoint'])
                     self.simple_descriptor_request(addr, endpoint['endpoint'])
                 self.discover_device(addr)
         elif response.msg == 0x8048:  # leave
@@ -765,15 +782,13 @@ class ZiGate(object):
         '''
         erase persistent data in zigate
         '''
-        self._devices = {}
-        return self.send_data(0x0012)
+        return self.send_data(0x0012, wait_status=False)
 
     def factory_reset(self):
         '''
         ZLO/ZLL "Factory New" Reset
         '''
-        self._devices = {}
-        return self.send_data(0x0013)
+        return self.send_data(0x0013, wait_status=False)
 
     def is_permitting_join(self):
         '''
@@ -1055,7 +1070,13 @@ class ZiGate(object):
         r = self.send_data(0x004e, data, wait_response=wait_response)
         return r
 
-    def build_neighbours_table(self, addr='0000', nodes=None):
+    def build_neighbours_table(self):
+        '''
+        Build neighbours table
+        '''
+        return self._neighbours_table(self.addr)
+
+    def _neighbours_table(self, addr, nodes=None):
         '''
         Build neighbours table
         '''
@@ -1074,6 +1095,11 @@ class ZiGate(object):
             data = r.cleaned_data()
             entries = data['entries']
             for n in data['neighbours']:
+                # bit_field
+                # bit 0-1 = u2RxOnWhenIdle 0/1
+                # bit 2-3 = u2Relationship 0/1/2
+                # bit 4-5 = u2PermitJoining 0/1
+                # bit 6-7 = u2DeviceType 0/1/2
                 is_parent = n['bit_field'][2:4] == '00'
                 is_child = n['bit_field'][2:4] == '01'
                 is_router = n['bit_field'][6:8] == '01'
@@ -1081,9 +1107,11 @@ class ZiGate(object):
                     neighbours.append((n['addr'], addr, n['lqi']))
                 elif is_child:
                     neighbours.append((addr, n['addr'], n['lqi']))
+                elif n['depth'] == 0:
+                    neighbours.append((self.addr, n['addr'], n['lqi']))
                 if is_router and n['addr'] not in nodes:
                     LOGGER.debug('{} is a router, search for children'.format(n['addr']))
-                    n2 = self.build_neighbours_table(n['addr'], nodes)
+                    n2 = self._neighbours_table(n['addr'], nodes)
                     if n2:
                         neighbours += n2
             index += data['count']
@@ -1868,7 +1896,7 @@ class ZiGate(object):
         transition in second
         '''
         rgb = hex_to_rgb(color_hex)
-        return self.actions_move_hue_rgb(addr, endpoint, rgb, transition)
+        return self.action_move_hue_rgb(addr, endpoint, rgb, transition)
 
     @register_actions(ACTIONS_HUE)
     def action_move_hue_rgb(self, addr, endpoint, rgb, transition=0):
@@ -1881,7 +1909,7 @@ class ZiGate(object):
         saturation = int(saturation * 100)
         level = int(level * 100)
         self.action_move_level_onoff(addr, endpoint, ON, level, 0)
-        return self.actions_move_hue_saturation(addr, endpoint, hue, saturation, transition)
+        return self.action_move_hue_saturation(addr, endpoint, hue, saturation, transition)
 
     @register_actions(ACTIONS_COLOR)
     def action_move_colour(self, addr, endpoint, x, y, transition=0):
@@ -1908,7 +1936,7 @@ class ZiGate(object):
         transition in second
         '''
         x, y = hex_to_xy(color_hex)
-        return self.actions_move_colour(addr, endpoint, x, y, transition)
+        return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_COLOR)
     def action_move_colour_rgb(self, addr, endpoint, rgb, transition=0):
@@ -1918,7 +1946,7 @@ class ZiGate(object):
         transition in second
         '''
         x, y = rgb_to_xy(rgb)
-        return self.actions_move_colour(addr, endpoint, x, y, transition)
+        return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
     def action_move_temperature(self, addr, endpoint, mired, transition=0):
@@ -1942,7 +1970,7 @@ class ZiGate(object):
         convenient function to use kelvin instead of mired
         '''
         temperature = int(1000000 // temperature)
-        return self.actions_move_temperature(addr, endpoint, temperature, transition)
+        return self.action_move_temperature(addr, endpoint, temperature, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
     def action_move_temperature_rate(self, addr, endpoint, mode, rate, min_temperature, max_temperature):
@@ -2055,8 +2083,8 @@ class FakeZiGate(ZiGate):
         device.load_template()
         self._devices['abcd'] = device
 
-    def autoStart(self, channel=None):
-        ZiGate.autoStart(self, channel=channel)
+    def startup(self, channel=None):
+        ZiGate.startup(self, channel=channel)
         self.connection.start_fake_response()
 
     def setup_connection(self):

@@ -20,6 +20,7 @@ class TestCore(unittest.TestCase):
 #         self.zigate._ieee = '0123456789abcdef'
 #         self.zigate.connection = transport.FakeTransport()
         self.zigate = core.FakeZiGate(auto_start=False)
+        self.zigate._start_event_thread()
         self.zigate.setup_connection()
         self.test_dir = tempfile.mkdtemp()
 
@@ -650,6 +651,15 @@ class TestCore(unittest.TestCase):
 #                              {'attribute': 0, 'data': False, 'name': 'onoff', 'value': False, 'type': bool,
 #                               'state': 'assumed'})
 
+    def test_handle_response_8045(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        msg_data = unhexlify(b'7e0012340101')
+        r = responses.R8045(msg_data, 255)
+        self.zigate.interpret_response(r)
+        self.assertTrue(1 in device.endpoints)
+
     def test_handle_response_8085(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},
                              self.zigate)
@@ -699,10 +709,12 @@ class TestCore(unittest.TestCase):
         self.zigate.connection.add_auto_response((0x004e, b'000000'), 0x804e,
                                                  unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b665'))
         self.zigate.connection.add_auto_response((0x004e, b'abcd00'), 0x804e,
-                                                 unhexlify(b'010002020000000123456789abcdef0123456789abcdef01b645'
-                                                           b'98760123456789abcdef0123456789abcdef01b616'))
+                                                 unhexlify(b'010003030000000123456789abcdef0123456789abcdef01b645'
+                                                           b'98760123456789abcdef0123456789abcdef01b616'
+                                                           b'12340123456789abcdef0123456789abcdef00b622'))
         table = self.zigate.build_neighbours_table()
-        self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182)])
+        self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182),
+                                 ('0000', '1234', 182)])
 
     def test_build_network_map(self):
         filename = os.path.join(self.test_dir, 'zigate_network.png')

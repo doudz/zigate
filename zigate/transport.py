@@ -61,6 +61,9 @@ class BaseTransport(object):
     def is_connected(self):
         pass
 
+    def close(self):
+        pass
+
 
 class FakeTransport(BaseTransport):
     '''
