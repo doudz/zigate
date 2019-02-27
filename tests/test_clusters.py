@@ -11,15 +11,25 @@ from binascii import unhexlify
 
 class TestResponses(unittest.TestCase):
     def test_xiaomi_struct(self):
+        # lumi.weather
         rawdata = unhexlify(b'0121bd0b0421a81305210e0006240100000000642971086521610f662ba58201000a210000')
         data = clusters.decode_xiaomi(rawdata)
         self.assertEqual(data[1], 3005)  # battery
         self.assertEqual(data[100], 2161)  # temperature
         self.assertEqual(data[101], 3937)  # humidity
         self.assertEqual(data[102], 98981)  # pressure
-#         rawdata = unhexlify(b'100021ef0b21a8012400000000002106002059')
-#         data = clusters.decode_xiaomi(rawdata)
-#         print(data)
+
+        # lumi magnet sensor
+        rawdata = unhexlify(b'0121030c0328100421a81305211f00062401000000000a210000')
+        data = clusters.decode_xiaomi(rawdata)
+
+        # aqara bulb
+        rawdata = unhexlify(b'03283c0521a4000727000000000000000008211601092100010a2100006420016520fe6621d901')
+        data = clusters.decode_xiaomi(rawdata)
+        self.assertEqual(data[100], 1)  # ON
+        rawdata = unhexlify(b'03283c0521a4000727000000000000000008211601092100010a2100006420006520fe6621d901')
+        data = clusters.decode_xiaomi(rawdata)
+        self.assertEqual(data[100], 0)  # OFF
 
     def test_cluster_C0012(self):
         # xiaomi cube status

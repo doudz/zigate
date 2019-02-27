@@ -201,7 +201,6 @@ def decode_xiaomi(rawdata):
         if fmt:
             data[index] = struct.unpack(fmt, data[index])[0]
         i += byteLength + 2
-        print(data)
     return data
 
 
