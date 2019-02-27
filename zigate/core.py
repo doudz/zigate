@@ -540,6 +540,9 @@ class ZiGate(object):
                     response['data'] = 'unsupported'
                 else:
                     return
+            # ignore if related to zigate
+            if response['addr'] == self.addr:
+                return
             device = self._get_device(response['addr'])
             device.lqi = response['lqi']
             r = device.set_attribute(response['endpoint'],
@@ -568,6 +571,9 @@ class ZiGate(object):
             self._set_device(device)
         elif response.msg == 0x8140:  # attribute discovery
             if 'addr' in response:
+                # ignore if related to zigate
+                if response['addr'] == self.addr:
+                    return
                 device = self._get_device(response['addr'])
                 r = device.set_attribute(response['endpoint'],
                                          response['cluster'],
