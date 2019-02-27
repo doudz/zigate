@@ -716,13 +716,6 @@ class TestCore(unittest.TestCase):
         self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182),
                                  ('0000', '1234', 182)])
 
-    def test_build_network_map(self):
-        filename = os.path.join(self.test_dir, 'zigate_network.png')
-        self.zigate.connection.add_auto_response(0x004e, 0x804e,
-                                                 unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b616'))
-        self.zigate.build_network_map(self.test_dir)
-        self.assertTrue(os.path.exists(filename))
-
     def test_unsupported_attribute(self):
         # some device like profalux doesn't have model identifier
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'},

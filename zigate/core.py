@@ -35,7 +35,6 @@ import random
 from enum import Enum
 import colorsys
 import datetime
-from graphviz import Graph
 
 
 LOGGER = logging.getLogger('zigate')
@@ -1122,30 +1121,6 @@ class ZiGate(object):
                         neighbours += n2
             index += data['count']
         return neighbours
-
-    def build_network_map(self, directory, labels={}):
-        '''
-        create PNG network map
-        filename is destination file
-        labels:optionnal dict for node name {addr: nodename, addr2: nodename2}
-        '''
-        table = self.build_neighbours_table()
-        LOGGER.debug('Neighbours Table : {}'.format(table))
-        dot = Graph('zigate_network', comment='ZiGate Network',
-                    directory=directory, format='png', engine='fdp',
-                    node_attr={'shape': 'box'})
-        dot.node(self.addr, 'ZiGate ({})'.format(self.addr), shape='doubleoctagon')
-        for device in self.devices:
-            name = labels.get(device.addr, str(device))
-            dot.node(device.addr, name)
-        if table:
-            for entry in table:
-                dot.edge(entry[0], entry[1], str(entry[2]))
-        fname = os.path.join(directory, 'zigate_network.png')
-        if os.path.exists(fname):
-            os.remove(fname)
-        LOGGER.debug(dot.source)
-        dot.render('zigate_network', cleanup=True)
 
     def refresh_device(self, addr):
         '''
