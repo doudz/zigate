@@ -6,9 +6,21 @@ ZiGate clusters Tests
 import unittest
 from zigate import clusters, core
 import json
+from binascii import unhexlify
 
 
 class TestResponses(unittest.TestCase):
+    def test_xiaomi_struct(self):
+        rawdata = unhexlify(b'0121bd0b0421a81305210e0006240100000000642971086521610f662ba58201000a210000')
+        data = clusters.decode_xiaomi(rawdata)
+        self.assertEqual(data[1], 3005)  # battery
+        self.assertEqual(data[100], 2161)  # temperature
+        self.assertEqual(data[101], 3937)  # humidity
+        self.assertEqual(data[102], 98981)  # pressure
+#         rawdata = unhexlify(b'100021ef0b21a8012400000000002106002059')
+#         data = clusters.decode_xiaomi(rawdata)
+#         print(data)
+
     def test_cluster_C0012(self):
         # xiaomi cube status
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})

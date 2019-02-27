@@ -9,6 +9,7 @@ import logging
 import traceback
 import struct  # noqa
 from binascii import unhexlify, hexlify  # noqa
+from .const import DATA_TYPE
 
 LOGGER = logging.getLogger('zigate')
 
@@ -186,6 +187,22 @@ class C0000(Cluster):
         if data['attribute'] == 0xff02 and not data.get('data', '').startswith('10'):
             return
         return Cluster.update(self, data)
+
+
+def decode_xiaomi(rawdata):
+    data = {}
+    i = 0
+    while i < len(rawdata):
+        index = rawdata[i]
+        _type = rawdata[i+1]
+        byteLength = (_type & 0x7) + 1
+        fmt = DATA_TYPE.get(_type)
+        data[index] = rawdata[i+2:i+2+byteLength]
+        if fmt:
+            data[index] = struct.unpack(fmt, data[index])[0]
+        i += byteLength + 2
+        print(data)
+    return data
 
 
 @register_cluster

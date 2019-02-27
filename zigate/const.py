@@ -64,6 +64,7 @@ DATA_TYPE = {0x00: None,
              0x28: 'b',  # int8
              0x29: 'h',  # int16
              0x2a: 'i',  # int24
+             0x2b: 'I',  #
              0x30: 'b',  # enum8
              0x38: 'f',  # float semi
              0x39: 'f',  # float simple
