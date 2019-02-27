@@ -194,10 +194,10 @@ def decode_xiaomi(rawdata):
     i = 0
     while i < len(rawdata):
         index = rawdata[i]
-        _type = rawdata[i+1]
+        _type = rawdata[i + 1]
         byteLength = (_type & 0x7) + 1
         fmt = DATA_TYPE.get(_type)
-        data[index] = rawdata[i+2:i+2+byteLength]
+        data[index] = rawdata[i + 2: i + 2 + byteLength]
         if fmt:
             data[index] = struct.unpack(fmt, data[index])[0]
         i += byteLength + 2
