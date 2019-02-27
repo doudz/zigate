@@ -167,10 +167,10 @@ class ZiGate(object):
         self._started = False
         self._no_response_count = 0
 
-        self._event_thread = threading.Thread(target=self._event_loop,
-                                              name='ZiGate-Event Loop')
-        self._event_thread.setDaemon(True)
-        self._event_thread.start()
+#         self._event_thread = threading.Thread(target=self._event_loop,
+#                                               name='ZiGate-Event Loop')
+#         self._event_thread.setDaemon(True)
+#         self._event_thread.start()
 
         self._ota_reset_local_variables()
 
@@ -178,7 +178,7 @@ class ZiGate(object):
             self.start_adminpanel()
 
         if auto_start:
-            self.autoStart(channel)
+            self.startup(channel)
             if auto_save:
                 self.start_auto_save()
 
@@ -198,7 +198,7 @@ class ZiGate(object):
         start_adminpanel(self)
 
     def _event_loop(self):
-        while True:
+        while not self._closing:
             if self.connection and not self.connection.received.empty():
                 packet = self.connection.received.get()
                 dispatch_signal(ZIGATE_PACKET_RECEIVED, self, packet=packet)
@@ -223,6 +223,7 @@ class ZiGate(object):
         except Exception:
             LOGGER.error('Exception during closing')
             LOGGER.error(traceback.format_exc())
+        self.connection = None
         self._started = False
 
     def save_state(self, path=None):
@@ -310,9 +311,18 @@ class ZiGate(object):
     def __del__(self):
         self.close()
 
+    def _start_event_thread(self):
+        self._event_thread = threading.Thread(target=self._event_loop,
+                                              name='ZiGate-Event Loop')
+        self._event_thread.setDaemon(True)
+        self._event_thread.start()
+
     def autoStart(self, channel=None):
+        self.startup(channel)
+
+    def startup(self, channel=None):
         '''
-        Auto Start sequence:
+        Startup sequence:
             - Load persistent file
             - setup connection
             - Set Channel mask
@@ -322,6 +332,8 @@ class ZiGate(object):
         '''
         if self._started:
             return
+        self._closing = False
+        self._start_event_thread()
         self.load_state()
         self.setup_connection()
         version = self.get_version()
@@ -483,6 +495,10 @@ class ZiGate(object):
                                                                       response.status_text(),
                                                                       response['error']))
             self._last_status[response['packet_type']] = response
+        elif response.msg == 0x8007:  # factory reset
+            if response['status'] == 0:
+                self._devices = {}
+                self.start_network()
         elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
@@ -772,15 +788,13 @@ class ZiGate(object):
         '''
         erase persistent data in zigate
         '''
-        self._devices = {}
-        return self.send_data(0x0012)
+        return self.send_data(0x0012, wait_status=False)
 
     def factory_reset(self):
         '''
         ZLO/ZLL "Factory New" Reset
         '''
-        self._devices = {}
-        return self.send_data(0x0013)
+        return self.send_data(0x0013, wait_status=False)
 
     def is_permitting_join(self):
         '''
@@ -1062,7 +1076,13 @@ class ZiGate(object):
         r = self.send_data(0x004e, data, wait_response=wait_response)
         return r
 
-    def build_neighbours_table(self, addr='0000', nodes=None):
+    def build_neighbours_table(self):
+        '''
+        Build neighbours table
+        '''
+        return self._neighbours_table(self.addr)
+
+    def _neighbours_table(self, addr, nodes=None):
         '''
         Build neighbours table
         '''
@@ -1097,7 +1117,7 @@ class ZiGate(object):
                     neighbours.append((self.addr, n['addr'], n['lqi']))
                 if is_router and n['addr'] not in nodes:
                     LOGGER.debug('{} is a router, search for children'.format(n['addr']))
-                    n2 = self.build_neighbours_table(n['addr'], nodes)
+                    n2 = self._neighbours_table(n['addr'], nodes)
                     if n2:
                         neighbours += n2
             index += data['count']
@@ -2069,8 +2089,8 @@ class FakeZiGate(ZiGate):
         device.load_template()
         self._devices['abcd'] = device
 
-    def autoStart(self, channel=None):
-        ZiGate.autoStart(self, channel=channel)
+    def startup(self, channel=None):
+        ZiGate.startup(self, channel=channel)
         self.connection.start_fake_response()
 
     def setup_connection(self):
