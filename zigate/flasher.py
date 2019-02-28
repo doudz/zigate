@@ -331,6 +331,32 @@ def erase_EEPROM(ser, pdm_only=False):
         raise SystemExit(1)
 
 
+def flash(serialport, write=None, save=None, erase=False, pdm_only=False):
+    try:
+        ser = serial.Serial(serialport, 38400, timeout=5)
+    except serial.SerialException:
+        logger.exception("Could not open serial device %s", serialport)
+        return
+
+    change_baudrate(ser, 115200)
+    check_chip_id(ser)
+    flash_type = get_flash_type(ser)
+    mac_address = get_mac(ser)
+    print('Found MAC-address: %s' % mac_address)
+    if write or save or erase:
+        select_flash(ser, flash_type)
+
+    if save:
+        write_flash_to_file(ser, save)
+
+    if write:
+        write_file_to_flash(ser, write)
+
+    if erase:
+        erase_EEPROM(ser, pdm_only)
+    change_baudrate(ser, 38400)
+
+
 def main():
     ports_available = [port for (port, _, _) in sorted(comports())]
     parser = argparse.ArgumentParser()

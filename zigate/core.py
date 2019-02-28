@@ -2084,19 +2084,25 @@ class ZiGateGPIO(ZiGate):
                  adminpanel=False):
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(2, GPIO.OUT)
-        self.setRunningMode()
+        self.set_running_mode()
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start,
                         auto_save=auto_save, channel=channel, adminpanel=adminpanel)
 
-    def setRunningMode(self):
+    def set_running_mode(self):
         GPIO.output(2, GPIO.HIGH)
         GPIO.setup(0, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(0, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-    def setBootLoaderMode(self):
+    def set_bootloader_mode(self):
         GPIO.output(2, GPIO.LOW)
         GPIO.setup(0, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(0, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+    def flash_firmware(self, path, erase_eeprom=False):
+        from .flasher import flash
+        self.set_bootloader_mode()
+        flash(self._port, write=path, erase=erase_eeprom)
+        self.set_running_mode()
 
     def __del__(self):
         GPIO.cleanup()
