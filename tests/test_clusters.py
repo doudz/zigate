@@ -31,6 +31,38 @@ class TestResponses(unittest.TestCase):
         data = clusters.decode_xiaomi(rawdata)
         self.assertEqual(data[100], 0)  # OFF
 
+    def test_cluster_C000C(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_cube'})
+        data = {"attributes": [{"attribute": 85,
+                                "data": 4,
+                                }],
+                "cluster": 12
+                }
+        endpoint = {'device': 260}
+        c = clusters.C0012.from_json(data, endpoint, device)
+        self.assertEqual(c.attributes,
+                         {85: {'attribute': 85, 'data': 4,
+                               'expire': 2, 'unit': '°',
+                               'name': 'rotation', 'value': 4,
+                               'type': float}}
+                         )
+
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.other'})
+        data = {"attributes": [{"attribute": 85,
+                                "data": 4,
+                                }],
+                "cluster": 12
+                }
+        endpoint = {'device': 260}
+        c = clusters.C0012.from_json(data, endpoint, device)
+        self.assertEqual(c.attributes,
+                         {85: {'attribute': 85, 'data': 4,
+                               'unit': 'W',
+                               'name': 'power', 'value': 4,
+                               'type': float}}
+                         )
+
     def test_cluster_C0012(self):
         # xiaomi cube status
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
