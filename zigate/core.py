@@ -35,6 +35,10 @@ import random
 from enum import Enum
 import colorsys
 import datetime
+try:
+    import RPi.GPIO as GPIO
+except Exception:
+    pass
 
 
 LOGGER = logging.getLogger('zigate')
@@ -2070,6 +2074,33 @@ class FakeZiGate(ZiGate):
 
     def setup_connection(self):
         self.connection = FakeTransport()
+
+
+class ZiGateGPIO(ZiGate):
+    def __init__(self, port='auto', path='~/.zigate.json',
+                 auto_start=True,
+                 auto_save=True,
+                 channel=None,
+                 adminpanel=False):
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(2, GPIO.OUT)
+        self.setRunningMode()
+        ZiGate.__init__(self, port=port, path=path, auto_start=auto_start,
+                        auto_save=auto_save, channel=channel, adminpanel=adminpanel)
+
+    def setRunningMode(self):
+        GPIO.output(2, GPIO.HIGH)
+        GPIO.setup(0, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(0, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+    def setBootLoaderMode(self):
+        GPIO.output(2, GPIO.LOW)
+        GPIO.setup(0, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(0, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+    def __del__(self):
+        GPIO.cleanup()
+        ZiGate.__del__(self)
 
 
 class ZiGateWiFi(ZiGate):
