@@ -1611,7 +1611,7 @@ class ZiGate(object):
         response = self.send_data(0x0500, data)
 
         # If response is success place header and file content to variable
-        if response == 0:
+        if response.status == 0:
             LOGGER.info('OTA header loaded to server successfully.')
             self._ota_reset_local_variables()
             self._ota['image']['header'] = header
