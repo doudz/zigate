@@ -179,10 +179,11 @@ class FakeTransport(BaseTransport):
 
 
 class ThreadSerialConnection(BaseTransport):
-    def __init__(self, device, port=None):
+    def __init__(self, device, port=None, search_re='067b:2303'):
         BaseTransport.__init__(self)
         self._port = port
         self.device = device
+        self._search_re = search_re
         self._running = True
         self.reconnect(False)
         self.thread = threading.Thread(target=self.listen,
@@ -237,7 +238,7 @@ class ThreadSerialConnection(BaseTransport):
         port = port or 'auto'
         if port == 'auto':
             LOGGER.info('Searching ZiGate port')
-            devices = list(serial.tools.list_ports.grep('067b:2303'))
+            devices = list(serial.tools.list_ports.grep(self._search_re))
             if devices:
                 port = devices[0].device
                 if len(devices) == 1:

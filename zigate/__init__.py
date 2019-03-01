@@ -6,12 +6,12 @@
 # file that was distributed with this source code.
 #
 
-from .core import (ZiGate, ZiGateWiFi)
+from .core import (ZiGate, ZiGateWiFi, ZiGateGPIO)
 from .const import *  # noqa
 from .version import __version__  # noqa
 from pydispatch import dispatcher
 
-__all__ = ['ZiGate', 'ZiGateWiFi',
+__all__ = ['ZiGate', 'ZiGateWiFi', 'ZiGateGPIO',
            'dispatcher']
 
 

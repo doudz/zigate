@@ -2091,12 +2091,16 @@ class ZiGateGPIO(ZiGate):
     def set_running_mode(self):
         GPIO.output(13, GPIO.HIGH)  # GPIO2
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
+        sleep(0.5)
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
+        sleep(0.5)
 
     def set_bootloader_mode(self):
         GPIO.output(13, GPIO.LOW)  # GPIO2
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
+        sleep(0.5)
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
+        sleep(0.5)
 
     def flash_firmware(self, path, erase_eeprom=False):
         from .flasher import flash
@@ -2107,6 +2111,9 @@ class ZiGateGPIO(ZiGate):
     def __del__(self):
         GPIO.cleanup()
         ZiGate.__del__(self)
+
+    def setup_connection(self):
+        self.connection = ThreadSerialConnection(self, self._port, '3f201')
 
 
 class ZiGateWiFi(ZiGate):
