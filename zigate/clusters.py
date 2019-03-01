@@ -244,12 +244,19 @@ class C0008(Cluster):
 @register_cluster
 class C000c(Cluster):
     cluster_id = 0x000c
-    type = 'Analog input (Xiaomi cube: Rotation)'
-    attributes_def = {0x0055: {'name': 'rotation', 'value': 'round(value, 2)',
-                               'unit': '°', 'expire': 2, 'type': float},
-                      0xff05: {'name': 'rotation_time', 'value': 'value',
-                               'unit': 'ms', 'expire': 2, 'type': int},
+    type = 'Analog input'
+    attributes_def = {0x0055: {'name': 'power', 'value': 'round(value, 2)',
+                               'unit': 'W', 'type': float},
                       }
+
+    def __init__(self, endpoint=None, device=None):
+        Cluster.__init__(self, endpoint=endpoint, device=device)
+        if self._device and 'cube' in self._device.get_value('type', ''):
+            self.attributes_def = {0x0055: {'name': 'rotation', 'value': 'round(value, 2)',
+                                            'unit': '°', 'expire': 2, 'type': float},
+                                   0xff05: {'name': 'rotation_time', 'value': 'value',
+                                            'unit': 'ms', 'expire': 2, 'type': int},
+                                   }
 
 
 #         +---+
