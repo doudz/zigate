@@ -1824,23 +1824,13 @@ class ZiGate(object):
         return self.send_data(0x0082, data)
 
     @register_actions(ACTIONS_LEVEL)
-    def action_move_stop(self, addr, endpoint):
-        '''
-        move stop
-        '''
-        addr_mode = self._choose_addr_mode(addr)
-        addr = self.__addr(addr)
-        data = struct.pack('!BHBB', addr_mode, addr, 1, endpoint)
-        return self.send_data(0x0083, data)
-
-    @register_actions(ACTIONS_LEVEL)
-    def action_move_stop_onoff(self, addr, endpoint):
+    def action_move_stop_onoff(self, addr, endpoint, onoff=OFF):
         '''
         move stop on off
         '''
         addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBB', addr_mode, addr, 1, endpoint)
+        data = struct.pack('!BHBBB', addr_mode, addr, 1, endpoint, onoff)
         return self.send_data(0x0084, data)
 
     @register_actions(ACTIONS_HUE)
