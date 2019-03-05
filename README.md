@@ -155,6 +155,10 @@ dispatcher.connect(my_callback, zigate.ZIGATE_ATTRIBUTE_UPDATED)
 
 z = zigate.connect()
 
+# or
+
+z = zigate.connect(port='/dev/ttyUSB0')
+
 # to catch any events
 dispatcher.connect(my_callback, dispatcher.Any)
 ```
@@ -192,6 +196,27 @@ z = zigate.connect(host='192.168.0.10')
 # or if you want to set the port
 z = zigate.connect(host='192.168.0.10:1234')
 ```
+
+## PiZiGate
+
+PiZiGate (ZiGate module for raspberry pi) is also supported:
+
+```python
+import zigate
+z = zigate.connect(gpio=True)
+
+# or if you want to set the port
+z = zigate.connect(port='/dev/serial0', gpio=True)
+```
+
+To be able to use the PiZiGate on Rpi3 you need to disable the bluetooth module.
+To disable bluetooth:
+- Add `dtoverlay=pi3-disable-bt` in `/boot/config.txt`
+- Remove `console=serial0,115200` from `/boot/cmdline.txt`
+- Disable hciuart `sudo systemctl disable hciuart`
+- and `reboot`
+
+Alternatively you could set mini uart for bluetooth or for zigate but be aware that there's performance issue. 
 
 ## MQTT Broker
 

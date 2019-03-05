@@ -18,7 +18,9 @@ __all__ = ['ZiGate', 'ZiGateWiFi', 'ZiGateGPIO',
 def connect(port=None, host=None,
             path='~/.zigate.json',
             auto_start=True,
-            auto_save=True):
+            auto_save=True,
+            channel=None,
+            gpio=False):
     '''
     connect to zigate USB or WiFi
     specify USB port OR host IP
@@ -38,10 +40,19 @@ def connect(port=None, host=None,
                        port,
                        path=path,
                        auto_start=auto_start,
-                       auto_save=auto_save)
+                       auto_save=auto_save,
+                       channel=channel)
     else:
-        z = ZiGate(port,
-                   path=path,
-                   auto_start=auto_start,
-                   auto_save=auto_save)
+        if gpio:
+            z = ZiGateGPIO(port,
+                           path=path,
+                           auto_start=auto_start,
+                           auto_save=auto_save,
+                           channel=channel)
+        else:
+            z = ZiGate(port,
+                       path=path,
+                       auto_start=auto_start,
+                       auto_save=auto_save,
+                       channel=channel)
     return z
