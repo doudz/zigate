@@ -212,11 +212,11 @@ z = zigate.connect(port='/dev/serial0', gpio=True)
 To be able to use the PiZiGate on Rpi3 you need to disable the bluetooth module.
 To disable bluetooth:
 
-- Add `dtoverlay=pi3-disable-bt` in `/boot/config.txt`
-- Remove `console=serial0,115200` from `/boot/cmdline.txt`
-- Disable hciuart `sudo systemctl disable hciuart`
-- Add user to gpio group, example with pi user `sudo usermod -aG gpio pi`
-- and `reboot`
+* Add `dtoverlay=pi3-disable-bt` in `/boot/config.txt`
+* Remove `console=serial0,115200` from `/boot/cmdline.txt`
+* Disable hciuart `sudo systemctl disable hciuart`
+* Add user to gpio group, example with pi user `sudo usermod -aG gpio pi`
+* and `reboot`
 
 Alternatively you could set mini uart for bluetooth or for zigate but be aware that there's performance issue.
 
