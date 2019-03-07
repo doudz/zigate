@@ -1057,8 +1057,8 @@ class ZiGate(object):
         '''
         Management Leave request
         rejoin : 0 do not rejoin, 1 rejoin
-        remove_children : 0 Leave, removing children,
-                            1 = Leave, do not remove children
+        remove_children : 0 Leave, do not remove children
+                            1 = Leave, removing children
         '''
         addr = self.__addr(addr)
         if not ieee:
