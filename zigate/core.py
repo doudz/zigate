@@ -1052,8 +1052,8 @@ class ZiGate(object):
         '''
         return self.send_data(0x0045, addr)
 
-    def leave_request(self, addr, ieee=None, rejoin=0,
-                      remove_children=0):
+    def leave_request(self, addr, ieee=None, rejoin=False,
+                      remove_children=False):
         '''
         Management Leave request
         rejoin : 0 do not rejoin, 1 rejoin
