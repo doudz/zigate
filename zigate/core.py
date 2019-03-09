@@ -521,6 +521,7 @@ class ZiGate(object):
             d = self.get_device_from_addr(addr)
             if d:
                 d.update_info(response.cleaned_data())
+                self.discover_device(addr)
         elif response.msg == 0x8043:  # simple descriptor
             addr = response['addr']
             endpoint = response['endpoint']
@@ -1157,6 +1158,7 @@ class ZiGate(object):
         if 'mac_capability' not in device.info:
             LOGGER.debug('no mac_capability')
             self.node_descriptor_request(addr)
+            return
         if not device.endpoints:
             LOGGER.debug('no endpoints')
             self.active_endpoint_request(addr)
