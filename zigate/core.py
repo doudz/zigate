@@ -2851,7 +2851,7 @@ class Device(object):
     def __get_template_filename(self):
         typ = self.get_type()
         if typ and typ != 'unsupported':
-            return typ.replace(' ', '_')
+            return typ.replace(' ', '_').replace('/', '_')
         manufacturer_code = self.info.get('manufacturer_code')
         if not manufacturer_code:
             return None
