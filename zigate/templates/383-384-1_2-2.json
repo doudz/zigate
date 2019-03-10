@@ -1,0 +1,47 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 5,
+                            "data": "383-384-1/2-2                  "
+                        },
+                        {
+                            "attribute": 7,
+                            "data": 0
+                        }
+                    ],
+                    "cluster": 0
+                }
+            ],
+            "device": 513,
+            "endpoint": 1,
+            "in_clusters": [
+                0,
+                3,
+                21
+            ],
+            "out_clusters": [
+                3,
+                4,
+                5,
+                6,
+                8,
+                256,
+                32767
+            ],
+            "profile": 260
+        }
+    ],
+    "generictype": "profalux_general_remote",
+    "info": {
+        "bit_field": "0100000000000010",
+        "descriptor_capability": "00000000",
+        "mac_capability": "10000000",
+        "manufacturer_code": "1110",
+        "power_type": 0,
+        "server_mask": 0
+    }
+}
