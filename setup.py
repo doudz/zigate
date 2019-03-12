@@ -60,8 +60,7 @@ setup(
     ],
     extras_require={
         'dev': ['tox'],
-        'mqtt': ['paho-mqtt'],
-        'pizigate': ['wiringpi']
+        'mqtt': ['paho-mqtt']
     },
     python_requires='>=3',
 
