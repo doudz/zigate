@@ -36,7 +36,7 @@ from enum import Enum
 import colorsys
 import datetime
 try:
-    import RPi.GPIO as GPIO
+    import wiringpi
 except Exception:
     pass
 
@@ -2071,24 +2071,24 @@ class ZiGateGPIO(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(13, GPIO.OUT)  # GPIO2
+        wiringpi.wiringPiSetup()
+        wiringpi.pinMode(2, 1)  # GPIO2
         self.set_running_mode()
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start,
                         auto_save=auto_save, channel=channel, adminpanel=adminpanel)
 
     def set_running_mode(self):
-        GPIO.output(13, GPIO.HIGH)  # GPIO2
-        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
+        wiringpi.digitalWrite(2, 1)  # GPIO2
+        wiringpi.pullUpDnControl(0, 1)  # GPIO0
         sleep(0.5)
-        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
+        wiringpi.pullUpDnControl(0, 2)  # GPIO0
         sleep(0.5)
 
     def set_bootloader_mode(self):
-        GPIO.output(13, GPIO.LOW)  # GPIO2
-        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
+        wiringpi.digitalWrite(2, 0)  # GPIO2
+        wiringpi.pullUpDnControl(0, 1)  # GPIO0
         sleep(0.5)
-        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
+        wiringpi.pullUpDnControl(0, 2)  # GPIO0
         sleep(0.5)
 
     def flash_firmware(self, path, erase_eeprom=False):
@@ -2098,7 +2098,6 @@ class ZiGateGPIO(ZiGate):
         self.set_running_mode()
 
     def __del__(self):
-        GPIO.cleanup()
         ZiGate.__del__(self)
 
     def setup_connection(self):

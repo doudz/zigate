@@ -56,11 +56,12 @@ setup(
         'pyserial',
         'pydispatcher',
         'bottle',
-        'RPi.GPIO'
+        'wiringpi'
     ],
     extras_require={
         'dev': ['tox'],
-        'mqtt': ['paho-mqtt']
+        'mqtt': ['paho-mqtt'],
+        'pizigate': ['wiringpi']
     },
     python_requires='>=3',
 
