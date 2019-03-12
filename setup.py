@@ -56,7 +56,7 @@ setup(
         'pyserial',
         'pydispatcher',
         'bottle',
-        'graphviz'
+        'wiringpi'
     ],
     extras_require={
         'dev': ['tox'],

@@ -35,7 +35,10 @@ import random
 from enum import Enum
 import colorsys
 import datetime
-from graphviz import Graph
+try:
+    import wiringpi
+except Exception:
+    pass
 
 
 LOGGER = logging.getLogger('zigate')
@@ -518,6 +521,7 @@ class ZiGate(object):
             d = self.get_device_from_addr(addr)
             if d:
                 d.update_info(response.cleaned_data())
+                self.discover_device(addr)
         elif response.msg == 0x8043:  # simple descriptor
             addr = response['addr']
             endpoint = response['endpoint']
@@ -1049,13 +1053,13 @@ class ZiGate(object):
         '''
         return self.send_data(0x0045, addr)
 
-    def leave_request(self, addr, ieee=None, rejoin=0,
-                      remove_children=0):
+    def leave_request(self, addr, ieee=None, rejoin=False,
+                      remove_children=False):
         '''
         Management Leave request
         rejoin : 0 do not rejoin, 1 rejoin
-        remove_children : 0 Leave, removing children,
-                            1 = Leave, do not remove children
+        remove_children : 0 Leave, do not remove children
+                            1 = Leave, removing children
         '''
         addr = self.__addr(addr)
         if not ieee:
@@ -1123,30 +1127,6 @@ class ZiGate(object):
             index += data['count']
         return neighbours
 
-    def build_network_map(self, directory, labels={}):
-        '''
-        create PNG network map
-        filename is destination file
-        labels:optionnal dict for node name {addr: nodename, addr2: nodename2}
-        '''
-        table = self.build_neighbours_table()
-        LOGGER.debug('Neighbours Table : {}'.format(table))
-        dot = Graph('zigate_network', comment='ZiGate Network',
-                    directory=directory, format='png', engine='fdp',
-                    node_attr={'shape': 'box'})
-        dot.node(self.addr, 'ZiGate ({})'.format(self.addr), shape='doubleoctagon')
-        for device in self.devices:
-            name = labels.get(device.addr, str(device))
-            dot.node(device.addr, name)
-        if table:
-            for entry in table:
-                dot.edge(entry[0], entry[1], str(entry[2]))
-        fname = os.path.join(directory, 'zigate_network.png')
-        if os.path.exists(fname):
-            os.remove(fname)
-        LOGGER.debug(dot.source)
-        dot.render('zigate_network', cleanup=True)
-
     def refresh_device(self, addr):
         '''
         convenient function to refresh device attribute
@@ -1178,6 +1158,7 @@ class ZiGate(object):
         if 'mac_capability' not in device.info:
             LOGGER.debug('no mac_capability')
             self.node_descriptor_request(addr)
+            return
         if not device.endpoints:
             LOGGER.debug('no endpoints')
             self.active_endpoint_request(addr)
@@ -1845,23 +1826,13 @@ class ZiGate(object):
         return self.send_data(0x0082, data)
 
     @register_actions(ACTIONS_LEVEL)
-    def action_move_stop(self, addr, endpoint):
-        '''
-        move stop
-        '''
-        addr_mode = self._choose_addr_mode(addr)
-        addr = self.__addr(addr)
-        data = struct.pack('!BHBB', addr_mode, addr, 1, endpoint)
-        return self.send_data(0x0083, data)
-
-    @register_actions(ACTIONS_LEVEL)
-    def action_move_stop_onoff(self, addr, endpoint):
+    def action_move_stop_onoff(self, addr, endpoint, onoff=OFF):
         '''
         move stop on off
         '''
         addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBB', addr_mode, addr, 1, endpoint)
+        data = struct.pack('!BHBBB', addr_mode, addr, 1, endpoint, onoff)
         return self.send_data(0x0084, data)
 
     @register_actions(ACTIONS_HUE)
@@ -1979,7 +1950,7 @@ class ZiGate(object):
         return self.action_move_temperature(addr, endpoint, temperature, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def action_move_temperature_rate(self, addr, endpoint, mode, rate, min_temperature, max_temperature):
+    def action_move_temperature_rate(self, addr, endpoint, mode, rate, min_mired, max_mired):
         '''
         move colour temperature in specified rate towards given min or max value
         Available modes:
@@ -1987,14 +1958,12 @@ class ZiGate(object):
          - 1: Increase
          - 3: Decrease
         rate: how many temperature units are moved in one second
-        min_temperature: Minium temperature where decreasing stops
-        max_temperature: Maxium temperature where increasing stops
+        min_mired: Minium temperature where decreasing stops in mired
+        max_mired: Maxium temperature where increasing stops in mired
         '''
-        min_temperature = int(1000000 // min_temperature)
-        max_temperature = int(1000000 // max_temperature)
         addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
-        data = struct.pack('!BHBBBHHH', addr_mode, addr, 1, endpoint, mode, rate, min_temperature, max_temperature)
+        data = struct.pack('!BHBBBHHH', addr_mode, addr, 1, endpoint, mode, rate, min_mired, max_mired)
         return self.send_data(0x00C1, data)
 
     @register_actions(ACTIONS_LOCK)
@@ -2033,11 +2002,10 @@ class ZiGate(object):
         data = struct.pack(fmt, *args)
         return self.send_data(0x00fa, data)
 
-    def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, security=0x01 | 0x02):
+    def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, addr_mode=2, security=0):
         '''
         Send raw APS Data request
         '''
-        addr_mode = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         length = len(payload)
         radius = 0
@@ -2095,6 +2063,45 @@ class FakeZiGate(ZiGate):
 
     def setup_connection(self):
         self.connection = FakeTransport()
+
+
+class ZiGateGPIO(ZiGate):
+    def __init__(self, port='auto', path='~/.zigate.json',
+                 auto_start=True,
+                 auto_save=True,
+                 channel=None,
+                 adminpanel=False):
+        wiringpi.wiringPiSetup()
+        wiringpi.pinMode(2, 1)  # GPIO2
+        self.set_running_mode()
+        ZiGate.__init__(self, port=port, path=path, auto_start=auto_start,
+                        auto_save=auto_save, channel=channel, adminpanel=adminpanel)
+
+    def set_running_mode(self):
+        wiringpi.digitalWrite(2, 1)  # GPIO2
+        wiringpi.pullUpDnControl(0, 1)  # GPIO0
+        sleep(0.5)
+        wiringpi.pullUpDnControl(0, 2)  # GPIO0
+        sleep(0.5)
+
+    def set_bootloader_mode(self):
+        wiringpi.digitalWrite(2, 0)  # GPIO2
+        wiringpi.pullUpDnControl(0, 1)  # GPIO0
+        sleep(0.5)
+        wiringpi.pullUpDnControl(0, 2)  # GPIO0
+        sleep(0.5)
+
+    def flash_firmware(self, path, erase_eeprom=False):
+        from .flasher import flash
+        self.set_bootloader_mode()
+        flash(self._port, write=path, erase=erase_eeprom)
+        self.set_running_mode()
+
+    def __del__(self):
+        ZiGate.__del__(self)
+
+    def setup_connection(self):
+        self.connection = ThreadSerialConnection(self, self._port, '3f201')
 
 
 class ZiGateWiFi(ZiGate):
