@@ -2002,7 +2002,7 @@ class ZiGate(object):
         data = struct.pack(fmt, *args)
         return self.send_data(0x00fa, data)
 
-    def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, security=0x01 | 0x02):
+    def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, security=0):
         '''
         Send raw APS Data request
         '''
