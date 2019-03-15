@@ -2010,7 +2010,7 @@ class ZiGate(object):
         length = len(payload)
         radius = 0
         data = struct.pack('!BHBBHHBBB{}s'.format(length), addr_mode, addr, src_ep, dst_ep,
-                           profile, cluster, security, radius, length, payload)
+                           cluster, profile, security, radius, length, payload)
         return self.send_data(0x0530, data)
 
     def set_TX_power(self, percent=100):
