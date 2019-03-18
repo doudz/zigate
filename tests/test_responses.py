@@ -24,8 +24,7 @@ class TestResponses(unittest.TestCase):
                                          ('source_address', '1234'),
                                          ('dst_address_mode', 2),
                                          ('dst_address', 'abcd'),
-                                         ('payload_size', 4),
-                                         ('payload', b'\x01#Eg')])
+                                         ('payload', b'\x04\x01#Eg')])
                              )
         msg_data = unhexlify(b'00010000060201030123456789abcdef03fedcba98765432100401234567')
         r = responses.R8002(msg_data, 255)
@@ -40,8 +39,7 @@ class TestResponses(unittest.TestCase):
                                           ('source_address', '0123456789abcdef'),
                                           ('dst_address_mode', 3),
                                           ('dst_address', 'fedcba9876543210'),
-                                          ('payload_size', 4),
-                                          ('payload', b'\x01#Eg')])
+                                          ('payload', b'\x04\x01#Eg')])
                              )
 
     def test_response_8024(self):
