@@ -615,7 +615,7 @@ class TestCore(unittest.TestCase):
     def test_raw_aps_data(self):
         def send_data(cmd, data=None, wait_response=False, wait_status=False):
             self.assertEqual(cmd, 0x0530)
-            self.assertEqual(data, b'\x02\x124\x01\x01\x01\x04\x00\x06\x00\x00\x07payload')
+            self.assertEqual(data, b'\x02\x124\x01\x01\x00\x06\x01\x04\x00\x00\x07payload')
         self.zigate.send_data = send_data
         self.zigate.raw_aps_data_request('1234', 1, 1, 0x0104, 0x0006, b'payload')
 

@@ -210,9 +210,9 @@ class R8002(Response):
             dst_address = '{:04x}'.format(dst_address)
             additionnal = additionnal[2:]
         self.data['dst_address'] = dst_address
-        payload_size = struct.unpack('!B', additionnal[:1])[0]
-        self.data['payload_size'] = payload_size
-        self.data['payload'] = additionnal[1:]
+#         payload_size = struct.unpack('!B', additionnal[:1])[0]
+#         self.data['payload_size'] = payload_size
+        self.data['payload'] = additionnal
 
 
 @register_response

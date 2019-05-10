@@ -36,7 +36,7 @@ from enum import Enum
 import colorsys
 import datetime
 try:
-    import wiringpi
+    import RPi.GPIO as GPIO
 except Exception:
     pass
 
@@ -2010,7 +2010,7 @@ class ZiGate(object):
         length = len(payload)
         radius = 0
         data = struct.pack('!BHBBHHBBB{}s'.format(length), addr_mode, addr, src_ep, dst_ep,
-                           profile, cluster, security, radius, length, payload)
+                           cluster, profile, security, radius, length, payload)
         return self.send_data(0x0530, data)
 
     def set_TX_power(self, percent=100):
@@ -2071,24 +2071,24 @@ class ZiGateGPIO(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
-        wiringpi.wiringPiSetup()
-        wiringpi.pinMode(2, 1)  # GPIO2
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(13, GPIO.OUT)  # GPIO2
         self.set_running_mode()
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start,
                         auto_save=auto_save, channel=channel, adminpanel=adminpanel)
 
     def set_running_mode(self):
-        wiringpi.digitalWrite(2, 1)  # GPIO2
-        wiringpi.pullUpDnControl(0, 1)  # GPIO0
+        GPIO.output(13, GPIO.HIGH)  # GPIO2
+        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
         sleep(0.5)
-        wiringpi.pullUpDnControl(0, 2)  # GPIO0
+        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
         sleep(0.5)
 
     def set_bootloader_mode(self):
-        wiringpi.digitalWrite(2, 0)  # GPIO2
-        wiringpi.pullUpDnControl(0, 1)  # GPIO0
+        GPIO.output(13, GPIO.LOW)  # GPIO2
+        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
         sleep(0.5)
-        wiringpi.pullUpDnControl(0, 2)  # GPIO0
+        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
         sleep(0.5)
 
     def flash_firmware(self, path, erase_eeprom=False):
@@ -2098,6 +2098,7 @@ class ZiGateGPIO(ZiGate):
         self.set_running_mode()
 
     def __del__(self):
+        GPIO.cleanup()
         ZiGate.__del__(self)
 
     def setup_connection(self):

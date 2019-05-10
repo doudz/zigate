@@ -56,7 +56,7 @@ setup(
         'pyserial',
         'pydispatcher',
         'bottle',
-        'wiringpi'
+        'RPi.GPIO'
     ],
     extras_require={
         'dev': ['tox'],
