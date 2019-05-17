@@ -258,8 +258,8 @@ class C0008(Cluster):
 
 
 @register_cluster
-class C000c(Cluster):
-    cluster_id = 0x000c
+class C000C(Cluster):
+    cluster_id = 0x000C
     type = 'Analog input'
     attributes_def = {0x0055: {'name': 'power', 'value': 'round(value, 2)',
                                'unit': 'W', 'type': float},
@@ -343,15 +343,16 @@ class C0012(Cluster):
                                    }
 
 
-class C000f(Cluster):
-    cluster_id = 0x000f
+@register_cluster
+class C000F(Cluster):
+    cluster_id = 0x000F
     type = 'Binary Input (Basic)'
     attributes_def = {0x0004: {'name': 'active_text', 'value': 'value'},
                       0x001c: {'name': 'description', 'value': 'value'},
                       0x002e: {'name': 'inactive_text', 'value': 'value'},
                       0x0051: {'name': 'out_of_service', 'value': 'value', 'type': bool},
                       0x0054: {'name': 'polarity', 'value': 'value'},
-                      0x0055: {'name': 'present_value', 'type': bool},
+                      0x0055: {'name': 'present_value', 'value': 'value', 'type': bool},
                       0x0067: {'name': 'reliability', 'value': 'value'},
                       0x006f: {'name': 'status_flags', 'value': 'value'},
                       0x0100: {'name': 'application_type', 'value': 'value'},
