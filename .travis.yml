@@ -36,4 +36,4 @@ matrix:
 addons:
   apt:
     packages:
-      - graphviz
+      - paho-mqtt
