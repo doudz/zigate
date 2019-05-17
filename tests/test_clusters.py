@@ -247,6 +247,18 @@ class TestResponses(unittest.TestCase):
                               'name': 'button_on', 'value': '1', 'type': str}}
                          )
 
+    def test_cluster_C000F(self):
+        data = {"attributes": [{"attribute": 85,
+                                "data": True
+                                }],
+                "cluster": 0x000F
+                }
+        c = clusters.C000f.from_json(data)
+        self.assertEqual(c.attributes,
+                         {85: {'attribute': 85, 'data': True,
+                               'name': 'present_value', 'value': True, 'type': bool}}
+                         )
+
 
 if __name__ == '__main__':
     unittest.main()
