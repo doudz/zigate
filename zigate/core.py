@@ -2136,6 +2136,8 @@ class DeviceEncoder(json.JSONEncoder):
             return obj.to_json()
         if isinstance(obj, Cluster):
             return obj.to_json()
+        if isinstance(obj, Response):
+            return obj.cleaned_data()
         elif isinstance(obj, bytes):
             return hexlify(obj).decode()
         elif isinstance(obj, set):
