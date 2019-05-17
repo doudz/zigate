@@ -253,7 +253,7 @@ class TestResponses(unittest.TestCase):
                                 }],
                 "cluster": 0x000F
                 }
-        c = clusters.C000f.from_json(data)
+        c = clusters.C000F.from_json(data)
         self.assertEqual(c.attributes,
                          {85: {'attribute': 85, 'data': True,
                                'name': 'present_value', 'value': True, 'type': bool}}
