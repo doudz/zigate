@@ -30,7 +30,10 @@ class MQTT_Broker(object):
         self.client.on_message = self.on_message
 
     def connect(self):
-        host, port = self._mqtt_host.split(':')
+        host = self._mqtt_host
+        port = 1883
+        if ':' in host:
+            host, port = host.split(':')
         port = int(port)
         self.client.connect(host, port)
 
