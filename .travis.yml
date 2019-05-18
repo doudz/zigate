@@ -33,7 +33,3 @@ matrix:
         - cd ${TRAVIS_BUILD_DIR}
         - mdl -s markdownlint.rb *.md
         
-addons:
-  apt:
-    packages:
-      - python3-paho-mqtt

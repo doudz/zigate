@@ -4,12 +4,20 @@ ZiGate responses Tests
 '''
 
 import unittest
-from zigate import responses
+from zigate import responses, core
 from collections import OrderedDict
 from binascii import unhexlify
+import json
 
 
 class TestResponses(unittest.TestCase):
+    def test_jsonResponse(self):
+        r = responses.R8000(b'\x00\x00\x00\x01', 255)
+        payload = json.dumps(r, cls=core.DeviceEncoder)
+        self.assertEqual(payload,
+                         '{"status": 0, "sequence": 0, '
+                         '"packet_type": 1, "error": "", "lqi": 255}')
+
     def test_response_8002(self):
         msg_data = unhexlify(b'0001000006020102123402abcd0401234567')
         r = responses.R8002(msg_data, 255)

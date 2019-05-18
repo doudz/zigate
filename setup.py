@@ -59,7 +59,7 @@ setup(
         'RPi.GPIO'
     ],
     extras_require={
-        'dev': ['tox', 'paho-mqtt'],
+        'dev': ['tox'],
         'mqtt': ['paho-mqtt']
     },
     python_requires='>=3',
