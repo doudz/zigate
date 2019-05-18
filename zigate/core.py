@@ -2071,24 +2071,24 @@ class ZiGateGPIO(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(13, GPIO.OUT)  # GPIO2
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(27, GPIO.OUT)  # GPIO2
         self.set_running_mode()
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start,
                         auto_save=auto_save, channel=channel, adminpanel=adminpanel)
 
     def set_running_mode(self):
-        GPIO.output(13, GPIO.HIGH)  # GPIO2
-        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
+        GPIO.output(27, GPIO.HIGH)  # GPIO2
+        GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
         sleep(0.5)
-        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
+        GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
         sleep(0.5)
 
     def set_bootloader_mode(self):
-        GPIO.output(13, GPIO.LOW)  # GPIO2
-        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
+        GPIO.output(27, GPIO.LOW)  # GPIO2
+        GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
         sleep(0.5)
-        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
+        GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
         sleep(0.5)
 
     def flash_firmware(self, path, erase_eeprom=False):
@@ -2136,6 +2136,8 @@ class DeviceEncoder(json.JSONEncoder):
             return obj.to_json()
         if isinstance(obj, Cluster):
             return obj.to_json()
+        if isinstance(obj, Response):
+            return obj.cleaned_data()
         elif isinstance(obj, bytes):
             return hexlify(obj).decode()
         elif isinstance(obj, set):

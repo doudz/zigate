@@ -8,14 +8,16 @@
 from pydispatch import dispatcher
 import logging
 from .const import (ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
-                    ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED, ZIGATE_DEVICE_UPDATED)
-from zigate.core import DeviceEncoder
+                    ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
+                    ZIGATE_DEVICE_UPDATED)
+from .core import DeviceEncoder
 import paho.mqtt.client as mqtt
 import json
 
 
 class MQTT_Broker(object):
-    def __init__(self, zigate, mqtt_host='localhost:1883', username=None, password=None):
+    def __init__(self, zigate, mqtt_host='localhost:1883',
+                 username=None, password=None):
         self._mqtt_host = mqtt_host
         self.zigate = zigate
         self.client = mqtt.Client()
@@ -30,7 +32,10 @@ class MQTT_Broker(object):
         self.client.on_message = self.on_message
 
     def connect(self):
-        host, port = self._mqtt_host.split(':')
+        host = self._mqtt_host
+        port = 1883
+        if ':' in host:
+            host, port = host.split(':')
         port = int(port)
         self.client.connect(host, port)
 
@@ -82,9 +87,10 @@ class MQTT_Broker(object):
                 else:
                     result = func
                 if result:
-                    self._publish('zigate/command/result', {'function': func_name,
-                                                            'result': result
-                                                            })
+                    self._publish('zigate/command/result',
+                                  {'function': func_name,
+                                   'result': result
+                                   })
             else:
                 logging.error('ZiGate has no function named {}'.format(func_name))
 
@@ -96,9 +102,12 @@ if __name__ == '__main__':
     from zigate import ZiGate, ZiGateWiFi
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', help='ZiGate usb port or host:port', default='auto')
-    parser.add_argument('--path', help='ZiGate state file path', default='~/.zigate.json')
-    parser.add_argument('--mqtt_host', help='MQTT host:port', default='localhost:1883')
+    parser.add_argument('--device', help='ZiGate usb port or host:port',
+                        default='auto')
+    parser.add_argument('--path', help='ZiGate state file path',
+                        default='~/.zigate.json')
+    parser.add_argument('--mqtt_host', help='MQTT host:port',
+                        default='localhost:1883')
     parser.add_argument('--mqtt_username', help='MQTT username', default=None)
     parser.add_argument('--mqtt_password', help='MQTT password', default=None)
     args = parser.parse_args()
@@ -108,5 +117,6 @@ if __name__ == '__main__':
         z = ZiGateWiFi(host, port, auto_start=False, path=args.path)
     else:
         z = ZiGate(args.device, auto_start=False, path=args.path)
-    broker = MQTT_Broker(z, args.mqtt_host, args.mqtt_username, args.mqtt_password)
+    broker = MQTT_Broker(z, args.mqtt_host,
+                         args.mqtt_username, args.mqtt_password)
     broker.start()
