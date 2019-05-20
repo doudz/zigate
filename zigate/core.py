@@ -20,6 +20,7 @@ from .transport import (ThreadSerialConnection,
 from .responses import (RESPONSES, Response)
 from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ACTIONS_ONOFF, ACTIONS_TEMPERATURE, ACTIONS_COVER,
+                    ACTIONS_THERMOSTAT,
                     OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
                     ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
@@ -2198,6 +2199,8 @@ class Device(object):
                         actions[ep_id].append(ACTIONS_LOCK)
                     if 0x0102 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_COVER)
+                    if 0x0201 in endpoint['in_clusters']:
+                        actions[ep_id].append(ACTIONS_THERMOSTAT)
                     if 0x0300 in endpoint['in_clusters']:
                         # if endpoint['device'] in (0x0102, 0x0105):
                         if endpoint['device'] in (0x0105,):

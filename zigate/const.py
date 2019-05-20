@@ -51,6 +51,7 @@ ACTIONS_TEMPERATURE = 'temperature'
 ACTIONS_HUE = 'hue'
 ACTIONS_LOCK = 'lock'
 ACTIONS_COVER = 'cover'
+ACTIONS_THERMOSTAT = 'thermostat'
 
 DATA_TYPE = {0x00: None,
              0x10: '?',  # bool
