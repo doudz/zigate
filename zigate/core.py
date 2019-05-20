@@ -20,6 +20,7 @@ from .transport import (ThreadSerialConnection,
 from .responses import (RESPONSES, Response)
 from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ACTIONS_ONOFF, ACTIONS_TEMPERATURE, ACTIONS_COVER,
+                    ACTIONS_THERMOSTAT,
                     OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
                     ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
