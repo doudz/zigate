@@ -353,6 +353,10 @@ class ZiGate(object):
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
 
+        if version and version['version'] >= '3.1a':
+            LOGGER.debug('Set Zigate normal mode (firmware >= 3.1a)')
+            self.set_raw_mode(False)
+
         if version and version['version'] >= '3.0f':
             LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
             self.set_time()
@@ -763,6 +767,13 @@ class ZiGate(object):
         if wait:
             wait_response = 0x8015
         self.send_data(0x0015, wait_response=wait_response)
+
+    def set_raw_mode(self, enable=True):
+        '''
+        Set Blue Led state ON/OFF
+        '''
+        data = struct.pack('!B', enable)
+        return self.send_data(0x0002, data)
 
     def get_version(self, refresh=False):
         '''
