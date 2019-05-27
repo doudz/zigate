@@ -2288,9 +2288,13 @@ class Device(object):
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0201, (0x0000, 0x29))
                 self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0201, (0x0002, 0x18))
+                self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0201, (0x0008, 0x20))
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0201, (0x0012, 0x29))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0201, (0x0014, 0x29))
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0201, (0x001C, 0x30))
             if 0x0300 in endpoint['in_clusters']:
