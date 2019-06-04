@@ -928,11 +928,15 @@ class ZiGate(object):
     def remove_device(self, addr):
         ''' remove device '''
         if addr in self._devices:
-            ieee = self._devices[addr]['ieee']
-            ieee = self.__addr(ieee)
-            zigate_ieee = self.__addr(self.ieee)
-            data = struct.pack('!QQ', zigate_ieee, ieee)
-            return self.send_data(0x0026, data)
+            ieee = self._devices[addr].ieee
+            if not ieee:
+                LOGGER.warning('No ieee for %s, silently removing the device', self._devices[addr])
+                self._remove_device(addr)
+            else:
+                ieee = self.__addr(ieee)
+                zigate_ieee = self.__addr(self.ieee)
+                data = struct.pack('!QQ', zigate_ieee, ieee)
+                return self.send_data(0x0026, data)
 
     def remove_device_ieee(self, ieee):
         ''' remove device '''

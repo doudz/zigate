@@ -730,6 +730,13 @@ class TestCore(unittest.TestCase):
                          [{'attribute': 5, 'data': 'unsupported', 'name': 'type',
                            'value': 'unsupported', 'type': str}])
 
+    def test_remove_device_without_ieee(self):
+        device = core.Device({'addr': '1234'},
+                             self.zigate)
+        self.zigate._devices['1234'] = device
+        self.zigate.remove_device('1234')
+        self.assertFalse('1234' in self.zigate._devices)
+
 
 if __name__ == '__main__':
     unittest.main()
