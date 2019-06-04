@@ -55,7 +55,7 @@ ACTIONS_THERMOSTAT = 'thermostat'
 
 DATA_TYPE = {0x00: None,
              0x10: '?',  # bool
-             0x18: 'b',
+             0x18: 'b',  # bitmap8
              0x20: 'B',  # uint8
              0x21: 'H',  # uint16
              0x22: 'I',  # uint24

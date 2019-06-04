@@ -55,7 +55,8 @@ WAIT_TIMEOUT = 3
 ACTUATORS = [0x0010, 0x0051,
              0x010a, 0x010b,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
-             0x0200, 0x0202, 0x0210, 0x0220]
+             0x0200, 0x0202, 0x0210, 0x0220,
+             0x0301]
 #             On/off light 0x0000
 #             On/off plug-in unit 0x0010
 #             Dimmable light 0x0100
@@ -352,6 +353,10 @@ class ZiGate(object):
            network_state.get('addr') == 'ffff':
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
+
+        if version and version['version'] >= '3.1a':
+            LOGGER.debug('Set Zigate normal mode (firmware >= 3.1a)')
+            self.set_raw_mode(False)
 
         if version and version['version'] >= '3.0f':
             LOGGER.debug('Set Zigate Time (firmware >= 3.0f)')
@@ -764,6 +769,13 @@ class ZiGate(object):
             wait_response = 0x8015
         self.send_data(0x0015, wait_response=wait_response)
 
+    def set_raw_mode(self, enable=True):
+        '''
+        Set Blue Led state ON/OFF
+        '''
+        data = struct.pack('!B', enable)
+        return self.send_data(0x0002, data)
+
     def get_version(self, refresh=False):
         '''
         get zigate firmware version
@@ -916,11 +928,15 @@ class ZiGate(object):
     def remove_device(self, addr):
         ''' remove device '''
         if addr in self._devices:
-            ieee = self._devices[addr]['ieee']
-            ieee = self.__addr(ieee)
-            zigate_ieee = self.__addr(self.ieee)
-            data = struct.pack('!QQ', zigate_ieee, ieee)
-            return self.send_data(0x0026, data)
+            ieee = self._devices[addr].ieee
+            if not ieee:
+                LOGGER.warning('No ieee for %s, silently removing the device', self._devices[addr])
+                self._remove_device(addr)
+            else:
+                ieee = self.__addr(ieee)
+                zigate_ieee = self.__addr(self.ieee)
+                data = struct.pack('!QQ', zigate_ieee, ieee)
+                return self.send_data(0x0026, data)
 
     def remove_device_ieee(self, ieee):
         ''' remove device '''
@@ -2276,9 +2292,13 @@ class Device(object):
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0201, (0x0000, 0x29))
                 self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0201, (0x0002, 0x18))
+                self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0201, (0x0008, 0x20))
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0201, (0x0012, 0x29))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0201, (0x0014, 0x29))
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0201, (0x001C, 0x30))
             if 0x0300 in endpoint['in_clusters']:
