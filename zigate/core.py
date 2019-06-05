@@ -154,6 +154,7 @@ class ZiGate(object):
         self._devices = {}
         self._groups = {}
         self._scenes = {}
+        self._neighbours_table_cache = []
         self._path = path
         self._version = None
         self._port = port
@@ -257,7 +258,8 @@ class ZiGate(object):
         try:
             data = {'devices': list(self._devices.values()),
                     'groups': self._groups,
-                    'scenes': self._scenes
+                    'scenes': self._scenes,
+                    'neighbours_table': self._neighbours_table_cache
                     }
             with open(self._path, 'w') as fp:
                 json.dump(data, fp, cls=DeviceEncoder,
@@ -288,6 +290,7 @@ class ZiGate(object):
                     groups[k] = set([tuple(r) for r in v])
                 self._groups = groups
                 self._scenes = data.get('scenes', {})
+                self._neighbours_table_cache = data.get('neighbours_table', [])
                 devices = data.get('devices', [])
                 for data in devices:
                     try:
@@ -1097,11 +1100,13 @@ class ZiGate(object):
         r = self.send_data(0x004e, data, wait_response=wait_response)
         return r
 
-    def build_neighbours_table(self):
+    def build_neighbours_table(self, force=False):
         '''
         Build neighbours table
         '''
-        return self._neighbours_table(self.addr)
+        if force or not self._neighbours_table_cache:
+            self._neighbours_table_cache = self._neighbours_table(self.addr)
+        return self._neighbours_table_cache
 
     def _neighbours_table(self, addr, nodes=None):
         '''
