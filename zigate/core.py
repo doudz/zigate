@@ -1573,6 +1573,12 @@ class ZiGate(object):
             LOGGER.error('{path}: {error}'.format(path=path_to_file, error=err))
             return False
 
+        if ota_file_content.startswith(b'NGIS'):
+            LOGGER.debug('Signed file, removing signature')
+            header_end = struct.unpack('<I', ota_file_content[0x10:0x14])[0]
+            footer_pos = struct.unpack('<I', ota_file_content[0x18:0x1C])[0]
+            ota_file_content = ota_file_content[header_end:footer_pos]
+
         # Ensure that file has 69 bytes so it can contain header
         if len(ota_file_content) < 69:
             LOGGER.error('OTA file is too short')
