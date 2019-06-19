@@ -18,7 +18,7 @@ if not data.startswith(b'NGIS'):
     raise Exception('Not a signed file, no need to convert')
 
 print('Converting', path)
-header_end = struct.unpack('<I', data[0x10:0x14])[0]+1
+header_end = struct.unpack('<I', data[0x10:0x14])[0]
 footer_pos = struct.unpack('<I', data[0x18:0x1C])[0]
 data = data[header_end:footer_pos]
 with open(path, 'wb') as fp:
