@@ -972,6 +972,23 @@ class ZiGate(object):
             addr_fmt = 'Q'
         return addr_mode, addr_fmt
 
+    def _translate_addr(self, addr_ieee):
+        '''
+        translate ieee to addr if needed
+        '''
+        if len(addr_ieee) > 4:
+            return self.get_addr(addr_ieee)
+        return addr_ieee
+
+    def get_addr(self, ieee):
+        '''
+        retrieve short addr from ieee
+        '''
+        for d in self._devices.values():
+            if d.ieee == ieee:
+                return d.addr
+        LOGGER.error('Failed to retrieve short address for %s', ieee)
+
     def _bind_unbind(self, cmd, ieee, endpoint, cluster,
                      dst_addr=None, dst_endpoint=1):
         '''
@@ -1807,6 +1824,7 @@ class ZiGate(object):
         gradient : effect gradient
         Note that timed onoff and effect are mutually exclusive
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBB', addr_mode, addr, 1, endpoint, onoff)
