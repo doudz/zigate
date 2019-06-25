@@ -513,7 +513,8 @@ class TestCore(unittest.TestCase):
             ]
         ]
     },
-    "scenes": {}
+    "scenes": {},
+    "neighbours_table": [["1234", "abcd", 255]]
 }'''
         path = os.path.join(self.test_dir, 'test_zigate.json')
         with open(path, 'w') as fp:
@@ -530,6 +531,7 @@ class TestCore(unittest.TestCase):
                              {'5a92': {('a677', 11), ('9c5c', 1), ('7ad1', 1), ('a14f', 1),
                                        ('d7d0', 1), ('639f', 1), ('fe1b', 1), ('edf0', 1)}}
                              )
+        self.assertEqual(self.zigate.build_neighbours_table(), [['1234', 'abcd', 255]])
 
     def test_group_membership(self):
         msg_data = b'\x01\x01\x00\x04\x124\x10\x00'

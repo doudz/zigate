@@ -27,6 +27,13 @@ matrix:
         - pip install -e ".[dev]"
       script:
         - tox
+    - python: 3.8-dev
+      dist: xenial
+      env: TOXENV=py38
+      install:
+        - pip install -e ".[dev]"
+      script:
+        - tox
     - language: markdown
       script:
         - gem install mdl
