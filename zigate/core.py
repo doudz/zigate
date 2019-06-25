@@ -1165,14 +1165,14 @@ class ZiGate(object):
             index += data['count']
         return neighbours
 
-    def refresh_device(self, addr):
+    def refresh_device(self, addr, full=False):
         '''
         convenient function to refresh device attribute
         '''
         device = self.get_device_from_addr(addr)
         if not device:
             return
-        device.refresh_device()
+        device.refresh_device(full)
 
     def discover_device(self, addr, force=False):
         '''
@@ -2540,9 +2540,12 @@ class Device(object):
             typ = self.get_value('type')
         return typ
 
-    def refresh_device(self):
+    def refresh_device(self, full=False):
         to_read = {}
         for attribute in self.attributes:
+            # don't refresh general clusters
+            if not full and attribute['cluster'] < 6:
+                continue
             k = (attribute['endpoint'], attribute['cluster'])
             if k not in to_read:
                 to_read[k] = []
