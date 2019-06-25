@@ -1482,6 +1482,7 @@ class ZiGate(object):
             'finish_effect': 0xfe,
             'stop_effect': 0xff
         }
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if effect not in effects.keys():
@@ -1496,6 +1497,7 @@ class ZiGate(object):
         Read Attribute request
         attribute can be a unique int or a list of int
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if not isinstance(attributes, list):
@@ -1518,6 +1520,7 @@ class ZiGate(object):
         attribute could be a tuple of (attribute_id, attribute_type, data)
         or a list of tuple (attribute_id, attribute_type, data)
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         fmt = ''
@@ -1543,6 +1546,7 @@ class ZiGate(object):
         attribute could be a tuple of (attribute_id, attribute_type)
         or a list of tuple (attribute_id, attribute_type)
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if not isinstance(attributes, list):
@@ -1843,6 +1847,7 @@ class ZiGate(object):
         move to level
         mode 0 up, 1 down
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBBBB', addr_mode, addr, 1, endpoint, onoff, mode, rate)
@@ -1854,6 +1859,7 @@ class ZiGate(object):
         move to level with on off
         level between 0 - 100
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         level = int(level * 254 // 100)
@@ -1865,6 +1871,7 @@ class ZiGate(object):
         '''
         move step
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBBBBH', addr_mode, addr, 1, endpoint, onoff,
@@ -1876,6 +1883,7 @@ class ZiGate(object):
         '''
         move stop on off
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBB', addr_mode, addr, 1, endpoint, onoff)
@@ -1889,6 +1897,7 @@ class ZiGate(object):
         direction : 0 shortest, 1 longest, 2 up, 3 down
         transition in second
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         hue = int(hue * 254 // 360)
@@ -1904,6 +1913,7 @@ class ZiGate(object):
         saturation 0-100 in percent
         transition in second
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         hue = int(hue * 254 // 360)
@@ -1941,6 +1951,7 @@ class ZiGate(object):
         x, y can be integer 0-65536 or float 0-1.0
         transition in second
         '''
+        addr = self._translate_addr(addr)
         if isinstance(x, float) and x <= 1:
             x = int(x * 65536)
         if isinstance(y, float) and y <= 1:
@@ -1978,6 +1989,7 @@ class ZiGate(object):
         mired color temperature
         transition in second
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBHH', addr_mode, addr, 1, endpoint,
@@ -2007,6 +2019,7 @@ class ZiGate(object):
         min_mired: Minium temperature where decreasing stops in mired
         max_mired: Maxium temperature where increasing stops in mired
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBBHHH', addr_mode, addr, 1, endpoint, mode, rate, min_mired, max_mired)
@@ -2017,6 +2030,7 @@ class ZiGate(object):
         '''
         Lock / unlock
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBB', addr_mode, addr, 1, endpoint, lock)
@@ -2035,6 +2049,7 @@ class ZiGate(object):
             TILT_VALUE = 0x07
             TILT_PERCENT = 0x08
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         fmt = '!B' + addr_fmt + 'BBB'
         addr = self.__addr(addr)
