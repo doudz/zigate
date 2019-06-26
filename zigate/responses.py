@@ -155,7 +155,7 @@ class R8000(Response):
                             ' (no new configuration accepted)'),
                         }
         return status_codes.get(self.data.get('status'),
-                                'Failed (ZigBee event codes) {}'.format(self.data.get('status')))
+                                'Failed (ZigBee event codes) {:02x}'.format(self.data.get('status')))
 
 
 @register_response
