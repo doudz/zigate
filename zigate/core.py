@@ -242,6 +242,7 @@ class ZiGate(object):
             return
         self._path = os.path.expanduser(path)
         backup_path = self._path + '.0'
+        LOGGER.debug('Acquire Lock to save persistent file')
         r = self._save_lock.acquire(True, 5)
         if not r:
             LOGGER.error('Failed to acquire Lock to save persistent file')
@@ -253,6 +254,7 @@ class ZiGate(object):
         except Exception:
             LOGGER.error('Failed to create backup, cancel saving.')
             LOGGER.error(traceback.format_exc())
+            LOGGER.debug('Release Lock of persistent file')
             self._save_lock.release()
             return
         try:
@@ -269,6 +271,7 @@ class ZiGate(object):
             LOGGER.error(traceback.format_exc())
             LOGGER.error('Restoring backup...')
             copyfile(backup_path, self._path)
+        LOGGER.debug('Release Lock of persistent file')
         self._save_lock.release()
 
     def load_state(self, path=None):
@@ -279,9 +282,14 @@ class ZiGate(object):
             return
         self._path = os.path.expanduser(path)
         backup_path = self._path + '.0'
-        if os.path.exists(self._path):
+        files = [self._path, backup_path]
+        for f in files:
+            LOGGER.debug('Trying to load %s', f)
+            if not os.path.exists(f):
+                LOGGER.warning('Persistent file %s doesn\'t exist', f)
+                continue
             try:
-                with open(self._path) as fp:
+                with open(f) as fp:
                     data = json.load(fp)
                 if not isinstance(data, dict):  # old version
                     data = {'devices': data, 'groups': {}}
@@ -304,8 +312,6 @@ class ZiGate(object):
             except Exception:
                 LOGGER.error('Failed to load persistent file {}'.format(self._path))
                 LOGGER.error(traceback.format_exc())
-                if os.path.exists(backup_path):
-                    LOGGER.warning('A backup exists {}, you should consider restoring it.'.format(backup_path))
         LOGGER.debug('No file to load')
         return False
 
@@ -2220,11 +2226,13 @@ class Device(object):
         self.discovery = ''
 
     def _lock_acquire(self):
+        LOGGER.debug('Acquire Lock on device {}'.format(self))
         r = self._lock.acquire(True, 5)
         if not r:
             LOGGER.error('Failed to acquire Lock on device {}'.format(self))
 
     def _lock_release(self):
+        LOGGER.debug('Release Lock on device {}'.format(self))
         if not self._lock.locked():
             LOGGER.error('Device Lock not locked for device {} !'.format(self))
         else:
