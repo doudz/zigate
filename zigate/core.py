@@ -136,11 +136,11 @@ def dispatch_signal(signal=dispatcher.Any, sender=dispatcher.Anonymous,
     '''
     Dispatch signal with exception proof
     '''
-    LOGGER.debug('Dispatch {}'.format(signal))
+    LOGGER.debug('Dispatch %s', signal)
     try:
         dispatcher.send(signal, sender, *arguments, **named)
     except Exception:
-        LOGGER.error('Exception dispatching signal {}'.format(signal))
+        LOGGER.error('Exception dispatching signal %s', signal)
         LOGGER.error(traceback.format_exc())
 
 
@@ -267,7 +267,7 @@ class ZiGate(object):
                 json.dump(data, fp, cls=DeviceEncoder,
                           sort_keys=True, indent=4, separators=(',', ': '))
         except Exception:
-            LOGGER.error('Failed to save persistent file {}'.format(self._path))
+            LOGGER.error('Failed to save persistent file %s', self._path)
             LOGGER.error(traceback.format_exc())
             LOGGER.error('Restoring backup...')
             copyfile(backup_path, self._path)
@@ -306,17 +306,17 @@ class ZiGate(object):
                         self._devices[device.addr] = device
                         device._create_actions()
                     except Exception:
-                        LOGGER.error('Error loading device {}'.format(data))
+                        LOGGER.error('Error loading device %s', data)
                 LOGGER.debug('Load success')
                 return True
             except Exception:
-                LOGGER.error('Failed to load persistent file {}'.format(self._path))
+                LOGGER.error('Failed to load persistent file %s', self._path)
                 LOGGER.error(traceback.format_exc())
         LOGGER.debug('No file to load')
         return False
 
     def start_auto_save(self):
-        LOGGER.debug('Auto saving {}'.format(self._path))
+        LOGGER.debug('Auto saving %s', self._path)
         self.save_state()
         self._autosavetimer = threading.Timer(AUTO_SAVE, self.start_auto_save)
         self._autosavetimer.setDaemon(True)
@@ -385,7 +385,7 @@ class ZiGate(object):
         for device in self.devices:
             if device.need_discovery():
                 if device.receiver_on_when_idle():
-                    LOGGER.debug('Auto discover device {}'.format(device))
+                    LOGGER.debug('Auto discover device %s', device)
                     device.discover_device()
                 else:
                     dispatch_signal(ZIGATE_DEVICE_NEED_DISCOVERY,
@@ -454,13 +454,13 @@ class ZiGate(object):
         checksum = self.checksum(byte_cmd, byte_length, byte_data)
 
         msg = struct.pack('!HHB%ds' % length, cmd, length, checksum, byte_data)
-        LOGGER.debug('Msg to send {}'.format(hexlify(msg)))
+        LOGGER.debug('Msg to send %s', hexlify(msg))
 
         enc_msg = self.zigate_encode(msg)
         enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
         encoded_output = bytes(enc_msg)
-        LOGGER.debug('Encoded Msg to send {}'.format(hexlify(encoded_output)))
+        LOGGER.debug('Encoded Msg to send %s', hexlify(encoded_output))
 
         self.send_to_transport(encoded_output)
         if wait_status:
@@ -480,17 +480,14 @@ class ZiGate(object):
             msg_type, length, checksum, value, lqi = \
                 struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
         except Exception:
-            LOGGER.error('Failed to decode packet : {}'.format(hexlify(packet)))
+            LOGGER.error('Failed to decode packet : %s', hexlify(packet))
             return
         if length != len(value) + 1:  # add lqi length
-            LOGGER.error('Bad length {} != {} : {}'.format(length,
-                                                           len(value) + 1,
-                                                           value))
+            LOGGER.error('Bad length %s != %s : %s', length, len(value) + 1, value)
             return
         computed_checksum = self.checksum(decoded[:4], lqi, value)
         if checksum != computed_checksum:
-            LOGGER.error('Bad checksum {} != {}'.format(checksum,
-                                                        computed_checksum))
+            LOGGER.error('Bad checksum %s != %s', checksum, computed_checksum)
             return
         LOGGER.debug('Received response 0x{:04x}: {}'.format(msg_type, hexlify(value)))
         try:
@@ -520,9 +517,9 @@ class ZiGate(object):
         elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
-            LOGGER.debug('Known devices in zigate : {}'.format(known_addr))
+            LOGGER.debug('Known devices in zigate : %s', known_addr)
             missing = keys.difference(known_addr)
-            LOGGER.debug('Previous devices missing : {}'.format(missing))
+            LOGGER.debug('Previous devices missing : %s', missing)
             for addr in missing:
                 self._tag_missing(addr)
 #                 self._remove_device(addr)
@@ -601,7 +598,7 @@ class ZiGate(object):
                                                                    'device': device,
                                                                    'attribute': changed})
         elif response.msg == 0x004D:  # device announce
-            LOGGER.debug('Device Announce {}'.format(response))
+            LOGGER.debug('Device Announce %s', response)
             device = Device(response.data, self)
             self._set_device(device)
         elif response.msg == 0x8140:  # attribute discovery
@@ -646,7 +643,7 @@ class ZiGate(object):
         if addr in self._devices:
             if self._devices[addr].last_seen and self._devices[addr].last_seen < last_24h:
                 self._devices[addr].missing = True
-                LOGGER.warning('The device {} is missing'.format(addr))
+                LOGGER.warning('The device %s is missing', addr)
                 dispatch_signal(ZIGATE_DEVICE_UPDATED,
                                 self, **{'zigate': self,
                                          'device': self._devices[addr]})
@@ -687,7 +684,7 @@ class ZiGate(object):
             # check if device already exist with other address
             d = self.get_device_from_ieee(device.ieee)
             if d:
-                LOGGER.warning('Device already exists with another addr {}, rename it.'.format(d.addr))
+                LOGGER.warning('Device already exists with another addr %s, rename it.', d.addr)
                 old_addr = d.addr
                 new_addr = device.addr
                 d.discovery = ''
@@ -708,7 +705,7 @@ class ZiGate(object):
 
     def get_status_text(self, status_code):
         return STATUS_CODES.get(status_code,
-                                'Failed with event code: {}'.format(status_code))
+                                'Failed with event code: %s', status_code)
 
     def _clear_response(self, msg_type):
         if msg_type in self._last_response:
@@ -1030,8 +1027,8 @@ class ZiGate(object):
             ieee = self._devices[addr].ieee
             if ieee:
                 return self.bind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
-            LOGGER.error('Failed to bind, addr {}, IEEE is missing'.format(addr))
-        LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
+            LOGGER.error('Failed to bind, addr %s, IEEE is missing', addr)
+        LOGGER.error('Failed to bind, addr %s unknown', addr)
 
     def unbind(self, ieee, endpoint, cluster, dst_addr=None, dst_endpoint=1):
         '''
@@ -1051,7 +1048,7 @@ class ZiGate(object):
         if addr in self._devices:
             ieee = self._devices[addr]['ieee']
             return self.unbind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
-        LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
+        LOGGER.error('Failed to bind, addr %s unknown', addr)
 
     def network_address_request(self, ieee):
         ''' network address request '''
@@ -1136,7 +1133,7 @@ class ZiGate(object):
         '''
         if nodes is None:
             nodes = []
-        LOGGER.debug('Search for children of {}'.format(addr))
+        LOGGER.debug('Search for children of %s', addr)
         nodes.append(addr)
         index = 0
         neighbours = []
@@ -1164,7 +1161,7 @@ class ZiGate(object):
                 elif n['depth'] == 0:
                     neighbours.append((self.addr, n['addr'], n['lqi']))
                 if is_router and n['addr'] not in nodes:
-                    LOGGER.debug('{} is a router, search for children'.format(n['addr']))
+                    LOGGER.debug('%s is a router, search for children', n['addr'])
                     n2 = self._neighbours_table(n['addr'], nodes)
                     if n2:
                         neighbours += n2
@@ -1184,7 +1181,7 @@ class ZiGate(object):
         '''
         starts discovery process
         '''
-        LOGGER.debug('discover_device {}'.format(addr))
+        LOGGER.debug('discover_device %s', addr)
         device = self.get_device_from_addr(addr)
         if not device:
             return
@@ -2226,15 +2223,15 @@ class Device(object):
         self.discovery = ''
 
     def _lock_acquire(self):
-        LOGGER.debug('Acquire Lock on device {}'.format(self))
+        LOGGER.debug('Acquire Lock on device %s', self)
         r = self._lock.acquire(True, 5)
         if not r:
-            LOGGER.error('Failed to acquire Lock on device {}'.format(self))
+            LOGGER.error('Failed to acquire Lock on device %s', self)
 
     def _lock_release(self):
-        LOGGER.debug('Release Lock on device {}'.format(self))
+        LOGGER.debug('Release Lock on device %s', self)
         if not self._lock.locked():
-            LOGGER.error('Device Lock not locked for device {} !'.format(self))
+            LOGGER.error('Device Lock not locked for device %s !', self)
         else:
             self._lock.release()
 
@@ -2307,10 +2304,10 @@ class Device(object):
             endpoints_list = [(enpoint_id, self.endpoints[enpoint_id])]
         else:
             endpoints_list = list(self.endpoints.items())
-        LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
+        LOGGER.debug('Start automagic bind and report process for device %s', self)
         for endpoint_id, endpoint in endpoints_list:
             # if endpoint['device'] in ACTUATORS:  # light
-            LOGGER.debug('Bind and report endpoint {} for device {}'.format(endpoint_id, self))
+            LOGGER.debug('Bind and report endpoint %s for device %s', endpoint_id, self)
             if 0x0001 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0001')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
@@ -2475,7 +2472,7 @@ class Device(object):
     def __str__(self):
         name = self.get_property_value('type', '')
         manufacturer = self.get_property_value('manufacturer', 'Device')
-        return '{} {} ({}) {}'.format(manufacturer, name, self.addr, self.ieee)
+        return '{} {} ({}) {}'.format(manufacturer, name, self.info.get('addr'), self.info.get('ieee'))
 
     def __repr__(self):
         return self.__str__()
@@ -2488,7 +2485,7 @@ class Device(object):
     def ieee(self):
         ieee = self.info.get('ieee')
         if ieee is None:
-            LOGGER.error('IEEE is missing for {}, please pair it again !'.format(self.addr))
+            LOGGER.error('IEEE is missing for %s, please pair it again !', self.addr)
         return ieee
 
     @property
@@ -2706,14 +2703,14 @@ class Device(object):
         return added, attribute['attribute']
 
     def _set_expire_timer(self, endpoint_id, cluster_id, attribute_id, expire):
-        LOGGER.debug('Set expire timer for {}-{}-{} in {}'.format(endpoint_id,
-                                                                  cluster_id,
-                                                                  attribute_id,
-                                                                  expire))
+        LOGGER.debug('Set expire timer for %s-%s-%s in %s', endpoint_id,
+                     cluster_id,
+                     attribute_id,
+                     expire)
         k = (endpoint_id, cluster_id, attribute_id)
         timer = self._expire_timer.get(k)
         if timer:
-            LOGGER.debug('Cancel previous Timer {}'.format(timer))
+            LOGGER.debug('Cancel previous Timer %s', timer)
             timer.cancel()
         timer = threading.Timer(expire,
                                 functools.partial(self._reset_attribute,
@@ -2854,7 +2851,7 @@ class Device(object):
         because of missing important information
         '''
         need = False
-        LOGGER.debug('Check Need discovery {}'.format(self))
+        LOGGER.debug('Check Need discovery %s', self)
         if not self.discovery:
             self.load_template()
         if not self.get_property_value('type'):
@@ -2895,7 +2892,7 @@ class Device(object):
     def has_template(self):
         typ = self.get_type()
         if not typ:
-            LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
+            LOGGER.warning('No type (modelIdentifier) for device %s', self.addr)
             return
         typ = typ.replace(' ', '_')
         path = os.path.join(BASE_PATH, 'templates', typ + '.json')
@@ -2904,7 +2901,7 @@ class Device(object):
     def load_template(self):
         typ = self.get_type()
         if not typ:
-            LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
+            LOGGER.warning('No type (modelIdentifier) for device %s', self.addr)
             return
         typ = typ.replace(' ', '_')
         path = os.path.join(BASE_PATH, 'templates', typ + '.json')
@@ -2917,10 +2914,10 @@ class Device(object):
                     self.update(device)
                 success = True
             except Exception:
-                LOGGER.error('Failed to load template for {}'.format(typ))
+                LOGGER.error('Failed to load template for %s', typ)
                 LOGGER.error(traceback.format_exc())
         else:
-            LOGGER.warning('No template found for {}'.format(typ))
+            LOGGER.warning('No template found for %s', typ)
         if self.need_report:
             self._bind_report()
         if success:
@@ -2936,7 +2933,7 @@ class Device(object):
         '''
         typ = self.get_type()
         if not typ:
-            LOGGER.warning('No type (modelIdentifier) for device {}'.format(self.addr))
+            LOGGER.warning('No type (modelIdentifier) for device %s', self.addr)
             return
         typ = typ.replace(' ', '_')
         dirname = os.path.expanduser(dirname)
