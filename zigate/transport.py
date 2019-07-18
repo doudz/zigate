@@ -226,7 +226,7 @@ class ThreadSerialConnection(BaseTransport):
                 self.reconnect()
             if data:
                 self.read_data(data)
-            while not self.queue.empty():
+            if not self.queue.empty():
                 data = self.queue.get()
                 self.serial.write(data)
             time.sleep(0.05)
@@ -307,7 +307,7 @@ class ThreadSocketConnection(ThreadSerialConnection):
                     LOGGER.warning('OOPS connection lost, reconnect...')
                     self.reconnect()
             if write_sockets:
-                while not self.queue.empty():
+                if not self.queue.empty():
                     data = self.queue.get()
                     self.serial.sendall(data)
             time.sleep(0.05)
