@@ -553,6 +553,20 @@ class R8047(Response):
 
 
 @register_response
+class R804A(Response):
+    msg = 0x804A
+    type = 'Management Network Update response'
+    s = OrderedDict([('sequence', 'B'),
+                     ('status', 'B'),
+                     ('total_transmission', 'H'),
+                     ('transmission_failures', 'H'),
+                     ('scanned_channels', 'H'),
+                     ('channel_count', 'B'),
+                     ('channels', OrderedDict([('channel', 'B')]))
+                     ])
+
+
+@register_response
 class R8048(Response):
     msg = 0x8048
     type = 'Leave indication'
@@ -1070,13 +1084,23 @@ class R8702(Response):
                      ('source_endpoint', 'B'),
                      ('dst_endpoint', 'B'),
                      ('dst_address_mode', 'B'),
-                     ('dst_address', 'Q'),
-                     ('sequence', 'B')
+#                     ('dst_address', 'Q'),
+#                     ('sequence', 'B')
                      ])
 
     format = {'dst_address': '{:016x}'}
 
     def decode(self):
+        if len(self.msg_data) < 13:
+            self.format = self.format.copy()
+            self.format = {'dst_address': '{:04x}'}
+            self.s = self.s.copy()
+            self.s['dst_address'] = 'H'
+            self.s['sequence'] = 'B'
         Response.decode(self)
-        if self.data['dst_address_mode'] == 2:
-            self.data['dst_address'] = self.data['dst_address'][:4]
+        if 'additionnal' in self.data:
+            additionnal = self.data.pop('additionnal')
+            self.data['dst_address'], self.data['sequence'] = struct.unpack('!QB', additionnal)
+            self.data['dst_address'] = '{:016x}'.format(self.data['dst_address'])
+            if self.data['dst_address_mode'] == 2:
+                self.data['dst_address'] = self.data['dst_address'][:4]

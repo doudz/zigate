@@ -413,9 +413,10 @@ class TestResponses(unittest.TestCase):
                                           ('source_endpoint', 1),
                                           ('dst_endpoint', 3),
                                           ('dst_address_mode', 2),
+                                          ('lqi', 255),
                                           ('dst_address', '0123'),
                                           ('sequence', 185),
-                                          ('lqi', 255)]))
+                                          ]))
 
         msg_data = unhexlify(b'd40103030123456789abcdefb9')
         r = responses.R8702(msg_data, 255)
@@ -424,8 +425,20 @@ class TestResponses(unittest.TestCase):
                                           ('source_endpoint', 1),
                                           ('dst_endpoint', 3),
                                           ('dst_address_mode', 3),
+                                          ('lqi', 255),
                                           ('dst_address', '0123456789abcdef'),
                                           ('sequence', 185),
+                                          ]))
+
+        msg_data = unhexlify(b'd40101026eadb5')
+        r = responses.R8702(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('status', 212),
+                                          ('source_endpoint', 1),
+                                          ('dst_endpoint', 1),
+                                          ('dst_address_mode', 2),
+                                          ('dst_address', '6ead'),
+                                          ('sequence', 181),
                                           ('lqi', 255)]))
 
 
