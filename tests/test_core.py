@@ -7,7 +7,7 @@ import unittest
 import os
 import shutil
 import tempfile
-from zigate import responses, transport, core
+from zigate import responses, transport, core, clusters
 from binascii import hexlify, unhexlify
 import time
 
@@ -738,6 +738,23 @@ class TestCore(unittest.TestCase):
         self.zigate._devices['1234'] = device
         self.zigate.remove_device('1234')
         self.assertFalse('1234' in self.zigate._devices)
+
+    def test_refresh(self):
+        device = core.Device({'addr': '1234'},
+                             self.zigate)
+        device.endpoints[0x0001] = {'in_clusters': [0x0006],
+                                    'clusters': {0x0006: clusters.C0006()}}
+        device.set_attribute(1, 0x0006, {'attribute': 0, 'lqi': 255, 'data': '0'})
+        device.set_attribute(1, 0x0006, {'attribute': 2, 'lqi': 255, 'data': '0'})
+        self.zigate._devices['1234'] = device
+        device.refresh_device()
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'0212340101000600000000010000'
+                         )
+        device.refresh_device(True)
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'02123401010006000000000200000002'
+                         )
 
 
 if __name__ == '__main__':

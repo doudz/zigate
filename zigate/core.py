@@ -2562,14 +2562,72 @@ class Device(object):
 
     def refresh_device(self, full=False):
         to_read = {}
-        for attribute in self.attributes:
-            # don't refresh general clusters
-            if not full and attribute['cluster'] < 6:
-                continue
-            k = (attribute['endpoint'], attribute['cluster'])
-            if k not in to_read:
-                to_read[k] = []
-            to_read[k].append(attribute['attribute'])
+        if full:
+            for attribute in self.attributes:
+                k = (attribute['endpoint'], attribute['cluster'])
+                if k not in to_read:
+                    to_read[k] = []
+                to_read[k].append(attribute['attribute'])
+        else:
+            endpoints_list = list(self.endpoints.items())
+            for endpoint_id, endpoint in endpoints_list:
+                if 0x0006 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0006)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0000)
+                if 0x0008 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0008)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0000)
+                if 0x000f in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x000f)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0055)
+                if 0x0102 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0102)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0007)
+                if 0x0201 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0201)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0000)
+                    to_read[k].append(0x0002)
+                    to_read[k].append(0x0008)
+                    to_read[k].append(0x0012)
+                    to_read[k].append(0x0014)
+                    to_read[k].append(0x001C)
+                if 0x0300 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0300)
+                    if k not in to_read:
+                        to_read[k] = []
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
+                    if endpoint['device'] in (0x0105,):
+                        to_read[k].append(0x0000)
+                        to_read[k].append(0x0001)
+                    elif endpoint['device'] in (0x010D, 0x0210):
+                        to_read[k].append(0x0000)
+                        to_read[k].append(0x0001)
+                        to_read[k].append(0x0003)
+                        to_read[k].append(0x0004)
+                        to_read[k].append(0x0007)
+                    elif endpoint['device'] in (0x0102, 0x010C, 0x0220):
+                        to_read[k].append(0x0007)
+                    else:  # 0x0200
+                        to_read[k].append(0x0000)
+                        to_read[k].append(0x0001)
+                        to_read[k].append(0x0003)
+                        to_read[k].append(0x0004)
+                if 0x0702 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0702)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0000)
+
         for k, attributes in to_read.items():
             endpoint, cluster = k
             self._zigate.read_attribute_request(self.addr,
