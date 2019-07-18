@@ -1084,8 +1084,8 @@ class R8702(Response):
                      ('source_endpoint', 'B'),
                      ('dst_endpoint', 'B'),
                      ('dst_address_mode', 'B'),
-#                     ('dst_address', 'Q'),
-#                     ('sequence', 'B')
+                     # ('dst_address', 'Q'),
+                     # ('sequence', 'B')
                      ])
 
     format = {'dst_address': '{:016x}'}
