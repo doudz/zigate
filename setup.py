@@ -55,12 +55,12 @@ setup(
     install_requires=[
         'pyserial',
         'pydispatcher',
-        'bottle',
-        'RPi.GPIO'
+        'bottle'
     ],
     extras_require={
         'dev': ['tox'],
-        'mqtt': ['paho-mqtt']
+        'mqtt': ['paho-mqtt'],
+        'gpio': ['RPi.GPIO']
     },
     python_requires='>=3',
 
