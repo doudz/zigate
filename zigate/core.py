@@ -2260,7 +2260,8 @@ class Device(object):
             actions[ep_id] = []
             endpoint = self.endpoints.get(ep_id)
             if endpoint:
-                if endpoint['device'] in ACTUATORS:
+                # some light have device=0 so try to work around
+                if endpoint['device'] in ACTUATORS or (endpoint['device'] == 0 and self.receiver_on_when_idle()):
                     if 0x0006 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_ONOFF)
                     if 0x0008 in endpoint['in_clusters'] and endpoint['device'] != 0x010a:
