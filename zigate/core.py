@@ -39,7 +39,14 @@ import datetime
 try:
     import RPi.GPIO as GPIO
 except Exception:
-    pass
+    # Fake GPIO
+    class GPIO:
+        def fake(self, *args, **kwargs):
+            LOGGER.error('GPIO Not available')
+
+        def __getattr__(self, *args, **kwargs):
+            return self.fake
+    GPIO = GPIO()
 
 
 LOGGER = logging.getLogger('zigate')
@@ -53,7 +60,7 @@ WAIT_TIMEOUT = 3
 
 # Device id
 ACTUATORS = [0x0010, 0x0051,
-             0x010a, 0x010b,
+             0x010a, 0x010b, 0x010c, 0x010d,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0202, 0x0210, 0x0220,
              0x0301]
