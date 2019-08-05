@@ -1551,6 +1551,32 @@ class ZiGate(object):
                            manufacturer_code, length, *attributes_data)
         self.send_data(0x0110, data)
 
+    def write_attribute_request_ias(self, addr, endpoint,
+                                    warning_mode, duration, strobe_cycle, strobe_level,
+                                    direction=0, manufacturer_code=0):
+        addr = self._translate_addr(addr)
+        addr_mode, addr_fmt = self._choose_addr_mode(addr)
+        addr = self.__addr(addr)
+        manufacturer_specific = manufacturer_code != 0
+        data = struct.pack('!B' + addr_fmt + 'BBBBHBHBB', addr_mode, addr, 1,
+                           endpoint,
+                           direction, manufacturer_specific, manufacturer_code,
+                           warning_mode, duration, strobe_cycle, strobe_level)
+        self.send_data(0x0111, data)
+
+    def write_attribute_request_ias_squawk(self, addr, endpoint,
+                                           squawk_mode_strobe_level,
+                                           direction=0, manufacturer_code=0):
+        addr = self._translate_addr(addr)
+        addr_mode, addr_fmt = self._choose_addr_mode(addr)
+        addr = self.__addr(addr)
+        manufacturer_specific = manufacturer_code != 0
+        data = struct.pack('!B' + addr_fmt + 'BBBBHB', addr_mode, addr, 1,
+                           endpoint,
+                           direction, manufacturer_specific, manufacturer_code,
+                           squawk_mode_strobe_level)
+        self.send_data(0x0111, data)
+
     def reporting_request(self, addr, endpoint, cluster, attributes,
                           direction=0, manufacturer_code=0, min_interval=1, max_interval=3600):
         '''
