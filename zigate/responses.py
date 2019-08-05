@@ -87,15 +87,15 @@ class Response(object):
                 submsg_data = msg_data[-rest:]
                 msg_data = msg_data[:-rest]
                 for i in range(count):
-                    sdata, submsg_data = self.__decode(subfmt,
-                                                       v.keys(),
-                                                       submsg_data)
+                    sdata, submsg_data = self._decode(subfmt,
+                                                      v.keys(),
+                                                      submsg_data)
                     self.data[k].append(sdata)
             elif v == 'rawend':
                 fmt += '{}s'.format(len(msg_data) - struct.calcsize(fmt))
             else:
                 fmt += v
-        sdata, msg_data = self.__decode(fmt, keys, msg_data)
+        sdata, msg_data = self._decode(fmt, keys, msg_data)
         self.data.update(sdata)
         if msg_data:
             self.data['additionnal'] = msg_data
@@ -104,7 +104,7 @@ class Response(object):
         self._format(self.data)
         self.data['lqi'] = self.lqi
 
-    def __decode(self, fmt, keys, data):
+    def _decode(self, fmt, keys, data):
         size = struct.calcsize(fmt)
         sdata = OrderedDict(zip(keys, struct.unpack(fmt, data[:size])))
         data = data[size:]
@@ -577,7 +577,6 @@ class R804A(Response):
                      ('scanned_channels1', 'H'),
                      ('scanned_channels2', 'H'),
                      ('channel_count', 'B'),
-#                      ('channels', OrderedDict([('channel', 'B')]))
                      ])
 
     def decode(self):
@@ -633,15 +632,25 @@ class R804E(Response):
                      ('entries', 'B'),
                      ('count', 'B'),
                      ('index', 'B'),
-                     ('neighbours', OrderedDict([('addr', 'H'),
-                                                ('extended_panid', 'Q'),
-                                                ('ieee', 'Q'),
-                                                ('depth', 'B'),
-                                                ('lqi', 'B'),
-                                                ('bit_field', 'B')]))])
+                     ])
+
     format = {'addr': '{:04x}',
               'ieee': '{:016x}',
               'bit_field': '{:08b}'}
+
+    def decode(self):
+        Response.decode(self)
+        additionnal = self.data.pop('additionnal')
+        neighbours = []
+        for i in range(self.data['count']):
+            neighbour, additionnal = self._decode('!HQQBBB',
+                                                  ['addr', 'extended_panid', 'ieee', 'depth', 'lqi', 'bit_field'],
+                                                  additionnal)
+            neighbours.append(neighbour)
+        self.data['neighbours'] = neighbours
+        if additionnal:
+            self.data['addr'] = struct.unpack('!H', additionnal)[0]
+        self._format(self.data)
 # Bit map of attributes Described below: uint8_t
 # {bit 0-1 Device Type
 # (0-Coordinator 1-Router 2-End Device)
