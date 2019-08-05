@@ -179,7 +179,7 @@ class FakeTransport(BaseTransport):
 
 
 class ThreadSerialConnection(BaseTransport):
-    def __init__(self, device, port=None, search_re='067b:2303'):
+    def __init__(self, device, port=None, search_re='ZiGate|067b:2303|CP2102'):
         BaseTransport.__init__(self)
         self._port = port
         self.device = device
@@ -226,7 +226,7 @@ class ThreadSerialConnection(BaseTransport):
                 self.reconnect()
             if data:
                 self.read_data(data)
-            if not self.queue.empty():
+            while not self.queue.empty():
                 data = self.queue.get()
                 self.serial.write(data)
             time.sleep(0.05)
@@ -238,7 +238,9 @@ class ThreadSerialConnection(BaseTransport):
         port = port or 'auto'
         if port == 'auto':
             LOGGER.info('Searching ZiGate port')
-            devices = list(serial.tools.list_ports.grep(self._search_re))
+            devices = list(serial.tools.list_ports.grep('ZiGate'))
+            if not devices:
+                devices = list(serial.tools.list_ports.grep(self._search_re))
             if devices:
                 port = devices[0].device
                 if len(devices) == 1:
@@ -307,7 +309,7 @@ class ThreadSocketConnection(ThreadSerialConnection):
                     LOGGER.warning('OOPS connection lost, reconnect...')
                     self.reconnect()
             if write_sockets:
-                if not self.queue.empty():
+                while not self.queue.empty():
                     data = self.queue.get()
                     self.serial.sendall(data)
             time.sleep(0.05)

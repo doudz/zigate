@@ -6,9 +6,12 @@
 #
 
 import struct
+import logging
 from collections import OrderedDict
 from binascii import hexlify
 from .const import DATA_TYPE
+
+LOGGER = logging.getLogger('zigate')
 
 RESPONSES = {}
 
@@ -84,15 +87,15 @@ class Response(object):
                 submsg_data = msg_data[-rest:]
                 msg_data = msg_data[:-rest]
                 for i in range(count):
-                    sdata, submsg_data = self.__decode(subfmt,
-                                                       v.keys(),
-                                                       submsg_data)
+                    sdata, submsg_data = self._decode(subfmt,
+                                                      v.keys(),
+                                                      submsg_data)
                     self.data[k].append(sdata)
             elif v == 'rawend':
                 fmt += '{}s'.format(len(msg_data) - struct.calcsize(fmt))
             else:
                 fmt += v
-        sdata, msg_data = self.__decode(fmt, keys, msg_data)
+        sdata, msg_data = self._decode(fmt, keys, msg_data)
         self.data.update(sdata)
         if msg_data:
             self.data['additionnal'] = msg_data
@@ -101,7 +104,7 @@ class Response(object):
         self._format(self.data)
         self.data['lqi'] = self.lqi
 
-    def __decode(self, fmt, keys, data):
+    def _decode(self, fmt, keys, data):
         size = struct.calcsize(fmt)
         sdata = OrderedDict(zip(keys, struct.unpack(fmt, data[:size])))
         data = data[size:]
@@ -362,7 +365,18 @@ class R8030(Response):
     type = 'Bind response'
     s = OrderedDict([('sequence', 'B'),
                      ('status', 'B'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('cluster', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 2:  # firmware < 3.1a
+            self.s = self.s.copy()
+            del self.s['address_mode']
+            del self.s['addr']
+            del self.s['cluster']
+        Response.decode(self)
 
 
 @register_response
@@ -560,10 +574,23 @@ class R804A(Response):
                      ('status', 'B'),
                      ('total_transmission', 'H'),
                      ('transmission_failures', 'H'),
-                     ('scanned_channels', 'H'),
+                     ('scanned_channels1', 'H'),
+                     ('scanned_channels2', 'H'),
                      ('channel_count', 'B'),
-                     ('channels', OrderedDict([('channel', 'B')]))
                      ])
+
+    def decode(self):
+        LOGGER.warning('Decoding uint32 is not supported yet...')
+        Response.decode(self)
+        additionnal = self.data.pop('additionnal')
+        if self.data['channel_count'] == len(additionnal):
+            channels = struct.unpack('!{}B'.format(self.data['channel_count']), additionnal)
+            self.data['channels'] = [OrderedDict([('channel', c)]) for c in channels]
+        else:
+            channels = struct.unpack('!{}BH'.format(self.data['channel_count']), additionnal)
+            self.data['channels'] = [{'channel': c} for c in channels[:-1]]
+            self.data['addr'] = channels[-1]
+        self._format(self.data)
 
 
 @register_response
@@ -605,15 +632,25 @@ class R804E(Response):
                      ('entries', 'B'),
                      ('count', 'B'),
                      ('index', 'B'),
-                     ('neighbours', OrderedDict([('addr', 'H'),
-                                                ('extended_panid', 'Q'),
-                                                ('ieee', 'Q'),
-                                                ('depth', 'B'),
-                                                ('lqi', 'B'),
-                                                ('bit_field', 'B')]))])
+                     ])
+
     format = {'addr': '{:04x}',
               'ieee': '{:016x}',
               'bit_field': '{:08b}'}
+
+    def decode(self):
+        Response.decode(self)
+        additionnal = self.data.pop('additionnal')
+        neighbours = []
+        for i in range(self.data['count']):
+            neighbour, additionnal = self._decode('!HQQBBB',
+                                                  ['addr', 'extended_panid', 'ieee', 'depth', 'lqi', 'bit_field'],
+                                                  additionnal)
+            neighbours.append(neighbour)
+        self.data['neighbours'] = neighbours
+        if additionnal:
+            self.data['addr'] = struct.unpack('!H', additionnal)[0]
+        self._format(self.data)
 # Bit map of attributes Described below: uint8_t
 # {bit 0-1 Device Type
 # (0-Coordinator 1-Router 2-End Device)
@@ -1084,8 +1121,8 @@ class R8702(Response):
                      ('source_endpoint', 'B'),
                      ('dst_endpoint', 'B'),
                      ('dst_address_mode', 'B'),
-#                     ('dst_address', 'Q'),
-#                     ('sequence', 'B')
+                     # ('dst_address', 'Q'),
+                     # ('sequence', 'B')
                      ])
 
     format = {'dst_address': '{:016x}'}
@@ -1104,3 +1141,22 @@ class R8702(Response):
             self.data['dst_address'] = '{:016x}'.format(self.data['dst_address'])
             if self.data['dst_address_mode'] == 2:
                 self.data['dst_address'] = self.data['dst_address'][:4]
+
+
+@register_response
+class R8806(Response):
+    msg = 0x8806
+    type = 'Set TX POWER'
+    s = OrderedDict([('raw_level', 'B'),
+                     ('level', 'B'),
+                     ])
+
+    def decode(self):
+        Response.decode(self)
+        self.data['percent'] = self.data['level'] * 100 // 255
+
+
+@register_response
+class R8807(R8806):
+    msg = 0x8807
+    type = 'Get TX POWER'

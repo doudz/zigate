@@ -39,7 +39,14 @@ import datetime
 try:
     import RPi.GPIO as GPIO
 except Exception:
-    pass
+    # Fake GPIO
+    class GPIO:
+        def fake(self, *args, **kwargs):
+            LOGGER.error('GPIO Not available')
+
+        def __getattr__(self, *args, **kwargs):
+            return self.fake
+    GPIO = GPIO()
 
 
 LOGGER = logging.getLogger('zigate')
@@ -53,7 +60,7 @@ WAIT_TIMEOUT = 3
 
 # Device id
 ACTUATORS = [0x0010, 0x0051,
-             0x010a, 0x010b,
+             0x010a, 0x010b, 0x010c, 0x010d,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0202, 0x0210, 0x0220,
              0x0301]
@@ -1187,6 +1194,8 @@ class ZiGate(object):
             return
         if force:
             device.discovery = ''
+            device.info['mac_capability'] = ''
+            device.endpoints = {}
         if device.discovery:
             return
         typ = device.get_type()
@@ -1541,6 +1550,32 @@ class ZiGate(object):
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
         self.send_data(0x0110, data)
+
+    def write_attribute_request_ias(self, addr, endpoint,
+                                    warning_mode, duration, strobe_cycle, strobe_level,
+                                    direction=0, manufacturer_code=0):
+        addr = self._translate_addr(addr)
+        addr_mode, addr_fmt = self._choose_addr_mode(addr)
+        addr = self.__addr(addr)
+        manufacturer_specific = manufacturer_code != 0
+        data = struct.pack('!B' + addr_fmt + 'BBBBHBHBB', addr_mode, addr, 1,
+                           endpoint,
+                           direction, manufacturer_specific, manufacturer_code,
+                           warning_mode, duration, strobe_cycle, strobe_level)
+        self.send_data(0x0111, data)
+
+    def write_attribute_request_ias_squawk(self, addr, endpoint,
+                                           squawk_mode_strobe_level,
+                                           direction=0, manufacturer_code=0):
+        addr = self._translate_addr(addr)
+        addr_mode, addr_fmt = self._choose_addr_mode(addr)
+        addr = self.__addr(addr)
+        manufacturer_specific = manufacturer_code != 0
+        data = struct.pack('!B' + addr_fmt + 'BBBBHB', addr_mode, addr, 1,
+                           endpoint,
+                           direction, manufacturer_specific, manufacturer_code,
+                           squawk_mode_strobe_level)
+        self.send_data(0x0112, data)
 
     def reporting_request(self, addr, endpoint, cluster, attributes,
                           direction=0, manufacturer_code=0, min_interval=1, max_interval=3600):
@@ -2085,6 +2120,12 @@ class ZiGate(object):
         data = struct.pack('!B', percent)
         return self.send_data(0x0806, data)
 
+    def get_TX_power(self):
+        '''
+        Get TX Power
+        '''
+        return self.send_data(0x0807, wait_response=0x8807)
+
     def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
         '''
         Start a MQTT broker in a new thread
@@ -2253,7 +2294,8 @@ class Device(object):
             actions[ep_id] = []
             endpoint = self.endpoints.get(ep_id)
             if endpoint:
-                if endpoint['device'] in ACTUATORS:
+                # some light have device=0 so try to work around
+                if endpoint['device'] in ACTUATORS or (endpoint['device'] == 0 and self.receiver_on_when_idle()):
                     if 0x0006 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_ONOFF)
                     if 0x0008 in endpoint['in_clusters'] and endpoint['device'] != 0x010a:
@@ -2975,7 +3017,7 @@ class Device(object):
                 LOGGER.error('Failed to load template for %s', typ)
                 LOGGER.error(traceback.format_exc())
         else:
-            LOGGER.warning('No template found for %s', typ)
+            LOGGER.debug('No template found for %s', typ)
         if self.need_report:
             self._bind_report()
         if success:
