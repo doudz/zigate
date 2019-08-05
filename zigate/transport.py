@@ -238,7 +238,9 @@ class ThreadSerialConnection(BaseTransport):
         port = port or 'auto'
         if port == 'auto':
             LOGGER.info('Searching ZiGate port')
-            devices = list(serial.tools.list_ports.grep(self._search_re))
+            devices = list(serial.tools.list_ports.grep('ZiGate'))
+            if not devices:
+                devices = list(serial.tools.list_ports.grep(self._search_re))
             if devices:
                 port = devices[0].device
                 if len(devices) == 1:
