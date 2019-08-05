@@ -6,9 +6,12 @@
 #
 
 import struct
+import logging
 from collections import OrderedDict
 from binascii import hexlify
 from .const import DATA_TYPE
+
+LOGGER = logging.getLogger('zigate')
 
 RESPONSES = {}
 
@@ -560,10 +563,24 @@ class R804A(Response):
                      ('status', 'B'),
                      ('total_transmission', 'H'),
                      ('transmission_failures', 'H'),
-                     ('scanned_channels', 'H'),
+                     ('scanned_channels1', 'H'),
+                     ('scanned_channels2', 'H'),
                      ('channel_count', 'B'),
-                     ('channels', OrderedDict([('channel', 'B')]))
+#                      ('channels', OrderedDict([('channel', 'B')]))
                      ])
+
+    def decode(self):
+        LOGGER.warning('Decoding uint32 is not supported yet...')
+        Response.decode(self)
+        additionnal = self.data.pop('additionnal')
+        if self.data['channel_count'] == len(additionnal):
+            channels = struct.unpack('!{}B'.format(self.data['channel_count']), additionnal)
+            self.data['channels'] = [OrderedDict([('channel', c)]) for c in channels]
+        else:
+            channels = struct.unpack('!{}BH'.format(self.data['channel_count']), additionnal)
+            self.data['channels'] = [{'channel': c} for c in channels[:-1]]
+            self.data['addr'] = channels[-1]
+        self._format(self.data)
 
 
 @register_response

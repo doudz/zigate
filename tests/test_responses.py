@@ -441,6 +441,40 @@ class TestResponses(unittest.TestCase):
                                           ('sequence', 181),
                                           ('lqi', 255)]))
 
+    def test_response_804A(self):
+        msg_data = unhexlify(b'01000002000100000001020102')
+        r = responses.R804A(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 1),
+                                          ('status', 0),
+                                          ('total_transmission', 2),
+                                          ('transmission_failures', 1),
+                                          ('scanned_channels1', 0),
+                                          ('scanned_channels2', 1),
+                                          ('channel_count', 2),
+                                          ('lqi', 255),
+                                          ('channels', [OrderedDict([('channel', 1)]),
+                                                        OrderedDict([('channel', 2)])]),
+                                          ])
+                             )
+
+        msg_data = unhexlify(b'01000002000100000001020102abcd')
+        r = responses.R804A(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 1),
+                                          ('status', 0),
+                                          ('total_transmission', 2),
+                                          ('transmission_failures', 1),
+                                          ('scanned_channels1', 0),
+                                          ('scanned_channels2', 1),
+                                          ('channel_count', 2),
+                                          ('lqi', 255),
+                                          ('channels', [OrderedDict([('channel', 1)]),
+                                                        OrderedDict([('channel', 2)])]),
+                                          ('addr', 'abcd')
+                                          ])
+                             )
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1194,6 +1194,8 @@ class ZiGate(object):
             return
         if force:
             device.discovery = ''
+            device.info['mac_capability'] = ''
+            device.endpoints = {}
         if device.discovery:
             return
         typ = device.get_type()
@@ -2983,7 +2985,7 @@ class Device(object):
                 LOGGER.error('Failed to load template for %s', typ)
                 LOGGER.error(traceback.format_exc())
         else:
-            LOGGER.warning('No template found for %s', typ)
+            LOGGER.debug('No template found for %s', typ)
         if self.need_report:
             self._bind_report()
         if success:
