@@ -365,7 +365,18 @@ class R8030(Response):
     type = 'Bind response'
     s = OrderedDict([('sequence', 'B'),
                      ('status', 'B'),
+                     ('address_mode', 'B'),
+                     ('addr', 'H'),
+                     ('cluster', 'H'),
                      ])
+
+    def decode(self):
+        if len(self.msg_data) == 2:  # firmware < 3.1a
+            self.s = self.s.copy()
+            del self.s['address_mode']
+            del self.s['addr']
+            del self.s['cluster']
+        Response.decode(self)
 
 
 @register_response

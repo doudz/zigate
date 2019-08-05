@@ -475,6 +475,28 @@ class TestResponses(unittest.TestCase):
                                           ])
                              )
 
+    def test_response_8030(self):
+        msg_data = unhexlify(b'0100')
+        r = responses.R8030(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 1),
+                                          ('status', 0),
+                                          ('lqi', 255),
+                                          ])
+                             )
+
+        msg_data = unhexlify(b'010002abcd0001')
+        r = responses.R8030(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 1),
+                                          ('status', 0),
+                                          ('address_mode', 2),
+                                          ('addr', 'abcd'),
+                                          ('cluster', 1),
+                                          ('lqi', 255),
+                                          ])
+                             )
+
 
 if __name__ == '__main__':
     unittest.main()
