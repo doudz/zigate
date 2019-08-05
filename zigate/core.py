@@ -2094,6 +2094,12 @@ class ZiGate(object):
         data = struct.pack('!B', percent)
         return self.send_data(0x0806, data)
 
+    def get_TX_power(self):
+        '''
+        Get TX Power
+        '''
+        return self.send_data(0x0807, wait_response=0x8807)
+
     def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
         '''
         Start a MQTT broker in a new thread
