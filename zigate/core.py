@@ -1575,7 +1575,7 @@ class ZiGate(object):
                            endpoint,
                            direction, manufacturer_specific, manufacturer_code,
                            squawk_mode_strobe_level)
-        self.send_data(0x0111, data)
+        self.send_data(0x0112, data)
 
     def reporting_request(self, addr, endpoint, cluster, attributes,
                           direction=0, manufacturer_code=0, min_interval=1, max_interval=3600):
