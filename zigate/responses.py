@@ -1153,7 +1153,7 @@ class R8806(Response):
 
     def decode(self):
         Response.decode(self)
-        self.data['percent'] = self.data['level']*100//255
+        self.data['percent'] = self.data['level'] * 100 // 255
 
 
 @register_response
