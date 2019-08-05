@@ -1141,3 +1141,18 @@ class R8702(Response):
             self.data['dst_address'] = '{:016x}'.format(self.data['dst_address'])
             if self.data['dst_address_mode'] == 2:
                 self.data['dst_address'] = self.data['dst_address'][:4]
+
+
+@register_response
+class R8806(Response):
+    msg = 0x8806
+    type = 'Set TX POWER'
+    s = OrderedDict([('raw_level', 'B'),
+                     ('level', 'B'),
+                     ])
+
+
+@register_response
+class R8807(R8806):
+    msg = 0x8807
+    type = 'Get TX POWER'
