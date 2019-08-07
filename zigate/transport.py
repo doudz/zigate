@@ -206,7 +206,8 @@ class ThreadSerialConnection(BaseTransport):
                 break
             except ZIGATE_NOT_FOUND:
                 LOGGER.error('ZiGate has not been found, please check configuration.')
-                sys.exit(2)
+                if not retry:
+                    sys.exit(2)
             except Exception:
                 if not retry:
                     LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))
@@ -214,12 +215,12 @@ class ThreadSerialConnection(BaseTransport):
                     sys.exit(2)
                 # maybe port has change so try to find it
                 self._port = 'auto'
-                msg = 'Failed to connect, retry in {} sec...'.format(delay)
-                dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
-                LOGGER.error(msg)
-                time.sleep(delay)
-                if delay < 60:
-                    delay *= 2
+            msg = 'Failed to connect, retry in {} sec...'.format(delay)
+            dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
+            LOGGER.error(msg)
+            time.sleep(delay)
+            if delay < 60:
+                delay *= 2
 
     def listen(self):
         while self._running:
