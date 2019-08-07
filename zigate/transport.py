@@ -183,6 +183,7 @@ class ThreadSerialConnection(BaseTransport):
         BaseTransport.__init__(self)
         self._port = port
         self.device = device
+        self.serial = None
         self._search_re = search_re
         self._running = True
         self.reconnect(False)
@@ -197,8 +198,10 @@ class ThreadSerialConnection(BaseTransport):
 
     def reconnect(self, retry=True):
         delay = 1
-        while True:
+        while self._running:
             try:
+                if self.serial:
+                    self.serial.close()  # just to be sure it's not already open
                 self.serial = self.initSerial()
                 break
             except ZIGATE_NOT_FOUND:
@@ -209,6 +212,8 @@ class ThreadSerialConnection(BaseTransport):
                     LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))
                     raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using port {}'.format(self._port))
                     sys.exit(2)
+                # maybe port has change so try to find it
+                self._port = 'auto'
                 msg = 'Failed to connect, retry in {} sec...'.format(delay)
                 dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
                 LOGGER.error(msg)
@@ -238,9 +243,7 @@ class ThreadSerialConnection(BaseTransport):
         port = port or 'auto'
         if port == 'auto':
             LOGGER.info('Searching ZiGate port')
-            devices = list(serial.tools.list_ports.grep('ZiGate'))
-            if not devices:
-                devices = list(serial.tools.list_ports.grep(self._search_re))
+            devices = list(serial.tools.list_ports.grep(self._search_re))
             if devices:
                 port = devices[0].device
                 if len(devices) == 1:
@@ -260,7 +263,11 @@ class ThreadSerialConnection(BaseTransport):
 
     def close(self):
         self._running = False
+        tries = 0
         while self.thread.is_alive():
+            tries += 1
+            if tries > 50:
+                break
             time.sleep(0.1)
         self.serial.close()
 
