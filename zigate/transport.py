@@ -316,7 +316,7 @@ class ThreadSocketConnection(ThreadSerialConnection):
         if self.serial:
             try:
                 self.serial.shutdown(2)
-            except:
+            except Exception:
                 pass
         ThreadSerialConnection.reconnect(self, retry=retry)
 
