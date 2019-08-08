@@ -180,11 +180,6 @@ class ZiGate(object):
         self._started = False
         self._no_response_count = 0
 
-#         self._event_thread = threading.Thread(target=self._event_loop,
-#                                               name='ZiGate-Event Loop')
-#         self._event_thread.setDaemon(True)
-#         self._event_thread.start()
-
         self._ota_reset_local_variables()
 
         if adminpanel:
@@ -219,7 +214,6 @@ class ZiGate(object):
                                      name='ZiGate-Decode data')
                 t.setDaemon(True)
                 t.start()
-#                 self.decode_data(packet)
             else:
                 sleep(SLEEP_INTERVAL)
 
@@ -328,6 +322,9 @@ class ZiGate(object):
         self._autosavetimer = threading.Timer(AUTO_SAVE, self.start_auto_save)
         self._autosavetimer.setDaemon(True)
         self._autosavetimer.start()
+        # check if we're still connected to zigate
+        if self.get_time() is None:
+            self.connection.reconnect()
 
     def __del__(self):
         self.close()

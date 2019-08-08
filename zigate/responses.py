@@ -574,13 +574,11 @@ class R804A(Response):
                      ('status', 'B'),
                      ('total_transmission', 'H'),
                      ('transmission_failures', 'H'),
-                     ('scanned_channels1', 'H'),
-                     ('scanned_channels2', 'H'),
+                     ('scanned_channels', 'L'),
                      ('channel_count', 'B'),
                      ])
 
     def decode(self):
-        LOGGER.warning('Decoding uint32 is not supported yet...')
         Response.decode(self)
         additionnal = self.data.pop('additionnal')
         if self.data['channel_count'] == len(additionnal):
