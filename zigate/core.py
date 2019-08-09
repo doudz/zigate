@@ -323,7 +323,7 @@ class ZiGate(object):
         self._autosavetimer.setDaemon(True)
         self._autosavetimer.start()
         # check if we're still connected to zigate
-        if self.get_time() is None:
+        if self.send_data(0x0010) is None:
             self.connection.reconnect()
 
     def __del__(self):
