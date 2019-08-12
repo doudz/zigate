@@ -701,7 +701,7 @@ class TestCore(unittest.TestCase):
         def setup_connection():
             self.zigate.connection = transport.FakeTransport()
             self.zigate.connection.add_auto_response(0x0009, 0x8009,
-                                                     unhexlify(b'00000123456789abcdef123400000000000000000b'))
+                                                     unhexlify(b'1234fedcba9876543210123400000000000000000b'))
             self.zigate.connection.add_auto_response(0x0024, 0x8024,
                                                      unhexlify(b'001234fedcba98765432100b'))
         self.zigate.setup_connection = setup_connection
