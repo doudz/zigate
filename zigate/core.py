@@ -366,6 +366,17 @@ class ZiGate(object):
            network_state.get('addr') == 'ffff':
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
+            tries = 3
+            while tries > 0:
+                sleep(1)
+                tries -= 1
+                network_state = self.get_network_state()
+                if network_state and \
+                   network_state.get('extended_panid') != 0 and \
+                   network_state.get('addr') != 'ffff':
+                    break
+            if tries <= 0:
+                LOGGER.error('Failed to start network')
 
         if version and version['version'] >= '3.1a':
             LOGGER.debug('Set Zigate normal mode (firmware >= 3.1a)')
@@ -926,9 +937,10 @@ class ZiGate(object):
         r = self.send_data(0x0024, wait_response=wait_response)
         if wait and r:
             data = r.cleaned_data()
-            self._addr = data['addr']
-            self._ieee = data['ieee']
-            self.channel = data['channel']
+            if 'addr' in data:
+                self._addr = data['addr']
+                self._ieee = data['ieee']
+                self.channel = data['channel']
         return r
 
     def start_network_scan(self):
