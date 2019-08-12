@@ -20,8 +20,6 @@ def get_releases():
         for release in r.json():
             for asset in release['assets']:
                 if asset['name'].endswith('.bin'):
-                    print(asset['name'])
-                    print(asset['browser_download_url'])
                     LOGGER.info('Found %s', asset['name'])
                     releases[asset['name']] = asset['browser_download_url']
     return releases
@@ -48,4 +46,3 @@ if __name__ == '__main__':
     logging.basicConfig()
     logging.root.setLevel(logging.INFO)
     download_latest()
-
