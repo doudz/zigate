@@ -29,8 +29,11 @@ def download(url, dest='/tmp'):
     filename = url.rsplit('/', 1)[1]
     LOGGER.info('Downloading %s to %s', url, dest)
     r = requests.get(url, allow_redirects=True)
-    open(os.path.join(dest, filename), 'wb').write(r.content)
+    filename = os.path.join(dest, filename)
+    with open(filename, 'wb') as fp:
+        fp.write(r.content)
     LOGGER.info('Done')
+    return filename
 
 
 def download_latest(dest='/tmp'):
@@ -39,7 +42,7 @@ def download_latest(dest='/tmp'):
     if releases:
         latest = list(releases.keys())[0]
         LOGGER.info('Latest is %s', latest)
-        download(releases[latest], dest)
+        return download(releases[latest], dest)
 
 
 if __name__ == '__main__':
