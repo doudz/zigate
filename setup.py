@@ -29,6 +29,58 @@ with open(version_path) as version_file:
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+
+# extracted from https://raspberrypi.stackexchange.com/questions/5100/detect-that-a-python-program-is-running-on-the-pi
+def is_raspberry_pi(raise_on_errors=False):
+    """Checks if Raspberry PI.
+
+    :return:
+    """
+    try:
+        with open('/proc/cpuinfo', 'r') as cpuinfo:
+            found = False
+            for line in cpuinfo:
+                if line.startswith('Hardware'):
+                    found = True
+                    label, value = line.strip().split(':', 1)
+                    value = value.strip()
+                    if value not in (
+                        'BCM2708',
+                        'BCM2709',
+                        'BCM2835',
+                        'BCM2836'
+                    ):
+                        if raise_on_errors:
+                            raise ValueError(
+                                'This system does not appear to be a '
+                                'Raspberry Pi.'
+                            )
+                        else:
+                            return False
+            if not found:
+                if raise_on_errors:
+                    raise ValueError(
+                        'Unable to determine if this system is a Raspberry Pi.'
+                    )
+                else:
+                    return False
+    except IOError:
+        if raise_on_errors:
+            raise ValueError('Unable to open `/proc/cpuinfo`.')
+        else:
+            return False
+
+    return True
+
+
+requires = ['pyserial',
+            'pydispatcher',
+            'bottle',
+            'requests'
+            ]
+if is_raspberry_pi():
+    requires.append('RPi.GPIO')
+
 # Setup part
 setup(
     name='zigate',
@@ -52,16 +104,10 @@ setup(
     packages=['zigate'],
     include_package_data=True,
 
-    install_requires=[
-        'pyserial',
-        'pydispatcher',
-        'bottle',
-        'requests'
-    ],
+    install_requires=requires,
     extras_require={
         'dev': ['tox'],
-        'mqtt': ['paho-mqtt'],
-        'gpio': ['RPi.GPIO']
+        'mqtt': ['paho-mqtt']
     },
     python_requires='>=3',
 
