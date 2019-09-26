@@ -15,6 +15,8 @@ import itertools
 import logging
 import struct
 from operator import xor
+import datetime
+from .firmware import download_latest
 
 import serial
 from serial.tools.list_ports import comports
@@ -357,6 +359,16 @@ def flash(serialport, write=None, save=None, erase=False, pdm_only=False):
     change_baudrate(ser, 38400)
 
 
+def upgrade_firmware(port):
+    backup_filename = 'zigate_backup_{:%Y%m%d%H%M%S}.bin'.format(datetime.datetime.now())
+    flash(port, save=backup_filename)
+    print('ZiGate backup created {}'.format(backup_filename))
+    firmware_path = download_latest()
+    print('Firmware downloaded', firmware_path)
+    flash(port, write=firmware_path)
+    print('ZiGate flashed with {}'.format(firmware_path))
+
+
 def main():
     ports_available = [port for (port, _, _) in sorted(comports())]
     parser = argparse.ArgumentParser()
@@ -364,36 +376,42 @@ def main():
                         help='Serial port, e.g. /dev/ttyUSB0', required=True)
     parser.add_argument('-w', '--write', help='Firmware bin to flash onto the chip')
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
+    parser.add_argument('-u', '--upgrade', help='Download and flash the lastest available firmware', action='store_true')
     parser.add_argument('-e', '--erase', help='Erase EEPROM', action='store_true')
     parser.add_argument('--pdm-only', help='Erase PDM only, use it with --erase', action='store_true')
     parser.add_argument('-d', '--debug', help='Set log level to DEBUG', action='store_true')
     args = parser.parse_args()
     if args.debug:
         logger.setLevel(logging.DEBUG)
-    try:
-        ser = serial.Serial(args.serialport, 38400, timeout=5)
-    except serial.SerialException:
-        logger.exception("Could not open serial device %s", args.serialport)
-        raise SystemExit(1)
 
-    atexit.register(change_baudrate, ser, 38400)
+    if args.upgrade:
+        upgrade_firmware(args.serialport)
 
-    change_baudrate(ser, 115200)
-    check_chip_id(ser)
-    flash_type = get_flash_type(ser)
-    mac_address = get_mac(ser)
-    print('Found MAC-address: %s' % mac_address)
-    if args.write or args.save or args.erase:
-        select_flash(ser, flash_type)
+    else:
+        try:
+            ser = serial.Serial(args.serialport, 38400, timeout=5)
+        except serial.SerialException:
+            logger.exception("Could not open serial device %s", args.serialport)
+            raise SystemExit(1)
 
-    if args.save:
-        write_flash_to_file(ser, args.save)
+        atexit.register(change_baudrate, ser, 38400)
 
-    if args.write:
-        write_file_to_flash(ser, args.write)
+        change_baudrate(ser, 115200)
+        check_chip_id(ser)
+        flash_type = get_flash_type(ser)
+        mac_address = get_mac(ser)
+        print('Found MAC-address: %s' % mac_address)
+        if args.write or args.save or args.erase:
+            select_flash(ser, flash_type)
 
-    if args.erase:
-        erase_EEPROM(ser, args.pdm_only)
+        if args.save:
+            write_flash_to_file(ser, args.save)
+
+        if args.write:
+            write_file_to_flash(ser, args.write)
+
+        if args.erase:
+            erase_EEPROM(ser, args.pdm_only)
 
 
 if __name__ == "__main__":
