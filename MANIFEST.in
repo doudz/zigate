@@ -6,3 +6,4 @@ prune .editorconfig
 prune *.rb
 prune build_upload.sh
 prune tests
+prune zigate2zigpy.py
