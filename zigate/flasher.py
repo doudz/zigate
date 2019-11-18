@@ -377,8 +377,8 @@ def main():
     parser.add_argument('-w', '--write', help='Firmware bin to flash onto the chip')
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
     parser.add_argument('-u', '--upgrade', help='Download and flash the lastest available firmware', action='store_true')
-    parser.add_argument('-e', '--erase', help='Erase EEPROM', action='store_true')
-    parser.add_argument('--pdm-only', help='Erase PDM only, use it with --erase', action='store_true')
+#     parser.add_argument('-e', '--erase', help='Erase EEPROM', action='store_true')
+#     parser.add_argument('--pdm-only', help='Erase PDM only, use it with --erase', action='store_true')
     parser.add_argument('-d', '--debug', help='Set log level to DEBUG', action='store_true')
     args = parser.parse_args()
     if args.debug:
@@ -401,7 +401,7 @@ def main():
         flash_type = get_flash_type(ser)
         mac_address = get_mac(ser)
         print('Found MAC-address: %s' % mac_address)
-        if args.write or args.save or args.erase:
+        if args.write or args.save:  # or args.erase:
             select_flash(ser, flash_type)
 
         if args.save:
@@ -410,8 +410,8 @@ def main():
         if args.write:
             write_file_to_flash(ser, args.write)
 
-        if args.erase:
-            erase_EEPROM(ser, args.pdm_only)
+#         if args.erase:
+#             erase_EEPROM(ser, args.pdm_only)
 
 
 if __name__ == "__main__":
