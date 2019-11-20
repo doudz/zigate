@@ -6,7 +6,7 @@
 #
 
 import threading
-from bottle import Bottle, route, run, template  # noqa
+from bottle import Bottle, route, run, view, template  # noqa
 
 ADMINPANEL_PORT = 9998
 
@@ -16,8 +16,14 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, daemon=True, quiet=T
     app.zigate = zigate_instance
 
     @app.route('/')
+    @view('index')
     def index():
-        return '<html><h1>ZiGate</h1><b>Hello</b>!</html>'
+        return
+
+    @app.route('/networkmap')
+    @view('networkmap')
+    def networkmap():
+        return
 
     kwargs = {'host': '0.0.0.0', 'port': port,
               'quiet': quiet}
