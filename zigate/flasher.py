@@ -376,7 +376,8 @@ def main():
                         help='Serial port, e.g. /dev/ttyUSB0', required=True)
     parser.add_argument('-w', '--write', help='Firmware bin to flash onto the chip')
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
-    parser.add_argument('-u', '--upgrade', help='Download and flash the lastest available firmware', action='store_true')
+    parser.add_argument('-u', '--upgrade', help='Download and flash the lastest available firmware',
+                        action='store_true')
 #     parser.add_argument('-e', '--erase', help='Erase EEPROM', action='store_true')
 #     parser.add_argument('--pdm-only', help='Erase PDM only, use it with --erase', action='store_true')
     parser.add_argument('-d', '--debug', help='Set log level to DEBUG', action='store_true')
