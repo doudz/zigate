@@ -21,7 +21,8 @@ def create_db(cursor):
         'CREATE TABLE IF NOT EXISTS clusters (ieee ieee, endpoint_id, cluster)',
         'CREATE TABLE IF NOT EXISTS devices (ieee ieee, nwk, status)',
         'CREATE TABLE IF NOT EXISTS endpoints (ieee ieee, endpoint_id, profile_id, device_type device_type, status)',
-        'CREATE TABLE IF NOT EXISTS group_members (group_id, ieee ieee, endpoint_id, FOREIGN KEY(group_id) REFERENCES groups(group_id), FOREIGN KEY(ieee, endpoint_id) REFERENCES endpoints(ieee, endpoint_id))',
+        ('CREATE TABLE IF NOT EXISTS group_members (group_id, ieee ieee, endpoint_id, FOREIGN KEY(group_id) '
+         'REFERENCES groups(group_id), FOREIGN KEY(ieee, endpoint_id) REFERENCES endpoints(ieee, endpoint_id))'),
         'CREATE TABLE IF NOT EXISTS groups (group_id, name)',
         'CREATE TABLE IF NOT EXISTS node_descriptors (ieee ieee, value, FOREIGN KEY(ieee) REFERENCES devices(ieee))',
         'CREATE TABLE IF NOT EXISTS output_clusters (ieee ieee, endpoint_id, cluster)',
@@ -58,7 +59,8 @@ for device in zigate_db.get('devices', []):
     print('Import device ', ieee)
     cursor.execute(query, (ieee, nwk, 2))
     for endpoint in device.get('endpoints', []):
-        query = 'INSERT OR IGNORE INTO endpoints (ieee, endpoint_id, profile_id, device_type, status) VALUES (?, ?, ?, ?, ?)'
+        query = ('INSERT OR IGNORE INTO endpoints (ieee, endpoint_id, profile_id, device_type, status) '
+                 'VALUES (?, ?, ?, ?, ?)')
         cursor.execute(query, (ieee, endpoint['endpoint'], endpoint['profile'], endpoint['device'], 1))
         for cluster in endpoint['in_clusters']:
             query = 'INSERT OR IGNORE INTO clusters (ieee, endpoint_id, cluster) VALUES (?, ?, ?)'
@@ -71,9 +73,11 @@ for device in zigate_db.get('devices', []):
                 if 'data' not in attribute:
                     continue
                 data = attribute['data']
-                if 'value' in attribute and type(attribute['data']) == str and type(attribute['data']) != type(attribute['value']):
+                if 'value' in attribute and type(attribute['data']) == str and \
+                   type(attribute['data']) != type(attribute['value']):
                     data = unhexlify(data)
-                query = 'INSERT OR IGNORE INTO attributes (ieee, endpoint_id, cluster, attrid, value) VALUES (?, ?, ?, ?, ?)'
+                query = ('INSERT OR IGNORE INTO attributes (ieee, endpoint_id, cluster, attrid, value) '
+                         'VALUES (?, ?, ?, ?, ?)')
                 cursor.execute(query, (ieee, endpoint['endpoint'], cluster['cluster'], attribute['attribute'], data))
 
 conn.commit()
