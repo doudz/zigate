@@ -73,8 +73,8 @@ def is_raspberry_pi(raise_on_errors=False):
     return True
 
 
-requires = ['pyserial',
-            'pydispatcher',
+requires = ['pyserial>=3.2',
+            'pydispatcher>=2.0.5',
             'bottle',
             'requests'
             ]
