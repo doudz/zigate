@@ -26,7 +26,7 @@ def create_db(cursor):
         'CREATE TABLE IF NOT EXISTS groups (group_id, name)',
         'CREATE TABLE IF NOT EXISTS node_descriptors (ieee ieee, value, FOREIGN KEY(ieee) REFERENCES devices(ieee))',
         'CREATE TABLE IF NOT EXISTS output_clusters (ieee ieee, endpoint_id, cluster)',
-        ]
+              ]
     for query in tables:
         cursor.execute(query)
 
@@ -39,7 +39,7 @@ def create_db(cursor):
         'CREATE UNIQUE INDEX IF NOT EXISTS ieee_idx ON devices(ieee)',
         'CREATE UNIQUE INDEX IF NOT EXISTS node_descriptors_idx ON node_descriptors(ieee)',
         'CREATE UNIQUE INDEX IF NOT EXISTS output_cluster_idx ON output_clusters(ieee, endpoint_id, cluster)',
-        ]
+               ]
     for query in indexes:
         cursor.execute(query)
 
@@ -55,7 +55,7 @@ for device in zigate_db.get('devices', []):
     query = 'INSERT OR IGNORE INTO devices (ieee, nwk, status) VALUES (?, ?, ?)'
     nwk = int(device['info']['addr'], 16)
     ieee = device['info']['ieee']
-    ieee = ':'.join([ieee[i: i+2] for i in range(0, len(ieee), 2)])
+    ieee = ':'.join([ieee[i: i + 2] for i in range(0, len(ieee), 2)])
     print('Import device ', ieee)
     cursor.execute(query, (ieee, nwk, 2))
     for endpoint in device.get('endpoints', []):
@@ -74,7 +74,7 @@ for device in zigate_db.get('devices', []):
                     continue
                 data = attribute['data']
                 if 'value' in attribute and type(attribute['data']) == str and \
-                   type(attribute['data']) != type(attribute['value']):
+                   isinstance(attribute['data'], type(attribute['value'])):
                     data = unhexlify(data)
                 query = ('INSERT OR IGNORE INTO attributes (ieee, endpoint_id, cluster, attrid, value) '
                          'VALUES (?, ?, ?, ?, ?)')
