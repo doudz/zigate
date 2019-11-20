@@ -63,7 +63,8 @@ ACTUATORS = [0x0010, 0x0051,
              0x010a, 0x010b, 0x010c, 0x010d,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0202, 0x0210, 0x0220,
-             0x0301]
+             0x0301,
+             0x0403]
 #             On/off light 0x0000
 #             On/off plug-in unit 0x0010
 #             Dimmable light 0x0100
@@ -2330,6 +2331,8 @@ class Device(object):
                         else:  # 0x0200
                             actions[ep_id].append(ACTIONS_COLOR)
                             actions[ep_id].append(ACTIONS_HUE)
+                    if 0x0502 in endpoint['in_clusters']:
+                        actions[ep_id].append(ACTIONS_IAS)
         return actions
 
     def _create_actions(self):
