@@ -756,6 +756,12 @@ class TestCore(unittest.TestCase):
                          b'02123401010006000000000200000002'
                          )
 
+    def test_write_attribute(self):
+        self.zigate.write_attribute_request('abcd', 1, 0xfc01, [(0, 0x09, b'\x01\x01')])
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'02abcd0101fc0100000000010000090101'
+                         )
+
 
 if __name__ == '__main__':
     unittest.main()
