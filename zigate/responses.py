@@ -294,6 +294,17 @@ class R8010(Response):
 
 
 @register_response
+class R8011(Response):
+    msg = 0x8011
+    type = 'APS_DATA_ACK'
+    s = OrderedDict([('status', 'B'),
+                     ('addr', 'H'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ])
+
+
+@register_response
 class R8014(Response):
     msg = 0x8014
     type = 'Permit join status'

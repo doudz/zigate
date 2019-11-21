@@ -526,6 +526,13 @@ class ZiGate(object):
                                                                       response.status_text(),
                                                                       response['error']))
             self._last_status[response['packet_type']] = response
+        elif response.msg == 0x8011:  # APS_DATA_ACK
+            if response['status'] != 0:
+                LOGGER.error('Device {} doesn\'t receive last command to '
+                             'endpoint {} cluster {}: 0x{:02x}'.format(response['addr'],
+                                                                       response['endpoint'],
+                                                                       response['cluster'],
+                                                                       response['status']))
         elif response.msg == 0x8007:  # factory reset
             if response['status'] == 0:
                 self._devices = {}
