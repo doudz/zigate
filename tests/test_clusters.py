@@ -259,6 +259,30 @@ class TestResponses(unittest.TestCase):
                                'name': 'present_value', 'value': True, 'type': bool}}
                          )
 
+    def test_cluster_C0006(self):
+        data = {"attributes": [{"attribute": 0,
+                                "data": True
+                                }],
+                "cluster": 0x0006
+                }
+        c = clusters.C0006.from_json(data)
+        self.assertEqual(c.attributes,
+                         {0: {'attribute': 0, 'data': True,
+                              'name': 'onoff', 'value': True, 'type': bool}}
+                         )
+
+        data = {"attributes": [{"attribute": 0,
+                                "data": 0x80
+                                }],
+                "cluster": 0x0006
+                }
+        c = clusters.C0006.from_json(data)
+        self.assertEqual(c.attributes,
+                         {0: {'attribute': 0, 'data': 0x80,
+                              'name': 'multiclick', 'value': 0x80, 'type': int}}
+                         )
+
+
 
 if __name__ == '__main__':
     unittest.main()

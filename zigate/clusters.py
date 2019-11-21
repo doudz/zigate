@@ -246,6 +246,14 @@ class C0006(Cluster):
                                'type': str, 'expire': 2}
                       }
 
+    def update(self, data):
+        # handle multiclick konke
+        if data['attribute'] == 0x0000 and not isinstance(data.get('data', False), bool):
+            if self.attributes_def[0x0000]['name'] != 'multiclick':
+                self.attributes_def = self.attributes_def.copy()
+                self.attributes_def[0x0000] = {'name': 'multiclick', 'value': 'value', 'type': int}
+        return Cluster.update(self, data)
+
 
 @register_cluster
 class C0008(Cluster):
