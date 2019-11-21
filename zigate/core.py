@@ -880,11 +880,12 @@ class ZiGate(object):
         data = struct.pack('!?', on)
         return self.send_data(0x0018, data)
 
-    def set_certification(self, standard=1):
+    def set_certification(self, standard='CE'):
         '''
         Set Certification CE=1, FCC=2
         '''
-        data = struct.pack('!B', standard)
+        cert = {'CE': 1, 'FCC': 2}
+        data = struct.pack('!B', cert[standard])
         return self.send_data(0x0019, data)
 
     def permit_join(self, duration=30):
