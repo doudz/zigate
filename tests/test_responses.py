@@ -514,6 +514,27 @@ class TestResponses(unittest.TestCase):
                                           ])
                              )
 
+    def test_response_004d(self):
+        msg_data = unhexlify(b'abcd0123456789abcdef01')  # fw < 3.1b
+        r = responses.R004D(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('addr', 'abcd'),
+                                          ('ieee', '0123456789abcdef'),
+                                          ('mac_capability', '00000001'),
+                                          ('lqi', 255),
+                                          ])
+                             )
+        msg_data = unhexlify(b'abcd0123456789abcdef0101')  # fw >= 3.1b
+        r = responses.R004D(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('addr', 'abcd'),
+                                          ('ieee', '0123456789abcdef'),
+                                          ('mac_capability', '00000001'),
+                                          ('rejoin_status', True),
+                                          ('lqi', 255),
+                                          ])
+                             )
+
 
 if __name__ == '__main__':
     unittest.main()

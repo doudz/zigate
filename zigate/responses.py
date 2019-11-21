@@ -617,7 +617,8 @@ class R004D(Response):
     type = 'Device announce'
     s = OrderedDict([('addr', 'H'),
                      ('ieee', 'Q'),
-                     ('mac_capability', 'B')
+                     ('mac_capability', 'B'),
+                     ('rejoin_status', '?'),
                      ])
     format = {'addr': '{:04x}',
               'ieee': '{:016x}',
@@ -630,6 +631,12 @@ class R004D(Response):
 #     Bit 4,5 – Reserved
 #     Bit 6 – Security capability
 #     Bit 7 – Allocate Address
+
+    def decode(self):
+        if len(self.msg_data) < 12:  # fw < 3.1b
+            self.s = self.s.copy()
+            del self.s['rejoin_status']
+        Response.decode(self)
 
 
 @register_response
