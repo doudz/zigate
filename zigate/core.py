@@ -1416,7 +1416,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
         return self.send_data(0x00A0, data)
 
-    def add_scene(self, addr, endpoint, group, scene, name, transition=0):
+    def add_scene(self, addr, endpoint, group, scene, name, transition=1):
         '''
         Add scene
         '''
@@ -1884,7 +1884,7 @@ class ZiGate(object):
         return self.send_data(0x0080, data)
 
     @register_actions(ACTIONS_LEVEL)
-    def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition_time=0):
+    def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition=1):
         '''
         move to level with on off
         level between 0 - 100
@@ -1893,11 +1893,11 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         level = int(level * 254 // 100)
-        data = struct.pack('!B' + addr_fmt + 'BBBBH', addr_mode, addr, 1, endpoint, onoff, level, transition_time)
+        data = struct.pack('!B' + addr_fmt + 'BBBBH', addr_mode, addr, 1, endpoint, onoff, level, transition)
         return self.send_data(0x0081, data)
 
     @register_actions(ACTIONS_LEVEL)
-    def action_move_step(self, addr, endpoint, onoff=OFF, step_mode=0, step_size=0, transition_time=0):
+    def action_move_step(self, addr, endpoint, onoff=OFF, step_mode=0, step_size=0, transition=1):
         '''
         move step
         '''
@@ -1905,7 +1905,7 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBBBBH', addr_mode, addr, 1, endpoint, onoff,
-                           step_mode, step_size, transition_time)
+                           step_mode, step_size, transition)
         return self.send_data(0x0082, data)
 
     @register_actions(ACTIONS_LEVEL)
@@ -1920,7 +1920,7 @@ class ZiGate(object):
         return self.send_data(0x0084, data)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue(self, addr, endpoint, hue, direction=0, transition=0):
+    def action_move_hue(self, addr, endpoint, hue, direction=0, transition=1):
         '''
         move to hue
         hue 0-360 in degrees
@@ -1936,7 +1936,7 @@ class ZiGate(object):
         return self.send_data(0x00B0, data)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue_saturation(self, addr, endpoint, hue, saturation=100, transition=0):
+    def action_move_hue_saturation(self, addr, endpoint, hue, saturation=100, transition=1):
         '''
         move to hue and saturation
         hue 0-360 in degrees
@@ -1953,7 +1953,7 @@ class ZiGate(object):
         return self.send_data(0x00B6, data)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue_hex(self, addr, endpoint, color_hex, transition=0):
+    def action_move_hue_hex(self, addr, endpoint, color_hex, transition=1):
         '''
         move to hue color in #ffffff
         transition in second
@@ -1962,7 +1962,7 @@ class ZiGate(object):
         return self.action_move_hue_rgb(addr, endpoint, rgb, transition)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue_rgb(self, addr, endpoint, rgb, transition=0):
+    def action_move_hue_rgb(self, addr, endpoint, rgb, transition=1):
         '''
         move to hue (r,g,b) example : (1.0, 1.0, 1.0)
         transition in second
@@ -1975,7 +1975,7 @@ class ZiGate(object):
         return self.action_move_hue_saturation(addr, endpoint, hue, saturation, transition)
 
     @register_actions(ACTIONS_COLOR)
-    def action_move_colour(self, addr, endpoint, x, y, transition=0):
+    def action_move_colour(self, addr, endpoint, x, y, transition=1):
         '''
         move to colour x y
         x, y can be integer 0-65536 or float 0-1.0
@@ -1993,7 +1993,7 @@ class ZiGate(object):
         return self.send_data(0x00B7, data)
 
     @register_actions(ACTIONS_COLOR)
-    def action_move_colour_hex(self, addr, endpoint, color_hex, transition=0):
+    def action_move_colour_hex(self, addr, endpoint, color_hex, transition=1):
         '''
         move to colour #ffffff
         convenient function to set color in hex format
@@ -2003,7 +2003,7 @@ class ZiGate(object):
         return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_COLOR)
-    def action_move_colour_rgb(self, addr, endpoint, rgb, transition=0):
+    def action_move_colour_rgb(self, addr, endpoint, rgb, transition=1):
         '''
         move to colour (r,g,b) example : (1.0, 1.0, 1.0)
         convenient function to set color in hex format
@@ -2013,7 +2013,7 @@ class ZiGate(object):
         return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def action_move_temperature(self, addr, endpoint, mired, transition=0):
+    def action_move_temperature(self, addr, endpoint, mired, transition=1):
         '''
         move colour to temperature
         mired color temperature
@@ -2027,7 +2027,7 @@ class ZiGate(object):
         return self.send_data(0x00C0, data)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def action_move_temperature_kelvin(self, addr, endpoint, temperature, transition=0):
+    def action_move_temperature_kelvin(self, addr, endpoint, temperature, transition=1):
         '''
         move colour to temperature
         temperature unit is kelvin
