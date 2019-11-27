@@ -3012,22 +3012,32 @@ class Device(object):
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
 
-    def has_template(self):
+    def __get_template_filename(self):
         typ = self.get_type()
-        if not typ:
-            LOGGER.warning('No type (modelIdentifier) for device %s', self.addr)
+        if typ and typ != 'unsupported':
+            return typ.replace(' ', '_').replace('/', '_')
+        manufacturer_code = self.info.get('manufacturer_code')
+        if not manufacturer_code:
+            return None
+        filename = '{}'.format(manufacturer_code)
+        for endpoint_id, endpoint in self.endpoints.items():
+            filename += '_{}-{}-{}'.format(endpoint_id, endpoint.get('profile'), endpoint.get('device'))
+        return filename
+
+    def has_template(self):
+        template_filename = self.__get_template_filename()
+        if not template_filename:
+            LOGGER.warning('Neither type (modelIdentifier) nor manufacturer_code for device {}'.format(self.addr))
             return
-        typ = typ.replace(' ', '_')
-        path = os.path.join(BASE_PATH, 'templates', typ + '.json')
+        path = os.path.join(BASE_PATH, 'templates', template_filename + '.json')
         return os.path.exists(path)
 
     def load_template(self):
-        typ = self.get_type()
-        if not typ:
-            LOGGER.warning('No type (modelIdentifier) for device %s', self.addr)
+        template_filename = self.__get_template_filename()
+        if not template_filename:
+            LOGGER.warning('Neither type (modelIdentifier) nor manufacturer_code for device {}'.format(self.addr))
             return
-        typ = typ.replace(' ', '_')
-        path = os.path.join(BASE_PATH, 'templates', typ + '.json')
+        path = os.path.join(BASE_PATH, 'templates', template_filename + '.json')
         success = False
         if os.path.exists(path):
             try:
@@ -3037,10 +3047,10 @@ class Device(object):
                     self.update(device)
                 success = True
             except Exception:
-                LOGGER.error('Failed to load template for %s', typ)
+                LOGGER.error('Failed to load template for {}'.format(template_filename))
                 LOGGER.error(traceback.format_exc())
         else:
-            LOGGER.debug('No template found for %s', typ)
+            LOGGER.warning('No template found for {}'.format(template_filename))
         if self.need_report:
             self._bind_report()
         if success:
@@ -3054,13 +3064,12 @@ class Device(object):
         '''
         Generate template file
         '''
-        typ = self.get_type()
-        if not typ:
-            LOGGER.warning('No type (modelIdentifier) for device %s', self.addr)
+        template_filename = self.__get_template_filename()
+        if not template_filename:
+            LOGGER.warning('Neither type (modelIdentifier) nor manufacturer_code for device {}'.format(self.addr))
             return
-        typ = typ.replace(' ', '_')
         dirname = os.path.expanduser(dirname)
-        path = os.path.join(dirname, typ + '.json')
+        path = os.path.join(dirname, template_filename + '.json')
         jdata = json.dumps(self, cls=DeviceEncoder)
         jdata = json.loads(jdata)
         del jdata['addr']
