@@ -2096,7 +2096,7 @@ class ZiGate(object):
 
     @register_actions(ACTIONS_IAS)
     def action_ias_warning(self, addr, endpoint,
-                           warning_mode, duration, strobe_cycle, strobe_level,
+                           warning_mode, duration, strobe_cycle=1, strobe_level=1,
                            direction=0, manufacturer_code=0):
         addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
