@@ -5,10 +5,12 @@
 # file that was distributed with this source code.
 #
 
+import os
 import threading
-from bottle import Bottle, route, run, view, template  # noqa
+from bottle import Bottle, route, run, view, template, TEMPLATE_PATH  # noqa
 
 ADMINPANEL_PORT = 9998
+TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), 'views/'))
 
 
 def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, daemon=True, quiet=True):
@@ -19,7 +21,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, daemon=True, quiet=T
     @view('index')
     def index():
         from zigate import version
-        return {'port': zigate_instance._port,
+        return {'port': zigate_instance._port or 'auto',
                 'libversion': version.__version__,
                 'version': zigate_instance.get_version_text(),
                 'connected': zigate_instance.connection.is_connected(),
