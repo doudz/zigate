@@ -4,9 +4,13 @@
             "clusters": [
                 {
                     "attributes": [
+                    	{
+                            "attribute": 4,
+                            "data": "PROFALUX"
+                        },
                         {
                             "attribute": 5,
-                            "data": "unsupported"
+                            "data": "profalux bso cover"
                         },
                         {
                             "attribute": 7
