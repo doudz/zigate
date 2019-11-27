@@ -6,7 +6,6 @@
 #
 
 import threading
-import zigate
 from bottle import Bottle, route, run, view, template  # noqa
 
 ADMINPANEL_PORT = 9998
