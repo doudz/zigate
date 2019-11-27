@@ -6,6 +6,7 @@
 #
 
 import threading
+import zigate
 from bottle import Bottle, route, run, view, template  # noqa
 
 ADMINPANEL_PORT = 9998
@@ -18,7 +19,13 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, daemon=True, quiet=T
     @app.route('/')
     @view('index')
     def index():
-        return
+        from zigate import version
+        return {'port': zigate_instance._port,
+                'libversion': version.__version__,
+                'version': zigate_instance.get_version_text(),
+                'connected': zigate_instance.connection.is_connected(),
+                'devices': zigate_instance.devices
+                }
 
     @app.route('/networkmap')
     @view('networkmap')
@@ -37,4 +44,6 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, daemon=True, quiet=T
 
 
 if __name__ == '__main__':
-    start_adminpanel(None, daemon=False, quiet=False)
+    from unittest import mock
+    zigate_instance = mock.MagicMock()
+    start_adminpanel(zigate_instance, daemon=False, quiet=False)

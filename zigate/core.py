@@ -821,8 +821,9 @@ class ZiGate(object):
         '''
         get zigate firmware version as text
         '''
-        v = self.get_version(refresh)['version']
-        return v
+        v = self.get_version(refresh)
+        if v:
+            return v['version']
 
     def reset(self):
         '''
