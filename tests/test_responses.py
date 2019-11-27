@@ -236,7 +236,10 @@ class TestResponses(unittest.TestCase):
                              b'01b01a1e02db95a5201556ccd800158d0001e45b44016f1a')
         r = responses.R804E(msg_data, 255)
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([('neighbours', [OrderedDict([('addr', '1d4d'),
+                             OrderedDict([('sequence', 230), ('status', 0), ('entries', 14),
+                                          ('count', 2), ('index', 0),
+                                          ('lqi', 255),
+                                          ('neighbours', [OrderedDict([('addr', '1d4d'),
                                                                       ('extended_panid', 15822734423051652312),
                                                                       ('ieee', '00158d0001e56372'), ('depth', 1),
                                                                       ('lqi', 176), ('bit_field', '00011010')]),
@@ -244,9 +247,25 @@ class TestResponses(unittest.TestCase):
                                                                       ('extended_panid', 15822734423051652312),
                                                                       ('ieee', '00158d0001e45b44'), ('depth', 1),
                                                                       ('lqi', 111), ('bit_field', '00011010')])]),
-                                          ('sequence', 230), ('status', 0), ('entries', 14),
+                                          ])
+                             )
+        msg_data = unhexlify(b'e6000e02001d4ddb95a5201556ccd800158d0001e56372'
+                             b'01b01a1e02db95a5201556ccd800158d0001e45b44016f1aabcd')
+        r = responses.R804E(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('sequence', 230), ('status', 0), ('entries', 14),
                                           ('count', 2), ('index', 0),
-                                          ('lqi', 255)])
+                                          ('lqi', 255),
+                                          ('neighbours', [OrderedDict([('addr', '1d4d'),
+                                                                      ('extended_panid', 15822734423051652312),
+                                                                      ('ieee', '00158d0001e56372'), ('depth', 1),
+                                                                      ('lqi', 176), ('bit_field', '00011010')]),
+                                                          OrderedDict([('addr', '1e02'),
+                                                                      ('extended_panid', 15822734423051652312),
+                                                                      ('ieee', '00158d0001e45b44'), ('depth', 1),
+                                                                      ('lqi', 111), ('bit_field', '00011010')])]),
+                                          ('addr', 'abcd')
+                                          ])
                              )
 
     def test_response_8120(self):
@@ -413,9 +432,10 @@ class TestResponses(unittest.TestCase):
                                           ('source_endpoint', 1),
                                           ('dst_endpoint', 3),
                                           ('dst_address_mode', 2),
+                                          ('lqi', 255),
                                           ('dst_address', '0123'),
                                           ('sequence', 185),
-                                          ('lqi', 255)]))
+                                          ]))
 
         msg_data = unhexlify(b'd40103030123456789abcdefb9')
         r = responses.R8702(msg_data, 255)
@@ -424,9 +444,96 @@ class TestResponses(unittest.TestCase):
                                           ('source_endpoint', 1),
                                           ('dst_endpoint', 3),
                                           ('dst_address_mode', 3),
+                                          ('lqi', 255),
                                           ('dst_address', '0123456789abcdef'),
                                           ('sequence', 185),
+                                          ]))
+
+        msg_data = unhexlify(b'd40101026eadb5')
+        r = responses.R8702(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('status', 212),
+                                          ('source_endpoint', 1),
+                                          ('dst_endpoint', 1),
+                                          ('dst_address_mode', 2),
+                                          ('dst_address', '6ead'),
+                                          ('sequence', 181),
                                           ('lqi', 255)]))
+
+    def test_response_804A(self):
+        msg_data = unhexlify(b'01000002000100000001020102')
+        r = responses.R804A(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 1),
+                                          ('status', 0),
+                                          ('total_transmission', 2),
+                                          ('transmission_failures', 1),
+                                          ('scanned_channels', 1),
+                                          ('channel_count', 2),
+                                          ('lqi', 255),
+                                          ('channels', [OrderedDict([('channel', 1)]),
+                                                        OrderedDict([('channel', 2)])]),
+                                          ])
+                             )
+
+        msg_data = unhexlify(b'01000002000100000001020102abcd')
+        r = responses.R804A(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 1),
+                                          ('status', 0),
+                                          ('total_transmission', 2),
+                                          ('transmission_failures', 1),
+                                          ('scanned_channels', 1),
+                                          ('channel_count', 2),
+                                          ('lqi', 255),
+                                          ('channels', [OrderedDict([('channel', 1)]),
+                                                        OrderedDict([('channel', 2)])]),
+                                          ('addr', 'abcd')
+                                          ])
+                             )
+
+    def test_response_8030(self):
+        msg_data = unhexlify(b'0100')
+        r = responses.R8030(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 1),
+                                          ('status', 0),
+                                          ('lqi', 255),
+                                          ])
+                             )
+
+        msg_data = unhexlify(b'010002abcd0001')
+        r = responses.R8030(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 1),
+                                          ('status', 0),
+                                          ('address_mode', 2),
+                                          ('addr', 'abcd'),
+                                          ('cluster', 1),
+                                          ('lqi', 255),
+                                          ])
+                             )
+
+    def test_response_004d(self):
+        msg_data = unhexlify(b'abcd0123456789abcdef01')  # fw < 3.1b
+        r = responses.R004D(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('addr', 'abcd'),
+                                          ('ieee', '0123456789abcdef'),
+                                          ('mac_capability', '00000001'),
+                                          ('lqi', 255),
+                                          ])
+                             )
+        msg_data = unhexlify(b'abcd0123456789abcdef0101')  # fw >= 3.1b
+        r = responses.R004D(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('addr', 'abcd'),
+                                          ('ieee', '0123456789abcdef'),
+                                          ('mac_capability', '00000001'),
+                                          ('rejoin_status', True),
+                                          ('lqi', 255),
+                                          ])
+                             )
 
 
 if __name__ == '__main__':

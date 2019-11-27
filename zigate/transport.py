@@ -64,6 +64,9 @@ class BaseTransport(object):
     def close(self):
         pass
 
+    def reconnect(self):
+        pass
+
 
 class FakeTransport(BaseTransport):
     '''
@@ -179,10 +182,11 @@ class FakeTransport(BaseTransport):
 
 
 class ThreadSerialConnection(BaseTransport):
-    def __init__(self, device, port=None, search_re='067b:2303'):
+    def __init__(self, device, port=None, search_re='ZiGate|067b:2303|CP2102'):
         BaseTransport.__init__(self)
         self._port = port
         self.device = device
+        self.serial = None
         self._search_re = search_re
         self._running = True
         self.reconnect(False)
@@ -197,24 +201,30 @@ class ThreadSerialConnection(BaseTransport):
 
     def reconnect(self, retry=True):
         delay = 1
-        while True:
+        while self._running:
             try:
+                if self.serial:
+                    self.serial.close()  # just to be sure it's not already open
                 self.serial = self.initSerial()
                 break
             except ZIGATE_NOT_FOUND:
                 LOGGER.error('ZiGate has not been found, please check configuration.')
-                sys.exit(2)
+                if not retry:
+                    sys.exit(2)
             except Exception:
                 if not retry:
                     LOGGER.error('Cannot connect to ZiGate using port {}'.format(self._port))
                     raise ZIGATE_CANNOT_CONNECT('Cannot connect to ZiGate using port {}'.format(self._port))
                     sys.exit(2)
-                msg = 'Failed to connect, retry in {} sec...'.format(delay)
-                dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
-                LOGGER.error(msg)
-                time.sleep(delay)
-                if delay < 60:
-                    delay *= 2
+                # maybe port has change so try to find it
+                if delay > 3:
+                    self._port = 'auto'
+            msg = 'Failed to connect, retry in {} sec...'.format(int(delay))
+            dispatcher.send(ZIGATE_FAILED_TO_CONNECT, message=msg)
+            LOGGER.error(msg)
+            time.sleep(int(delay))
+            if delay < 30:
+                delay *= 1.5
 
     def listen(self):
         while self._running:
@@ -258,7 +268,11 @@ class ThreadSerialConnection(BaseTransport):
 
     def close(self):
         self._running = False
+        tries = 0
         while self.thread.is_alive():
+            tries += 1
+            if tries > 50:
+                break
             time.sleep(0.1)
         self.serial.close()
 
@@ -266,6 +280,7 @@ class ThreadSerialConnection(BaseTransport):
 class ThreadSocketConnection(ThreadSerialConnection):
     def __init__(self, device, host, port=None):
         self._host = host
+        self._is_connected = False
         ThreadSerialConnection.__init__(self, device, port)
 
     def initSerial(self):
@@ -276,8 +291,9 @@ class ThreadSocketConnection(ThreadSerialConnection):
         host = self._find_host(self._host)
         for port in ports:
             try:
-                s = socket.create_connection((host, port), 10)
+                s = socket.create_connection((host, port))
                 LOGGER.debug('ZiGate found on {} port {}'.format(host, port))
+                self._is_connected = True
                 return s
             except Exception:
                 LOGGER.debug('ZiGate not found on {} port {}'.format(host, port))
@@ -295,10 +311,19 @@ class ThreadSocketConnection(ThreadSerialConnection):
 #                 raise ZIGATE_NOT_FOUND('ZiGate not found')
         return host
 
+    def reconnect(self, retry=True):
+        self._is_connected = False
+        if self.serial:
+            try:
+                self.serial.shutdown(2)
+            except Exception:
+                pass
+        ThreadSerialConnection.reconnect(self, retry=retry)
+
     def listen(self):
         while self._running:
             socket_list = [self.serial]
-            read_sockets, write_sockets, error_sockets = select.select(socket_list, socket_list, [])
+            read_sockets, write_sockets, error_sockets = select.select(socket_list, socket_list, [], 5)
             if read_sockets:
                 data = self.serial.recv(1024)
                 if data:
@@ -309,11 +334,26 @@ class ThreadSocketConnection(ThreadSerialConnection):
             if write_sockets:
                 while not self.queue.empty():
                     data = self.queue.get()
-                    self.serial.sendall(data)
+                    try:
+                        self.serial.send(data)
+                    except OSError:
+                        LOGGER.warning('OOPS connection lost, reconnect...')
+                        self.reconnect()
             time.sleep(0.05)
 
-    def is_connected(self):  # TODO: check if socket is alive
-        return True
+    def is_connected(self):
+        return self._is_connected
+
+    def close(self):
+        self._running = False
+        tries = 0
+        while self.thread.is_alive():
+            tries += 1
+            if tries > 50:
+                break
+            time.sleep(0.1)
+        self.serial.shutdown(2)
+        self.serial.close()
 
 
 def discover_host():

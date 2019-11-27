@@ -20,7 +20,7 @@ from .transport import (ThreadSerialConnection,
 from .responses import (RESPONSES, Response)
 from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ACTIONS_ONOFF, ACTIONS_TEMPERATURE, ACTIONS_COVER,
-                    ACTIONS_THERMOSTAT,
+                    ACTIONS_THERMOSTAT, ACTIONS_IAS,
                     OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
                     ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
@@ -39,7 +39,14 @@ import datetime
 try:
     import RPi.GPIO as GPIO
 except Exception:
-    pass
+    # Fake GPIO
+    class GPIO:
+        def fake(self, *args, **kwargs):
+            LOGGER.error('GPIO Not available')
+
+        def __getattr__(self, *args, **kwargs):
+            return self.fake
+    GPIO = GPIO()
 
 
 LOGGER = logging.getLogger('zigate')
@@ -53,10 +60,11 @@ WAIT_TIMEOUT = 3
 
 # Device id
 ACTUATORS = [0x0010, 0x0051,
-             0x010a, 0x010b,
+             0x010a, 0x010b, 0x010c, 0x010d,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0202, 0x0210, 0x0220,
-             0x0301]
+             0x0301,
+             0x0403]
 #             On/off light 0x0000
 #             On/off plug-in unit 0x0010
 #             Dimmable light 0x0100
@@ -136,11 +144,11 @@ def dispatch_signal(signal=dispatcher.Any, sender=dispatcher.Anonymous,
     '''
     Dispatch signal with exception proof
     '''
-    LOGGER.debug('Dispatch {}'.format(signal))
+    LOGGER.debug('Dispatch %s', signal)
     try:
         dispatcher.send(signal, sender, *arguments, **named)
     except Exception:
-        LOGGER.error('Exception dispatching signal {}'.format(signal))
+        LOGGER.error('Exception dispatching signal %s', signal)
         LOGGER.error(traceback.format_exc())
 
 
@@ -172,11 +180,6 @@ class ZiGate(object):
         self.channel = 0
         self._started = False
         self._no_response_count = 0
-
-#         self._event_thread = threading.Thread(target=self._event_loop,
-#                                               name='ZiGate-Event Loop')
-#         self._event_thread.setDaemon(True)
-#         self._event_thread.start()
 
         self._ota_reset_local_variables()
 
@@ -212,7 +215,6 @@ class ZiGate(object):
                                      name='ZiGate-Decode data')
                 t.setDaemon(True)
                 t.start()
-#                 self.decode_data(packet)
             else:
                 sleep(SLEEP_INTERVAL)
 
@@ -242,6 +244,7 @@ class ZiGate(object):
             return
         self._path = os.path.expanduser(path)
         backup_path = self._path + '.0'
+        LOGGER.debug('Acquire Lock to save persistent file')
         r = self._save_lock.acquire(True, 5)
         if not r:
             LOGGER.error('Failed to acquire Lock to save persistent file')
@@ -253,6 +256,7 @@ class ZiGate(object):
         except Exception:
             LOGGER.error('Failed to create backup, cancel saving.')
             LOGGER.error(traceback.format_exc())
+            LOGGER.debug('Release Lock of persistent file')
             self._save_lock.release()
             return
         try:
@@ -265,10 +269,11 @@ class ZiGate(object):
                 json.dump(data, fp, cls=DeviceEncoder,
                           sort_keys=True, indent=4, separators=(',', ': '))
         except Exception:
-            LOGGER.error('Failed to save persistent file {}'.format(self._path))
+            LOGGER.error('Failed to save persistent file %s', self._path)
             LOGGER.error(traceback.format_exc())
             LOGGER.error('Restoring backup...')
             copyfile(backup_path, self._path)
+        LOGGER.debug('Release Lock of persistent file')
         self._save_lock.release()
 
     def load_state(self, path=None):
@@ -279,9 +284,14 @@ class ZiGate(object):
             return
         self._path = os.path.expanduser(path)
         backup_path = self._path + '.0'
-        if os.path.exists(self._path):
+        files = [self._path, backup_path]
+        for f in files:
+            LOGGER.debug('Trying to load %s', f)
+            if not os.path.exists(f):
+                LOGGER.warning('Persistent file %s doesn\'t exist', f)
+                continue
             try:
-                with open(self._path) as fp:
+                with open(f) as fp:
                     data = json.load(fp)
                 if not isinstance(data, dict):  # old version
                     data = {'devices': data, 'groups': {}}
@@ -298,23 +308,24 @@ class ZiGate(object):
                         self._devices[device.addr] = device
                         device._create_actions()
                     except Exception:
-                        LOGGER.error('Error loading device {}'.format(data))
+                        LOGGER.error('Error loading device %s', data)
                 LOGGER.debug('Load success')
                 return True
             except Exception:
-                LOGGER.error('Failed to load persistent file {}'.format(self._path))
+                LOGGER.error('Failed to load persistent file %s', self._path)
                 LOGGER.error(traceback.format_exc())
-                if os.path.exists(backup_path):
-                    LOGGER.warning('A backup exists {}, you should consider restoring it.'.format(backup_path))
         LOGGER.debug('No file to load')
         return False
 
     def start_auto_save(self):
-        LOGGER.debug('Auto saving {}'.format(self._path))
+        LOGGER.debug('Auto saving %s', self._path)
         self.save_state()
         self._autosavetimer = threading.Timer(AUTO_SAVE, self.start_auto_save)
         self._autosavetimer.setDaemon(True)
         self._autosavetimer.start()
+        # check if we're still connected to zigate
+        if self.send_data(0x0010) is None:
+            self.connection.reconnect()
 
     def __del__(self):
         self.close()
@@ -356,6 +367,17 @@ class ZiGate(object):
            network_state.get('addr') == 'ffff':
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
+            tries = 3
+            while tries > 0:
+                sleep(1)
+                tries -= 1
+                network_state = self.get_network_state()
+                if network_state and \
+                   network_state.get('extended_panid') != 0 and \
+                   network_state.get('addr') != 'ffff':
+                    break
+            if tries <= 0:
+                LOGGER.error('Failed to start network')
 
         if version and version['version'] >= '3.1a':
             LOGGER.debug('Set Zigate normal mode (firmware >= 3.1a)')
@@ -379,7 +401,7 @@ class ZiGate(object):
         for device in self.devices:
             if device.need_discovery():
                 if device.receiver_on_when_idle():
-                    LOGGER.debug('Auto discover device {}'.format(device))
+                    LOGGER.debug('Auto discover device %s', device)
                     device.discover_device()
                 else:
                     dispatch_signal(ZIGATE_DEVICE_NEED_DISCOVERY,
@@ -448,13 +470,13 @@ class ZiGate(object):
         checksum = self.checksum(byte_cmd, byte_length, byte_data)
 
         msg = struct.pack('!HHB%ds' % length, cmd, length, checksum, byte_data)
-        LOGGER.debug('Msg to send {}'.format(hexlify(msg)))
+        LOGGER.debug('Msg to send %s', hexlify(msg))
 
         enc_msg = self.zigate_encode(msg)
         enc_msg.insert(0, 0x01)
         enc_msg.append(0x03)
         encoded_output = bytes(enc_msg)
-        LOGGER.debug('Encoded Msg to send {}'.format(hexlify(encoded_output)))
+        LOGGER.debug('Encoded Msg to send %s', hexlify(encoded_output))
 
         self.send_to_transport(encoded_output)
         if wait_status:
@@ -474,17 +496,14 @@ class ZiGate(object):
             msg_type, length, checksum, value, lqi = \
                 struct.unpack('!HHB%dsB' % (len(decoded) - 6), decoded)
         except Exception:
-            LOGGER.error('Failed to decode packet : {}'.format(hexlify(packet)))
+            LOGGER.error('Failed to decode packet : %s', hexlify(packet))
             return
         if length != len(value) + 1:  # add lqi length
-            LOGGER.error('Bad length {} != {} : {}'.format(length,
-                                                           len(value) + 1,
-                                                           value))
+            LOGGER.error('Bad length %s != %s : %s', length, len(value) + 1, value)
             return
         computed_checksum = self.checksum(decoded[:4], lqi, value)
         if checksum != computed_checksum:
-            LOGGER.error('Bad checksum {} != {}'.format(checksum,
-                                                        computed_checksum))
+            LOGGER.error('Bad checksum %s != %s', checksum, computed_checksum)
             return
         LOGGER.debug('Received response 0x{:04x}: {}'.format(msg_type, hexlify(value)))
         try:
@@ -507,6 +526,13 @@ class ZiGate(object):
                                                                       response.status_text(),
                                                                       response['error']))
             self._last_status[response['packet_type']] = response
+        elif response.msg == 0x8011:  # APS_DATA_ACK
+            if response['status'] != 0:
+                LOGGER.error('Device {} doesn\'t receive last command to '
+                             'endpoint {} cluster {}: 0x{:02x}'.format(response['addr'],
+                                                                       response['endpoint'],
+                                                                       response['cluster'],
+                                                                       response['status']))
         elif response.msg == 0x8007:  # factory reset
             if response['status'] == 0:
                 self._devices = {}
@@ -514,9 +540,9 @@ class ZiGate(object):
         elif response.msg == 0x8015:  # device list
             keys = set(self._devices.keys())
             known_addr = set([d['addr'] for d in response['devices']])
-            LOGGER.debug('Known devices in zigate : {}'.format(known_addr))
+            LOGGER.debug('Known devices in zigate : %s', known_addr)
             missing = keys.difference(known_addr)
-            LOGGER.debug('Previous devices missing : {}'.format(missing))
+            LOGGER.debug('Previous devices missing : %s', missing)
             for addr in missing:
                 self._tag_missing(addr)
 #                 self._remove_device(addr)
@@ -595,7 +621,7 @@ class ZiGate(object):
                                                                    'device': device,
                                                                    'attribute': changed})
         elif response.msg == 0x004D:  # device announce
-            LOGGER.debug('Device Announce {}'.format(response))
+            LOGGER.debug('Device Announce %s', response)
             device = Device(response.data, self)
             self._set_device(device)
         elif response.msg == 0x8140:  # attribute discovery
@@ -640,7 +666,7 @@ class ZiGate(object):
         if addr in self._devices:
             if self._devices[addr].last_seen and self._devices[addr].last_seen < last_24h:
                 self._devices[addr].missing = True
-                LOGGER.warning('The device {} is missing'.format(addr))
+                LOGGER.warning('The device %s is missing', addr)
                 dispatch_signal(ZIGATE_DEVICE_UPDATED,
                                 self, **{'zigate': self,
                                          'device': self._devices[addr]})
@@ -681,7 +707,7 @@ class ZiGate(object):
             # check if device already exist with other address
             d = self.get_device_from_ieee(device.ieee)
             if d:
-                LOGGER.warning('Device already exists with another addr {}, rename it.'.format(d.addr))
+                LOGGER.warning('Device already exists with another addr %s, rename it.', d.addr)
                 old_addr = d.addr
                 new_addr = device.addr
                 d.discovery = ''
@@ -702,7 +728,7 @@ class ZiGate(object):
 
     def get_status_text(self, status_code):
         return STATUS_CODES.get(status_code,
-                                'Failed with event code: {}'.format(status_code))
+                                'Failed with event code: %s', status_code)
 
     def _clear_response(self, msg_type):
         if msg_type in self._last_response:
@@ -795,8 +821,9 @@ class ZiGate(object):
         '''
         get zigate firmware version as text
         '''
-        v = self.get_version(refresh)['version']
-        return v
+        v = self.get_version(refresh)
+        if v:
+            return v['version']
 
     def reset(self):
         '''
@@ -854,11 +881,12 @@ class ZiGate(object):
         data = struct.pack('!?', on)
         return self.send_data(0x0018, data)
 
-    def set_certification(self, standard=1):
+    def set_certification(self, standard='CE'):
         '''
         Set Certification CE=1, FCC=2
         '''
-        data = struct.pack('!B', standard)
+        cert = {'CE': 1, 'FCC': 2}
+        data = struct.pack('!B', cert[standard])
         return self.send_data(0x0019, data)
 
     def permit_join(self, duration=30):
@@ -919,9 +947,10 @@ class ZiGate(object):
         r = self.send_data(0x0024, wait_response=wait_response)
         if wait and r:
             data = r.cleaned_data()
-            self._addr = data['addr']
-            self._ieee = data['ieee']
-            self.channel = data['channel']
+            if 'addr' in data:
+                self._addr = data['addr']
+                self._ieee = data['ieee']
+                self.channel = data['channel']
         return r
 
     def start_network_scan(self):
@@ -972,6 +1001,23 @@ class ZiGate(object):
             addr_fmt = 'Q'
         return addr_mode, addr_fmt
 
+    def _translate_addr(self, addr_ieee):
+        '''
+        translate ieee to addr if needed
+        '''
+        if len(addr_ieee) > 4:
+            return self.get_addr(addr_ieee)
+        return addr_ieee
+
+    def get_addr(self, ieee):
+        '''
+        retrieve short addr from ieee
+        '''
+        for d in self._devices.values():
+            if d.ieee == ieee:
+                return d.addr
+        LOGGER.error('Failed to retrieve short address for %s', ieee)
+
     def _bind_unbind(self, cmd, ieee, endpoint, cluster,
                      dst_addr=None, dst_endpoint=1):
         '''
@@ -1007,8 +1053,8 @@ class ZiGate(object):
             ieee = self._devices[addr].ieee
             if ieee:
                 return self.bind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
-            LOGGER.error('Failed to bind, addr {}, IEEE is missing'.format(addr))
-        LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
+            LOGGER.error('Failed to bind, addr %s, IEEE is missing', addr)
+        LOGGER.error('Failed to bind, addr %s unknown', addr)
 
     def unbind(self, ieee, endpoint, cluster, dst_addr=None, dst_endpoint=1):
         '''
@@ -1028,7 +1074,7 @@ class ZiGate(object):
         if addr in self._devices:
             ieee = self._devices[addr]['ieee']
             return self.unbind(ieee, endpoint, cluster, dst_addr, dst_endpoint)
-        LOGGER.error('Failed to bind, addr {} unknown'.format(addr))
+        LOGGER.error('Failed to bind, addr %s unknown', addr)
 
     def network_address_request(self, ieee):
         ''' network address request '''
@@ -1113,7 +1159,7 @@ class ZiGate(object):
         '''
         if nodes is None:
             nodes = []
-        LOGGER.debug('Search for children of {}'.format(addr))
+        LOGGER.debug('Search for children of %s', addr)
         nodes.append(addr)
         index = 0
         neighbours = []
@@ -1141,32 +1187,34 @@ class ZiGate(object):
                 elif n['depth'] == 0:
                     neighbours.append((self.addr, n['addr'], n['lqi']))
                 if is_router and n['addr'] not in nodes:
-                    LOGGER.debug('{} is a router, search for children'.format(n['addr']))
+                    LOGGER.debug('%s is a router, search for children', n['addr'])
                     n2 = self._neighbours_table(n['addr'], nodes)
                     if n2:
                         neighbours += n2
             index += data['count']
         return neighbours
 
-    def refresh_device(self, addr):
+    def refresh_device(self, addr, full=False):
         '''
         convenient function to refresh device attribute
         '''
         device = self.get_device_from_addr(addr)
         if not device:
             return
-        device.refresh_device()
+        device.refresh_device(full)
 
     def discover_device(self, addr, force=False):
         '''
         starts discovery process
         '''
-        LOGGER.debug('discover_device {}'.format(addr))
+        LOGGER.debug('discover_device %s', addr)
         device = self.get_device_from_addr(addr)
         if not device:
             return
         if force:
             device.discovery = ''
+            device.info['mac_capability'] = ''
+            device.endpoints = {}
         if device.discovery:
             return
         typ = device.get_type()
@@ -1369,7 +1417,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
         return self.send_data(0x00A0, data)
 
-    def add_scene(self, addr, endpoint, group, scene, name, transition=0):
+    def add_scene(self, addr, endpoint, group, scene, name, transition=1):
         '''
         Add scene
         '''
@@ -1465,6 +1513,7 @@ class ZiGate(object):
             'finish_effect': 0xfe,
             'stop_effect': 0xff
         }
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if effect not in effects.keys():
@@ -1479,6 +1528,7 @@ class ZiGate(object):
         Read Attribute request
         attribute can be a unique int or a list of int
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if not isinstance(attributes, list):
@@ -1501,6 +1551,7 @@ class ZiGate(object):
         attribute could be a tuple of (attribute_id, attribute_type, data)
         or a list of tuple (attribute_id, attribute_type, data)
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         fmt = ''
@@ -1526,6 +1577,7 @@ class ZiGate(object):
         attribute could be a tuple of (attribute_id, attribute_type)
         or a list of tuple (attribute_id, attribute_type)
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         if not isinstance(attributes, list):
@@ -1807,6 +1859,7 @@ class ZiGate(object):
         gradient : effect gradient
         Note that timed onoff and effect are mutually exclusive
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBB', addr_mode, addr, 1, endpoint, onoff)
@@ -1825,32 +1878,35 @@ class ZiGate(object):
         move to level
         mode 0 up, 1 down
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBBBB', addr_mode, addr, 1, endpoint, onoff, mode, rate)
         return self.send_data(0x0080, data)
 
     @register_actions(ACTIONS_LEVEL)
-    def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition_time=0):
+    def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition=1):
         '''
         move to level with on off
         level between 0 - 100
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         level = int(level * 254 // 100)
-        data = struct.pack('!B' + addr_fmt + 'BBBBH', addr_mode, addr, 1, endpoint, onoff, level, transition_time)
+        data = struct.pack('!B' + addr_fmt + 'BBBBH', addr_mode, addr, 1, endpoint, onoff, level, transition)
         return self.send_data(0x0081, data)
 
     @register_actions(ACTIONS_LEVEL)
-    def action_move_step(self, addr, endpoint, onoff=OFF, step_mode=0, step_size=0, transition_time=0):
+    def action_move_step(self, addr, endpoint, onoff=OFF, step_mode=0, step_size=0, transition=1):
         '''
         move step
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBBBBH', addr_mode, addr, 1, endpoint, onoff,
-                           step_mode, step_size, transition_time)
+                           step_mode, step_size, transition)
         return self.send_data(0x0082, data)
 
     @register_actions(ACTIONS_LEVEL)
@@ -1858,19 +1914,21 @@ class ZiGate(object):
         '''
         move stop on off
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBB', addr_mode, addr, 1, endpoint, onoff)
         return self.send_data(0x0084, data)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue(self, addr, endpoint, hue, direction=0, transition=0):
+    def action_move_hue(self, addr, endpoint, hue, direction=0, transition=1):
         '''
         move to hue
         hue 0-360 in degrees
         direction : 0 shortest, 1 longest, 2 up, 3 down
         transition in second
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         hue = int(hue * 254 // 360)
@@ -1879,13 +1937,14 @@ class ZiGate(object):
         return self.send_data(0x00B0, data)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue_saturation(self, addr, endpoint, hue, saturation=100, transition=0):
+    def action_move_hue_saturation(self, addr, endpoint, hue, saturation=100, transition=1):
         '''
         move to hue and saturation
         hue 0-360 in degrees
         saturation 0-100 in percent
         transition in second
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         hue = int(hue * 254 // 360)
@@ -1895,7 +1954,7 @@ class ZiGate(object):
         return self.send_data(0x00B6, data)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue_hex(self, addr, endpoint, color_hex, transition=0):
+    def action_move_hue_hex(self, addr, endpoint, color_hex, transition=1):
         '''
         move to hue color in #ffffff
         transition in second
@@ -1904,7 +1963,7 @@ class ZiGate(object):
         return self.action_move_hue_rgb(addr, endpoint, rgb, transition)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue_rgb(self, addr, endpoint, rgb, transition=0):
+    def action_move_hue_rgb(self, addr, endpoint, rgb, transition=1):
         '''
         move to hue (r,g,b) example : (1.0, 1.0, 1.0)
         transition in second
@@ -1917,12 +1976,13 @@ class ZiGate(object):
         return self.action_move_hue_saturation(addr, endpoint, hue, saturation, transition)
 
     @register_actions(ACTIONS_COLOR)
-    def action_move_colour(self, addr, endpoint, x, y, transition=0):
+    def action_move_colour(self, addr, endpoint, x, y, transition=1):
         '''
         move to colour x y
         x, y can be integer 0-65536 or float 0-1.0
         transition in second
         '''
+        addr = self._translate_addr(addr)
         if isinstance(x, float) and x <= 1:
             x = int(x * 65536)
         if isinstance(y, float) and y <= 1:
@@ -1934,7 +1994,7 @@ class ZiGate(object):
         return self.send_data(0x00B7, data)
 
     @register_actions(ACTIONS_COLOR)
-    def action_move_colour_hex(self, addr, endpoint, color_hex, transition=0):
+    def action_move_colour_hex(self, addr, endpoint, color_hex, transition=1):
         '''
         move to colour #ffffff
         convenient function to set color in hex format
@@ -1944,7 +2004,7 @@ class ZiGate(object):
         return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_COLOR)
-    def action_move_colour_rgb(self, addr, endpoint, rgb, transition=0):
+    def action_move_colour_rgb(self, addr, endpoint, rgb, transition=1):
         '''
         move to colour (r,g,b) example : (1.0, 1.0, 1.0)
         convenient function to set color in hex format
@@ -1954,12 +2014,13 @@ class ZiGate(object):
         return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def action_move_temperature(self, addr, endpoint, mired, transition=0):
+    def action_move_temperature(self, addr, endpoint, mired, transition=1):
         '''
         move colour to temperature
         mired color temperature
         transition in second
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBHH', addr_mode, addr, 1, endpoint,
@@ -1967,7 +2028,7 @@ class ZiGate(object):
         return self.send_data(0x00C0, data)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def action_move_temperature_kelvin(self, addr, endpoint, temperature, transition=0):
+    def action_move_temperature_kelvin(self, addr, endpoint, temperature, transition=1):
         '''
         move colour to temperature
         temperature unit is kelvin
@@ -1989,6 +2050,7 @@ class ZiGate(object):
         min_mired: Minium temperature where decreasing stops in mired
         max_mired: Maxium temperature where increasing stops in mired
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBBHHH', addr_mode, addr, 1, endpoint, mode, rate, min_mired, max_mired)
@@ -1999,6 +2061,7 @@ class ZiGate(object):
         '''
         Lock / unlock
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBB', addr_mode, addr, 1, endpoint, lock)
@@ -2017,6 +2080,7 @@ class ZiGate(object):
             TILT_VALUE = 0x07
             TILT_PERCENT = 0x08
         '''
+        addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         fmt = '!B' + addr_fmt + 'BBB'
         addr = self.__addr(addr)
@@ -2029,6 +2093,34 @@ class ZiGate(object):
             args.append(param)
         data = struct.pack(fmt, *args)
         return self.send_data(0x00fa, data)
+
+    @register_actions(ACTIONS_IAS)
+    def action_ias_warning(self, addr, endpoint,
+                           warning_mode, duration, strobe_cycle, strobe_level,
+                           direction=0, manufacturer_code=0):
+        addr = self._translate_addr(addr)
+        addr_mode, addr_fmt = self._choose_addr_mode(addr)
+        addr = self.__addr(addr)
+        manufacturer_specific = manufacturer_code != 0
+        data = struct.pack('!B' + addr_fmt + 'BBBBHBHBB', addr_mode, addr, 1,
+                           endpoint,
+                           direction, manufacturer_specific, manufacturer_code,
+                           warning_mode, duration, strobe_cycle, strobe_level)
+        self.send_data(0x0111, data)
+
+    @register_actions(ACTIONS_IAS)
+    def action_ias_squawk(self, addr, endpoint,
+                          squawk_mode_strobe_level,
+                          direction=0, manufacturer_code=0):
+        addr = self._translate_addr(addr)
+        addr_mode, addr_fmt = self._choose_addr_mode(addr)
+        addr = self.__addr(addr)
+        manufacturer_specific = manufacturer_code != 0
+        data = struct.pack('!B' + addr_fmt + 'BBBBHB', addr_mode, addr, 1,
+                           endpoint,
+                           direction, manufacturer_specific, manufacturer_code,
+                           squawk_mode_strobe_level)
+        self.send_data(0x0112, data)
 
     def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, addr_mode=2, security=0):
         '''
@@ -2048,6 +2140,12 @@ class ZiGate(object):
         percent = percent * 255 // 100
         data = struct.pack('!B', percent)
         return self.send_data(0x0806, data)
+
+    def get_TX_power(self):
+        '''
+        Get TX Power
+        '''
+        return self.send_data(0x0807, wait_response=0x8807)
 
     def start_mqtt_broker(self, host='localhost:1883', username=None, password=None):
         '''
@@ -2187,13 +2285,15 @@ class Device(object):
         self.discovery = ''
 
     def _lock_acquire(self):
+        LOGGER.debug('Acquire Lock on device %s', self)
         r = self._lock.acquire(True, 5)
         if not r:
-            LOGGER.error('Failed to acquire Lock on device {}'.format(self))
+            LOGGER.error('Failed to acquire Lock on device %s', self)
 
     def _lock_release(self):
+        LOGGER.debug('Release Lock on device %s', self)
         if not self._lock.locked():
-            LOGGER.error('Device Lock not locked for device {} !'.format(self))
+            LOGGER.error('Device Lock not locked for device %s !', self)
         else:
             self._lock.release()
 
@@ -2215,7 +2315,8 @@ class Device(object):
             actions[ep_id] = []
             endpoint = self.endpoints.get(ep_id)
             if endpoint:
-                if endpoint['device'] in ACTUATORS:
+                # some light have device=0 so try to work around
+                if endpoint['device'] in ACTUATORS or (endpoint['device'] == 0 and self.receiver_on_when_idle()):
                     if 0x0006 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_ONOFF)
                     if 0x0008 in endpoint['in_clusters'] and endpoint['device'] != 0x010a:
@@ -2241,6 +2342,8 @@ class Device(object):
                         else:  # 0x0200
                             actions[ep_id].append(ACTIONS_COLOR)
                             actions[ep_id].append(ACTIONS_HUE)
+                    if 0x0502 in endpoint['in_clusters']:
+                        actions[ep_id].append(ACTIONS_IAS)
         return actions
 
     def _create_actions(self):
@@ -2266,17 +2369,17 @@ class Device(object):
             endpoints_list = [(enpoint_id, self.endpoints[enpoint_id])]
         else:
             endpoints_list = list(self.endpoints.items())
-        LOGGER.debug('Start automagic bind and report process for device {}'.format(self))
+        LOGGER.debug('Start automagic bind and report process for device %s', self)
         for endpoint_id, endpoint in endpoints_list:
             # if endpoint['device'] in ACTUATORS:  # light
-            LOGGER.debug('Bind and report endpoint {} for device {}'.format(endpoint_id, self))
-            if 0x0001 in endpoint['in_clusters']:
-                LOGGER.debug('bind and report for cluster 0x0001')
-                self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
-                self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0001, (0x0020, 0x20))
-                self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0001, (0x0021, 0x20))
+            LOGGER.debug('Bind and report endpoint %s for device %s', endpoint_id, self)
+#             if 0x0001 in endpoint['in_clusters']:
+#                 LOGGER.debug('bind and report for cluster 0x0001')
+#                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
+#                 self._zigate.reporting_request(self.addr, endpoint_id,
+#                                                0x0001, (0x0020, 0x20))
+#                 self._zigate.reporting_request(self.addr, endpoint_id,
+#                                                0x0001, (0x0021, 0x20))
             if 0x0006 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0006')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
@@ -2434,7 +2537,7 @@ class Device(object):
     def __str__(self):
         name = self.get_property_value('type', '')
         manufacturer = self.get_property_value('manufacturer', 'Device')
-        return '{} {} ({}) {}'.format(manufacturer, name, self.addr, self.ieee)
+        return '{} {} ({}) {}'.format(manufacturer, name, self.info.get('addr'), self.info.get('ieee'))
 
     def __repr__(self):
         return self.__str__()
@@ -2447,7 +2550,7 @@ class Device(object):
     def ieee(self):
         ieee = self.info.get('ieee')
         if ieee is None:
-            LOGGER.error('IEEE is missing for {}, please pair it again !'.format(self.addr))
+            LOGGER.error('IEEE is missing for %s, please pair it again !', self.addr)
         return ieee
 
     @property
@@ -2522,13 +2625,74 @@ class Device(object):
             typ = self.get_value('type')
         return typ
 
-    def refresh_device(self):
+    def refresh_device(self, full=False):
         to_read = {}
-        for attribute in self.attributes:
-            k = (attribute['endpoint'], attribute['cluster'])
-            if k not in to_read:
-                to_read[k] = []
-            to_read[k].append(attribute['attribute'])
+        if full:
+            for attribute in self.attributes:
+                k = (attribute['endpoint'], attribute['cluster'])
+                if k not in to_read:
+                    to_read[k] = []
+                to_read[k].append(attribute['attribute'])
+        else:
+            endpoints_list = list(self.endpoints.items())
+            for endpoint_id, endpoint in endpoints_list:
+                if 0x0006 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0006)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0000)
+                if 0x0008 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0008)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0000)
+                if 0x000f in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x000f)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0055)
+                if 0x0102 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0102)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0007)
+                if 0x0201 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0201)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0000)
+                    to_read[k].append(0x0002)
+                    to_read[k].append(0x0008)
+                    to_read[k].append(0x0012)
+                    to_read[k].append(0x0014)
+                    to_read[k].append(0x001C)
+                if 0x0300 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0300)
+                    if k not in to_read:
+                        to_read[k] = []
+                    self._zigate.bind_addr(self.addr, endpoint_id, 0x0300)
+                    if endpoint['device'] in (0x0105,):
+                        to_read[k].append(0x0000)
+                        to_read[k].append(0x0001)
+                    elif endpoint['device'] in (0x010D, 0x0210):
+                        to_read[k].append(0x0000)
+                        to_read[k].append(0x0001)
+                        to_read[k].append(0x0003)
+                        to_read[k].append(0x0004)
+                        to_read[k].append(0x0007)
+                    elif endpoint['device'] in (0x0102, 0x010C, 0x0220):
+                        to_read[k].append(0x0007)
+                    else:  # 0x0200
+                        to_read[k].append(0x0000)
+                        to_read[k].append(0x0001)
+                        to_read[k].append(0x0003)
+                        to_read[k].append(0x0004)
+                if 0x0702 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0702)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0000)
+
         for k, attributes in to_read.items():
             endpoint, cluster = k
             self._zigate.read_attribute_request(self.addr,
@@ -2662,14 +2826,14 @@ class Device(object):
         return added, attribute['attribute']
 
     def _set_expire_timer(self, endpoint_id, cluster_id, attribute_id, expire):
-        LOGGER.debug('Set expire timer for {}-{}-{} in {}'.format(endpoint_id,
-                                                                  cluster_id,
-                                                                  attribute_id,
-                                                                  expire))
+        LOGGER.debug('Set expire timer for %s-%s-%s in %s', endpoint_id,
+                     cluster_id,
+                     attribute_id,
+                     expire)
         k = (endpoint_id, cluster_id, attribute_id)
         timer = self._expire_timer.get(k)
         if timer:
-            LOGGER.debug('Cancel previous Timer {}'.format(timer))
+            LOGGER.debug('Cancel previous Timer %s', timer)
             timer.cancel()
         timer = threading.Timer(expire,
                                 functools.partial(self._reset_attribute,
@@ -2810,7 +2974,7 @@ class Device(object):
         because of missing important information
         '''
         need = False
-        LOGGER.debug('Check Need discovery {}'.format(self))
+        LOGGER.debug('Check Need discovery %s', self)
         if not self.discovery:
             self.load_template()
         if not self.get_property_value('type'):

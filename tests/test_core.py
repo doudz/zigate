@@ -7,7 +7,7 @@ import unittest
 import os
 import shutil
 import tempfile
-from zigate import responses, transport, core
+from zigate import responses, transport, core, clusters
 from binascii import hexlify, unhexlify
 import time
 
@@ -701,7 +701,7 @@ class TestCore(unittest.TestCase):
         def setup_connection():
             self.zigate.connection = transport.FakeTransport()
             self.zigate.connection.add_auto_response(0x0009, 0x8009,
-                                                     unhexlify(b'00000123456789abcdef123400000000000000000b'))
+                                                     unhexlify(b'1234fedcba9876543210123400000000000000000b'))
             self.zigate.connection.add_auto_response(0x0024, 0x8024,
                                                      unhexlify(b'001234fedcba98765432100b'))
         self.zigate.setup_connection = setup_connection
@@ -738,6 +738,29 @@ class TestCore(unittest.TestCase):
         self.zigate._devices['1234'] = device
         self.zigate.remove_device('1234')
         self.assertFalse('1234' in self.zigate._devices)
+
+    def test_refresh(self):
+        device = core.Device({'addr': '1234'},
+                             self.zigate)
+        device.endpoints[0x0001] = {'in_clusters': [0x0006],
+                                    'clusters': {0x0006: clusters.C0006()}}
+        device.set_attribute(1, 0x0006, {'attribute': 0, 'lqi': 255, 'data': '0'})
+        device.set_attribute(1, 0x0006, {'attribute': 2, 'lqi': 255, 'data': '0'})
+        self.zigate._devices['1234'] = device
+        device.refresh_device()
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'0212340101000600000000010000'
+                         )
+        device.refresh_device(True)
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'02123401010006000000000200000002'
+                         )
+
+    def test_write_attribute(self):
+        self.zigate.write_attribute_request('abcd', 1, 0xfc01, [(0, 0x09, b'\x01\x01')])
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'02abcd0101fc0100000000010000090101'
+                         )
 
 
 if __name__ == '__main__':

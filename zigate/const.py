@@ -52,8 +52,17 @@ ACTIONS_HUE = 'hue'
 ACTIONS_LOCK = 'lock'
 ACTIONS_COVER = 'cover'
 ACTIONS_THERMOSTAT = 'thermostat'
+ACTIONS_IAS = 'ias'
 
 DATA_TYPE = {0x00: None,
+             0x08: 's',  # data8
+             0x09: '2s',  # data16
+             0x0a: '3s',  # data24
+             0x0b: '4s',  # data32
+             0x0c: '5s',  # data40
+             0x0d: '6s',  # data48
+             0x0e: '7s',  # data56
+             0x0f: '8s',  # data64
              0x10: '?',  # bool
              0x18: 'b',  # bitmap8
              0x20: 'B',  # uint8

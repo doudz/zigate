@@ -246,6 +246,14 @@ class C0006(Cluster):
                                'type': str, 'expire': 2}
                       }
 
+    def update(self, data):
+        # handle multiclick konke
+        if data['attribute'] == 0x0000 and not isinstance(data.get('data', False), bool):
+            if self.attributes_def[0x0000]['name'] != 'multiclick':
+                self.attributes_def = self.attributes_def.copy()
+                self.attributes_def[0x0000] = {'name': 'multiclick', 'value': 'value', 'type': int}
+        return Cluster.update(self, data)
+
 
 @register_cluster
 class C0008(Cluster):
@@ -504,7 +512,17 @@ class C0406(Cluster):
 class C0500(Cluster):
     cluster_id = 0x0500
     type = 'Security & Safety: IAS Zone'
-    attributes_def = {255: {'name': 'zone_status', 'value': 'self._decode(value[::-1])'}}
+    attributes_def = {255: {'name': 'zone_status', 'value': 'self._decode(value[::-1])',
+                            'type': dict, 'expire': 10, 'expire_value': {'alarm1': False,
+                                                                         'alarm2': False,
+                                                                         'tamper': False,
+                                                                         'low_battery': False,
+                                                                         'supervision': False,
+                                                                         'restore': False,
+                                                                         'trouble': False,
+                                                                         'ac_fault': False,
+                                                                         'test_mode': False,
+                                                                         'battery_defect': False}}}
 
     def update(self, data):
         if 'zone_id' not in data:  # loaded from persistent
