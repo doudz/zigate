@@ -1,0 +1,65 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                    	{
+                            "attribute": 4,
+                            "data": "PROFALUX"
+                        },
+                        {
+                            "attribute": 5,
+                            "data": "profalux bso cover remote"
+                        },
+                        {
+                            "attribute": 7
+                        }
+                    ],
+                    "cluster": 0
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 3
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 65520
+                        }
+                    ],
+                    "cluster": 8
+                }
+            ],
+            "device": 513,
+            "endpoint": 1,
+            "in_clusters": [
+                0,
+                3,
+                21
+            ],
+            "out_clusters": [
+                3,
+                4,
+                5,
+                6,
+                8,
+                256,
+                32767
+            ],
+            "profile": 260
+        }
+    ],
+    "generictype": "profalux_bso_cover_remote",
+    "info": {
+        "bit_field": "0100000000000010",
+        "descriptor_capability": "00000000",
+        "mac_capability": "10000000",
+        "manufacturer_code": "1110",
+        "server_mask": 0
+    }
+}

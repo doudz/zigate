@@ -4,6 +4,7 @@ ZiGate devices Tests
 '''
 
 import unittest
+from unittest import mock
 from zigate import core
 import json
 import os
@@ -160,6 +161,13 @@ class TestCore(unittest.TestCase):
                                {'endpoint': 3, 'cluster': 18, 'attribute': 85, 'name': 'multiclick3',
                                 'value': '', 'expire': 2, 'type': str}]
                               )
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef', 'manufacturer_code': '1110'}, mock.Mock())
+#         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'unsupported'})
+        ep = device.get_endpoint(1)
+        ep['profile'] = 260
+        ep['device'] = 512
+        self.assertTrue(device.load_template())
+        self.assertEqual(device.get_type(), 'profalux bso cover')
 
     def test_inverse_bool(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)

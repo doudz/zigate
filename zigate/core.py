@@ -20,7 +20,7 @@ from .transport import (ThreadSerialConnection,
 from .responses import (RESPONSES, Response)
 from .const import (ACTIONS_COLOR, ACTIONS_LEVEL, ACTIONS_LOCK, ACTIONS_HUE,
                     ACTIONS_ONOFF, ACTIONS_TEMPERATURE, ACTIONS_COVER,
-                    ACTIONS_THERMOSTAT,
+                    ACTIONS_THERMOSTAT, ACTIONS_IAS,
                     OFF, ON, TYPE_COORDINATOR, STATUS_CODES,
                     ZIGATE_ATTRIBUTE_ADDED, ZIGATE_ATTRIBUTE_UPDATED,
                     ZIGATE_DEVICE_ADDED, ZIGATE_DEVICE_REMOVED,
@@ -63,7 +63,8 @@ ACTUATORS = [0x0010, 0x0051,
              0x010a, 0x010b, 0x010c, 0x010d,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0202, 0x0210, 0x0220,
-             0x0301]
+             0x0301,
+             0x0403]
 #             On/off light 0x0000
 #             On/off plug-in unit 0x0010
 #             Dimmable light 0x0100
@@ -180,11 +181,6 @@ class ZiGate(object):
         self._started = False
         self._no_response_count = 0
 
-#         self._event_thread = threading.Thread(target=self._event_loop,
-#                                               name='ZiGate-Event Loop')
-#         self._event_thread.setDaemon(True)
-#         self._event_thread.start()
-
         self._ota_reset_local_variables()
 
         if adminpanel:
@@ -219,7 +215,6 @@ class ZiGate(object):
                                      name='ZiGate-Decode data')
                 t.setDaemon(True)
                 t.start()
-#                 self.decode_data(packet)
             else:
                 sleep(SLEEP_INTERVAL)
 
@@ -328,6 +323,9 @@ class ZiGate(object):
         self._autosavetimer = threading.Timer(AUTO_SAVE, self.start_auto_save)
         self._autosavetimer.setDaemon(True)
         self._autosavetimer.start()
+        # check if we're still connected to zigate
+        if self.send_data(0x0010) is None:
+            self.connection.reconnect()
 
     def __del__(self):
         self.close()
@@ -369,6 +367,17 @@ class ZiGate(object):
            network_state.get('addr') == 'ffff':
             LOGGER.debug('Network is down, start it')
             self.start_network(True)
+            tries = 3
+            while tries > 0:
+                sleep(1)
+                tries -= 1
+                network_state = self.get_network_state()
+                if network_state and \
+                   network_state.get('extended_panid') != 0 and \
+                   network_state.get('addr') != 'ffff':
+                    break
+            if tries <= 0:
+                LOGGER.error('Failed to start network')
 
         if version and version['version'] >= '3.1a':
             LOGGER.debug('Set Zigate normal mode (firmware >= 3.1a)')
@@ -517,6 +526,13 @@ class ZiGate(object):
                                                                       response.status_text(),
                                                                       response['error']))
             self._last_status[response['packet_type']] = response
+        elif response.msg == 0x8011:  # APS_DATA_ACK
+            if response['status'] != 0:
+                LOGGER.error('Device {} doesn\'t receive last command to '
+                             'endpoint {} cluster {}: 0x{:02x}'.format(response['addr'],
+                                                                       response['endpoint'],
+                                                                       response['cluster'],
+                                                                       response['status']))
         elif response.msg == 0x8007:  # factory reset
             if response['status'] == 0:
                 self._devices = {}
@@ -805,8 +821,9 @@ class ZiGate(object):
         '''
         get zigate firmware version as text
         '''
-        v = self.get_version(refresh)['version']
-        return v
+        v = self.get_version(refresh)
+        if v:
+            return v['version']
 
     def reset(self):
         '''
@@ -864,11 +881,12 @@ class ZiGate(object):
         data = struct.pack('!?', on)
         return self.send_data(0x0018, data)
 
-    def set_certification(self, standard=1):
+    def set_certification(self, standard='CE'):
         '''
         Set Certification CE=1, FCC=2
         '''
-        data = struct.pack('!B', standard)
+        cert = {'CE': 1, 'FCC': 2}
+        data = struct.pack('!B', cert[standard])
         return self.send_data(0x0019, data)
 
     def permit_join(self, duration=30):
@@ -929,9 +947,10 @@ class ZiGate(object):
         r = self.send_data(0x0024, wait_response=wait_response)
         if wait and r:
             data = r.cleaned_data()
-            self._addr = data['addr']
-            self._ieee = data['ieee']
-            self.channel = data['channel']
+            if 'addr' in data:
+                self._addr = data['addr']
+                self._ieee = data['ieee']
+                self.channel = data['channel']
         return r
 
     def start_network_scan(self):
@@ -1398,7 +1417,7 @@ class ZiGate(object):
         data = struct.pack('!BHBBHB', 2, addr, 1, endpoint, group, scene)
         return self.send_data(0x00A0, data)
 
-    def add_scene(self, addr, endpoint, group, scene, name, transition=0):
+    def add_scene(self, addr, endpoint, group, scene, name, transition=1):
         '''
         Add scene
         '''
@@ -1550,32 +1569,6 @@ class ZiGate(object):
                            direction, manufacturer_specific,
                            manufacturer_code, length, *attributes_data)
         self.send_data(0x0110, data)
-
-    def write_attribute_request_ias(self, addr, endpoint,
-                                    warning_mode, duration, strobe_cycle, strobe_level,
-                                    direction=0, manufacturer_code=0):
-        addr = self._translate_addr(addr)
-        addr_mode, addr_fmt = self._choose_addr_mode(addr)
-        addr = self.__addr(addr)
-        manufacturer_specific = manufacturer_code != 0
-        data = struct.pack('!B' + addr_fmt + 'BBBBHBHBB', addr_mode, addr, 1,
-                           endpoint,
-                           direction, manufacturer_specific, manufacturer_code,
-                           warning_mode, duration, strobe_cycle, strobe_level)
-        self.send_data(0x0111, data)
-
-    def write_attribute_request_ias_squawk(self, addr, endpoint,
-                                           squawk_mode_strobe_level,
-                                           direction=0, manufacturer_code=0):
-        addr = self._translate_addr(addr)
-        addr_mode, addr_fmt = self._choose_addr_mode(addr)
-        addr = self.__addr(addr)
-        manufacturer_specific = manufacturer_code != 0
-        data = struct.pack('!B' + addr_fmt + 'BBBBHB', addr_mode, addr, 1,
-                           endpoint,
-                           direction, manufacturer_specific, manufacturer_code,
-                           squawk_mode_strobe_level)
-        self.send_data(0x0112, data)
 
     def reporting_request(self, addr, endpoint, cluster, attributes,
                           direction=0, manufacturer_code=0, min_interval=1, max_interval=3600):
@@ -1892,7 +1885,7 @@ class ZiGate(object):
         return self.send_data(0x0080, data)
 
     @register_actions(ACTIONS_LEVEL)
-    def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition_time=0):
+    def action_move_level_onoff(self, addr, endpoint, onoff=OFF, level=0, transition=1):
         '''
         move to level with on off
         level between 0 - 100
@@ -1901,11 +1894,11 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         level = int(level * 254 // 100)
-        data = struct.pack('!B' + addr_fmt + 'BBBBH', addr_mode, addr, 1, endpoint, onoff, level, transition_time)
+        data = struct.pack('!B' + addr_fmt + 'BBBBH', addr_mode, addr, 1, endpoint, onoff, level, transition)
         return self.send_data(0x0081, data)
 
     @register_actions(ACTIONS_LEVEL)
-    def action_move_step(self, addr, endpoint, onoff=OFF, step_mode=0, step_size=0, transition_time=0):
+    def action_move_step(self, addr, endpoint, onoff=OFF, step_mode=0, step_size=0, transition=1):
         '''
         move step
         '''
@@ -1913,7 +1906,7 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         data = struct.pack('!B' + addr_fmt + 'BBBBBH', addr_mode, addr, 1, endpoint, onoff,
-                           step_mode, step_size, transition_time)
+                           step_mode, step_size, transition)
         return self.send_data(0x0082, data)
 
     @register_actions(ACTIONS_LEVEL)
@@ -1928,7 +1921,7 @@ class ZiGate(object):
         return self.send_data(0x0084, data)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue(self, addr, endpoint, hue, direction=0, transition=0):
+    def action_move_hue(self, addr, endpoint, hue, direction=0, transition=1):
         '''
         move to hue
         hue 0-360 in degrees
@@ -1944,7 +1937,7 @@ class ZiGate(object):
         return self.send_data(0x00B0, data)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue_saturation(self, addr, endpoint, hue, saturation=100, transition=0):
+    def action_move_hue_saturation(self, addr, endpoint, hue, saturation=100, transition=1):
         '''
         move to hue and saturation
         hue 0-360 in degrees
@@ -1961,7 +1954,7 @@ class ZiGate(object):
         return self.send_data(0x00B6, data)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue_hex(self, addr, endpoint, color_hex, transition=0):
+    def action_move_hue_hex(self, addr, endpoint, color_hex, transition=1):
         '''
         move to hue color in #ffffff
         transition in second
@@ -1970,7 +1963,7 @@ class ZiGate(object):
         return self.action_move_hue_rgb(addr, endpoint, rgb, transition)
 
     @register_actions(ACTIONS_HUE)
-    def action_move_hue_rgb(self, addr, endpoint, rgb, transition=0):
+    def action_move_hue_rgb(self, addr, endpoint, rgb, transition=1):
         '''
         move to hue (r,g,b) example : (1.0, 1.0, 1.0)
         transition in second
@@ -1983,7 +1976,7 @@ class ZiGate(object):
         return self.action_move_hue_saturation(addr, endpoint, hue, saturation, transition)
 
     @register_actions(ACTIONS_COLOR)
-    def action_move_colour(self, addr, endpoint, x, y, transition=0):
+    def action_move_colour(self, addr, endpoint, x, y, transition=1):
         '''
         move to colour x y
         x, y can be integer 0-65536 or float 0-1.0
@@ -2001,7 +1994,7 @@ class ZiGate(object):
         return self.send_data(0x00B7, data)
 
     @register_actions(ACTIONS_COLOR)
-    def action_move_colour_hex(self, addr, endpoint, color_hex, transition=0):
+    def action_move_colour_hex(self, addr, endpoint, color_hex, transition=1):
         '''
         move to colour #ffffff
         convenient function to set color in hex format
@@ -2011,7 +2004,7 @@ class ZiGate(object):
         return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_COLOR)
-    def action_move_colour_rgb(self, addr, endpoint, rgb, transition=0):
+    def action_move_colour_rgb(self, addr, endpoint, rgb, transition=1):
         '''
         move to colour (r,g,b) example : (1.0, 1.0, 1.0)
         convenient function to set color in hex format
@@ -2021,7 +2014,7 @@ class ZiGate(object):
         return self.action_move_colour(addr, endpoint, x, y, transition)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def action_move_temperature(self, addr, endpoint, mired, transition=0):
+    def action_move_temperature(self, addr, endpoint, mired, transition=1):
         '''
         move colour to temperature
         mired color temperature
@@ -2035,7 +2028,7 @@ class ZiGate(object):
         return self.send_data(0x00C0, data)
 
     @register_actions(ACTIONS_TEMPERATURE)
-    def action_move_temperature_kelvin(self, addr, endpoint, temperature, transition=0):
+    def action_move_temperature_kelvin(self, addr, endpoint, temperature, transition=1):
         '''
         move colour to temperature
         temperature unit is kelvin
@@ -2100,6 +2093,34 @@ class ZiGate(object):
             args.append(param)
         data = struct.pack(fmt, *args)
         return self.send_data(0x00fa, data)
+
+    @register_actions(ACTIONS_IAS)
+    def action_ias_warning(self, addr, endpoint,
+                           warning_mode, duration, strobe_cycle, strobe_level,
+                           direction=0, manufacturer_code=0):
+        addr = self._translate_addr(addr)
+        addr_mode, addr_fmt = self._choose_addr_mode(addr)
+        addr = self.__addr(addr)
+        manufacturer_specific = manufacturer_code != 0
+        data = struct.pack('!B' + addr_fmt + 'BBBBHBHBB', addr_mode, addr, 1,
+                           endpoint,
+                           direction, manufacturer_specific, manufacturer_code,
+                           warning_mode, duration, strobe_cycle, strobe_level)
+        self.send_data(0x0111, data)
+
+    @register_actions(ACTIONS_IAS)
+    def action_ias_squawk(self, addr, endpoint,
+                          squawk_mode_strobe_level,
+                          direction=0, manufacturer_code=0):
+        addr = self._translate_addr(addr)
+        addr_mode, addr_fmt = self._choose_addr_mode(addr)
+        addr = self.__addr(addr)
+        manufacturer_specific = manufacturer_code != 0
+        data = struct.pack('!B' + addr_fmt + 'BBBBHB', addr_mode, addr, 1,
+                           endpoint,
+                           direction, manufacturer_specific, manufacturer_code,
+                           squawk_mode_strobe_level)
+        self.send_data(0x0112, data)
 
     def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, addr_mode=2, security=0):
         '''
@@ -2321,6 +2342,8 @@ class Device(object):
                         else:  # 0x0200
                             actions[ep_id].append(ACTIONS_COLOR)
                             actions[ep_id].append(ACTIONS_HUE)
+                    if 0x0502 in endpoint['in_clusters']:
+                        actions[ep_id].append(ACTIONS_IAS)
         return actions
 
     def _create_actions(self):
@@ -2350,13 +2373,13 @@ class Device(object):
         for endpoint_id, endpoint in endpoints_list:
             # if endpoint['device'] in ACTUATORS:  # light
             LOGGER.debug('Bind and report endpoint %s for device %s', endpoint_id, self)
-            if 0x0001 in endpoint['in_clusters']:
-                LOGGER.debug('bind and report for cluster 0x0001')
-                self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
-                self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0001, (0x0020, 0x20))
-                self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0001, (0x0021, 0x20))
+#             if 0x0001 in endpoint['in_clusters']:
+#                 LOGGER.debug('bind and report for cluster 0x0001')
+#                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
+#                 self._zigate.reporting_request(self.addr, endpoint_id,
+#                                                0x0001, (0x0020, 0x20))
+#                 self._zigate.reporting_request(self.addr, endpoint_id,
+#                                                0x0001, (0x0021, 0x20))
             if 0x0006 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0006')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
@@ -2989,22 +3012,32 @@ class Device(object):
                 attr['name'] = attribute['name']
             properties.append(attribute['name'])
 
-    def has_template(self):
+    def __get_template_filename(self):
         typ = self.get_type()
-        if not typ:
-            LOGGER.warning('No type (modelIdentifier) for device %s', self.addr)
+        if typ and typ != 'unsupported':
+            return typ.replace(' ', '_').replace('/', '_')
+        manufacturer_code = self.info.get('manufacturer_code')
+        if not manufacturer_code:
+            return None
+        filename = '{}'.format(manufacturer_code)
+        for endpoint_id, endpoint in self.endpoints.items():
+            filename += '_{}-{}-{}'.format(endpoint_id, endpoint.get('profile'), endpoint.get('device'))
+        return filename
+
+    def has_template(self):
+        template_filename = self.__get_template_filename()
+        if not template_filename:
+            LOGGER.warning('Neither type (modelIdentifier) nor manufacturer_code for device {}'.format(self.addr))
             return
-        typ = typ.replace(' ', '_')
-        path = os.path.join(BASE_PATH, 'templates', typ + '.json')
+        path = os.path.join(BASE_PATH, 'templates', template_filename + '.json')
         return os.path.exists(path)
 
     def load_template(self):
-        typ = self.get_type()
-        if not typ:
-            LOGGER.warning('No type (modelIdentifier) for device %s', self.addr)
+        template_filename = self.__get_template_filename()
+        if not template_filename:
+            LOGGER.warning('Neither type (modelIdentifier) nor manufacturer_code for device {}'.format(self.addr))
             return
-        typ = typ.replace(' ', '_')
-        path = os.path.join(BASE_PATH, 'templates', typ + '.json')
+        path = os.path.join(BASE_PATH, 'templates', template_filename + '.json')
         success = False
         if os.path.exists(path):
             try:
@@ -3014,10 +3047,10 @@ class Device(object):
                     self.update(device)
                 success = True
             except Exception:
-                LOGGER.error('Failed to load template for %s', typ)
+                LOGGER.error('Failed to load template for {}'.format(template_filename))
                 LOGGER.error(traceback.format_exc())
         else:
-            LOGGER.debug('No template found for %s', typ)
+            LOGGER.warning('No template found for {}'.format(template_filename))
         if self.need_report:
             self._bind_report()
         if success:
@@ -3031,13 +3064,12 @@ class Device(object):
         '''
         Generate template file
         '''
-        typ = self.get_type()
-        if not typ:
-            LOGGER.warning('No type (modelIdentifier) for device %s', self.addr)
+        template_filename = self.__get_template_filename()
+        if not template_filename:
+            LOGGER.warning('Neither type (modelIdentifier) nor manufacturer_code for device {}'.format(self.addr))
             return
-        typ = typ.replace(' ', '_')
         dirname = os.path.expanduser(dirname)
-        path = os.path.join(dirname, typ + '.json')
+        path = os.path.join(dirname, template_filename + '.json')
         jdata = json.dumps(self, cls=DeviceEncoder)
         jdata = json.loads(jdata)
         del jdata['addr']

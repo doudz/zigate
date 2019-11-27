@@ -294,6 +294,17 @@ class R8010(Response):
 
 
 @register_response
+class R8011(Response):
+    msg = 0x8011
+    type = 'APS_DATA_ACK'
+    s = OrderedDict([('status', 'B'),
+                     ('addr', 'H'),
+                     ('endpoint', 'B'),
+                     ('cluster', 'H'),
+                     ])
+
+
+@register_response
 class R8014(Response):
     msg = 0x8014
     type = 'Permit join status'
@@ -574,13 +585,11 @@ class R804A(Response):
                      ('status', 'B'),
                      ('total_transmission', 'H'),
                      ('transmission_failures', 'H'),
-                     ('scanned_channels1', 'H'),
-                     ('scanned_channels2', 'H'),
+                     ('scanned_channels', 'L'),
                      ('channel_count', 'B'),
                      ])
 
     def decode(self):
-        LOGGER.warning('Decoding uint32 is not supported yet...')
         Response.decode(self)
         additionnal = self.data.pop('additionnal')
         if self.data['channel_count'] == len(additionnal):
@@ -608,7 +617,8 @@ class R004D(Response):
     type = 'Device announce'
     s = OrderedDict([('addr', 'H'),
                      ('ieee', 'Q'),
-                     ('mac_capability', 'B')
+                     ('mac_capability', 'B'),
+                     ('rejoin_status', '?'),
                      ])
     format = {'addr': '{:04x}',
               'ieee': '{:016x}',
@@ -621,6 +631,12 @@ class R004D(Response):
 #     Bit 4,5 – Reserved
 #     Bit 6 – Security capability
 #     Bit 7 – Allocate Address
+
+    def decode(self):
+        if len(self.msg_data) < 12:  # fw < 3.1b
+            self.s = self.s.copy()
+            del self.s['rejoin_status']
+        Response.decode(self)
 
 
 @register_response

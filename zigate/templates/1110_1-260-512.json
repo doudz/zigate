@@ -1,0 +1,116 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                    	{
+                            "attribute": 4,
+                            "data": "PROFALUX"
+                        },
+                        {
+                            "attribute": 5,
+                            "data": "profalux bso cover"
+                        },
+                        {
+                            "attribute": 7
+                        }
+                    ],
+                    "cluster": 0
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 3
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 4
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        },
+                        {
+                            "attribute": 1
+                        },
+                        {
+                            "attribute": 2
+                        },
+                        {
+                            "attribute": 3
+                        },
+                        {
+                            "attribute": 4
+                        }
+                    ],
+                    "cluster": 5
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        },
+                        {
+                            "attribute": 17
+                        }
+                    ],
+                    "cluster": 8
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        },
+                        {
+                            "attribute": 1
+                        }
+                    ],
+                    "cluster": 10
+                }
+            ],
+            "device": 512,
+            "endpoint": 1,
+            "in_clusters": [
+                0,
+                3,
+                4,
+                5,
+                6,
+                8,
+                10,
+                256,
+                21,
+                32767,
+                64513
+            ],
+            "out_clusters": [],
+            "profile": 260
+        }
+    ],
+    "generictype": "profalux_bso_cover",
+    "info": {
+        "bit_field": "0100000000000001",
+        "descriptor_capability": "00000000",
+        "mac_capability": "10001110",
+        "manufacturer_code": "1110",
+        "power_type": 1,
+        "server_mask": 0
+    }
+}

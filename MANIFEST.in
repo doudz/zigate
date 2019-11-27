@@ -2,7 +2,10 @@
 include *.md
 include LICENSE
 recursive-include zigate *.json
+recursive-include zigate *.py
+recursive-include zigate *.tpl
 prune .editorconfig
 prune *.rb
 prune build_upload.sh
 prune tests
+prune zigate2zigpy.py

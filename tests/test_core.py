@@ -701,7 +701,7 @@ class TestCore(unittest.TestCase):
         def setup_connection():
             self.zigate.connection = transport.FakeTransport()
             self.zigate.connection.add_auto_response(0x0009, 0x8009,
-                                                     unhexlify(b'00000123456789abcdef123400000000000000000b'))
+                                                     unhexlify(b'1234fedcba9876543210123400000000000000000b'))
             self.zigate.connection.add_auto_response(0x0024, 0x8024,
                                                      unhexlify(b'001234fedcba98765432100b'))
         self.zigate.setup_connection = setup_connection
@@ -754,6 +754,12 @@ class TestCore(unittest.TestCase):
         device.refresh_device(True)
         self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
                          b'02123401010006000000000200000002'
+                         )
+
+    def test_write_attribute(self):
+        self.zigate.write_attribute_request('abcd', 1, 0xfc01, [(0, 0x09, b'\x01\x01')])
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'02abcd0101fc0100000000010000090101'
                          )
 
 
