@@ -889,7 +889,7 @@ class ZiGate(object):
         data = struct.pack('!B', cert[standard])
         return self.send_data(0x0019, data)
 
-    def permit_join(self, duration=30):
+    def permit_join(self, duration=60):
         '''
         start permit join
         duration in secs, 0 means stop permit join
