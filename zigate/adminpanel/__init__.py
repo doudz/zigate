@@ -7,7 +7,7 @@
 
 import os
 import threading
-from bottle import Bottle, route, run, view, template, TEMPLATE_PATH  # noqa
+from bottle import Bottle, route, run, view, template, redirect, TEMPLATE_PATH  # noqa
 
 ADMINPANEL_PORT = 9998
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), 'views/'))
@@ -21,17 +21,24 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, daemon=True, quiet=T
     @view('index')
     def index():
         from zigate import version
+        connected = zigate_instance.connection and zigate_instance.connection.is_connected()
         return {'port': zigate_instance._port or 'auto',
                 'libversion': version.__version__,
                 'version': zigate_instance.get_version_text(),
-                'connected': zigate_instance.connection.is_connected(),
-                'devices': zigate_instance.devices
+                'connected': connected,
+                'devices': zigate_instance.devices,
+                'groups': zigate_instance.groups
                 }
 
     @app.route('/networkmap')
     @view('networkmap')
     def networkmap():
         return
+
+    @app.route('/api/permit_join')
+    def permit_join():
+        zigate_instance.permit_join()
+        redirect('/')
 
     kwargs = {'host': '0.0.0.0', 'port': port,
               'quiet': quiet}

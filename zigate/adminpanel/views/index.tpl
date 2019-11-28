@@ -12,3 +12,9 @@
     <li>{{device}}</li>
   % end
 </ul>
+
+<h2>Groups :</h2>
+{{groups}}
+
+<h2>Actions :</h2>
+<a href="/api/permit_join">Permit Join</a>
