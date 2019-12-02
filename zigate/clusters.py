@@ -538,6 +538,8 @@ class C0500(Cluster):
         return r
 
     def _decode(self, zone_status):
+        if isinstance(zone_status, dict):
+            return zone_status
         fields = ['alarm1',
                   'alarm2',
                   'tamper',
