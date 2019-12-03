@@ -204,7 +204,7 @@ class ZiGate(object):
         Start Admin panel in other thread
         '''
         from .adminpanel import start_adminpanel
-        start_adminpanel(self)
+        self.adminpanel = start_adminpanel(self)
 
     def _event_loop(self):
         while not self._closing:

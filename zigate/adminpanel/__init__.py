@@ -13,7 +13,7 @@ ADMINPANEL_PORT = 9998
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), 'views/'))
 
 
-def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, daemon=True, quiet=True):
+def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, autostart=True, daemon=True, quiet=True):
     app = Bottle()
     app.zigate = zigate_instance
 
@@ -42,13 +42,16 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, daemon=True, quiet=T
 
     kwargs = {'host': '0.0.0.0', 'port': port,
               'quiet': quiet}
-    if daemon:
-        t = threading.Thread(target=app.run,
-                             kwargs=kwargs,
-                             daemon=True)
-        t.start()
-    else:
-        app.run(**kwargs)
+
+    if autostart:
+        if daemon:
+            t = threading.Thread(target=app.run,
+                                 kwargs=kwargs,
+                                 daemon=True)
+            t.start()
+        else:
+            app.run(**kwargs)
+    return app
 
 
 if __name__ == '__main__':
