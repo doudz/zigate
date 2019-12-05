@@ -13,13 +13,13 @@ logging.basicConfig()
 logging.root.setLevel(logging.INFO)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--port', help='ZiGate usb port or host:port',
+parser.add_argument('--port', help='ZiGate usb port',
                     default=None)
 parser.add_argument('--host', help='Wifi ZiGate host:port',
                     default=None)
 parser.add_argument('--path', help='ZiGate state file path',
                     default='~/.zigate.json')
-parser.add_argument('--gpio', help='PiZigate', default=False, action='store_true')
+parser.add_argument('--gpio', help='Enable PiZigate', default=False, action='store_true')
 parser.add_argument('--channel', help='Zigbee channel', default=None)
 parser.add_argument('--admin_panel', help='Enable Admin panel', default=True, action='store_true')
 args = parser.parse_args()
