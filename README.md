@@ -307,6 +307,22 @@ optional arguments:
 
 ```
 
+## Command Line Interface
+
+```bash
+usage: python3 -m zigate [-h] [--port PORT] [--host HOST] [--path PATH] [--gpio]
+                   [--channel CHANNEL] [--admin_panel]
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --port PORT        ZiGate usb port
+  --host HOST        Wifi ZiGate host:port
+  --path PATH        ZiGate state file path
+  --gpio             Enable PiZigate
+  --channel CHANNEL  Zigbee channel
+  --admin_panel      Enable Admin panel
+```
+
 ## How to contribute
 
 If you are looking to make a contribution to this project we suggest that you follow the steps in these guides:

@@ -512,7 +512,7 @@ class C0406(Cluster):
 class C0500(Cluster):
     cluster_id = 0x0500
     type = 'Security & Safety: IAS Zone'
-    attributes_def = {255: {'name': 'zone_status', 'value': 'self._decode(value[::-1])',
+    attributes_def = {255: {'name': 'zone_status', 'value': 'self._decode(value)',
                             'type': dict, 'expire': 10, 'expire_value': {'alarm1': False,
                                                                          'alarm2': False,
                                                                          'tamper': False,
@@ -538,6 +538,9 @@ class C0500(Cluster):
         return r
 
     def _decode(self, zone_status):
+        if isinstance(zone_status, dict):
+            return zone_status
+        zone_status = zone_status[::-1]
         fields = ['alarm1',
                   'alarm2',
                   'tamper',

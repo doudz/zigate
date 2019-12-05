@@ -204,7 +204,8 @@ class ZiGate(object):
         Start Admin panel in other thread
         '''
         from .adminpanel import start_adminpanel
-        start_adminpanel(self)
+        self.adminpanel = start_adminpanel(self)
+        return self.adminpanel
 
     def _event_loop(self):
         while not self._closing:
@@ -889,7 +890,7 @@ class ZiGate(object):
         data = struct.pack('!B', cert[standard])
         return self.send_data(0x0019, data)
 
-    def permit_join(self, duration=30):
+    def permit_join(self, duration=60):
         '''
         start permit join
         duration in secs, 0 means stop permit join
@@ -2096,26 +2097,52 @@ class ZiGate(object):
 
     @register_actions(ACTIONS_IAS)
     def action_ias_warning(self, addr, endpoint,
-                           warning_mode, duration, strobe_cycle, strobe_level,
+                           mode='burglar', strobe=True, level='low',
+                           duration=60, strobe_cycle=10, strobe_level='low',
                            direction=0, manufacturer_code=0):
+        '''
+        mode: stop, burglar, fire, emergency, policepanic, firepanic, emergencypanic
+        duration: seconds
+        level: low, medium, high, veryhigh
+        strobe_cycle: duty-cycle of the strobe pulse, expressed as a percentage in 10% steps
+        strobe_level: level of the strobe (pulse) low, medium, high, veryhigh
+        '''
         addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         manufacturer_specific = manufacturer_code != 0
+        mode = {'stop': '0000', 'burglar': '1000', 'fire': '01000', 'emergency': '1100',
+                'policepanic': '0010', 'firepanic': '1010', 'emergencypanic': '0110'
+                }.get(mode, '0000')
+        strobe = '10' if strobe else '00'
+        level = {'low': '00', 'medium': '10', 'high': '01', 'veryhigh': '11'}.get(level, '00')
+        warning_mode_strobe_level = int(mode + strobe + level, 2)
+        strobe_level = {'low': 0, 'medium': 1, 'high': 2, 'veryhigh': 3}.get(strobe_level, 0)
         data = struct.pack('!B' + addr_fmt + 'BBBBHBHBB', addr_mode, addr, 1,
                            endpoint,
                            direction, manufacturer_specific, manufacturer_code,
-                           warning_mode, duration, strobe_cycle, strobe_level)
+                           warning_mode_strobe_level, duration, strobe_cycle, strobe_level)
         self.send_data(0x0111, data)
 
     @register_actions(ACTIONS_IAS)
     def action_ias_squawk(self, addr, endpoint,
-                          squawk_mode_strobe_level,
+                          mode='armed',
+                          strobe=True,
+                          level='low',
                           direction=0, manufacturer_code=0):
+        '''
+        mode: armed or disarmed
+        strobe: True or False
+        level: low, medium, high, veryhigh
+        '''
         addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         manufacturer_specific = manufacturer_code != 0
+        mode = {'armed': '0000', 'disarmed': '1000'}.get(mode, '0000')
+        strobe = '1' if strobe else '0'
+        level = {'low': '00', 'medium': '10', 'high': '01', 'veryhigh': '11'}.get(level, '00')
+        squawk_mode_strobe_level = int(mode + strobe + '0' + level, 2)
         data = struct.pack('!B' + addr_fmt + 'BBBBHB', addr_mode, addr, 1,
                            endpoint,
                            direction, manufacturer_specific, manufacturer_code,

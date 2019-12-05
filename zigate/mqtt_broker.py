@@ -99,7 +99,7 @@ if __name__ == '__main__':
     logging.basicConfig()
     logging.root.setLevel(logging.INFO)
     import argparse
-    from zigate import ZiGate, ZiGateWiFi
+    from zigate import ZiGate, ZiGateWiFi, ZiGateGPIO
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', help='ZiGate usb port or host:port',
@@ -110,13 +110,21 @@ if __name__ == '__main__':
                         default='localhost:1883')
     parser.add_argument('--mqtt_username', help='MQTT username', default=None)
     parser.add_argument('--mqtt_password', help='MQTT password', default=None)
+    parser.add_argument('--gpio', help='PiZigate', default=False, action='store_true')
+    parser.add_argument('--channel', help='Zigbee channel', default=None)
+    parser.add_argument('--admin_panel', help='Enable Admin panel', default=False, action='store_true')
     args = parser.parse_args()
 
     if ':' in args.device:  # supposed IP:PORT
         host, port = args.device.split(':')
-        z = ZiGateWiFi(host, port, auto_start=False, path=args.path)
+        z = ZiGateWiFi(host, port, auto_start=False, path=args.path, channel=args.channel)
     else:
-        z = ZiGate(args.device, auto_start=False, path=args.path)
+        if args.gpio:
+            z = ZiGateGPIO(args.device, auto_start=False, path=args.path, channel=args.channel)
+        else:
+            z = ZiGate(args.device, auto_start=False, path=args.path, channel=args.channel)
+    if args.admin_panel:
+        z.start_adminpanel()
     broker = MQTT_Broker(z, args.mqtt_host,
                          args.mqtt_username, args.mqtt_password)
     broker.start()
