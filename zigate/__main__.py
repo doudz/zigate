@@ -19,8 +19,6 @@ parser.add_argument('--host', help='Wifi ZiGate host:port',
                     default=None)
 parser.add_argument('--path', help='ZiGate state file path',
                     default='~/.zigate.json')
-parser.add_argument('--mqtt_host', help='MQTT host:port',
-                    default='localhost:1883')
 parser.add_argument('--gpio', help='PiZigate', default=False, action='store_true')
 parser.add_argument('--channel', help='Zigbee channel', default=None)
 parser.add_argument('--admin_panel', help='Enable Admin panel', default=True, action='store_true')
