@@ -205,6 +205,7 @@ class ZiGate(object):
         '''
         from .adminpanel import start_adminpanel
         self.adminpanel = start_adminpanel(self)
+        return self.adminpanel
 
     def _event_loop(self):
         while not self._closing:
