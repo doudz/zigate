@@ -30,7 +30,14 @@ def connect(port=None, host=None,
 
     in both case you could set 'auto' to auto discover the zigate
     '''
-    if host:
+    if port == 'fake':
+        from .core import FakeZiGate
+        z = FakeZiGate(port,
+                       path=path,
+                       auto_start=auto_start,
+                       auto_save=auto_save,
+                       channel=channel)
+    elif host:
         port = None
         host = host.split(':', 1)
         if len(host) == 2:
