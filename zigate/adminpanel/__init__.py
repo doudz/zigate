@@ -64,7 +64,8 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, autostart=True, daem
 
     @app.route('/api/network_table')
     def network_table():
-        return {'network_table': zigate_instance.build_neighbours_table()}
+        force = bottle.request.query.get('force', 'false') == 'true'
+        return {'network_table': zigate_instance.build_neighbours_table(force)}
 
     if autostart:
         if daemon:

@@ -6,6 +6,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.11/lodash.min.js"></script>
 <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" />
+<input  type="button" id="bt_refresh" value="Refresh"><br>
 <div id="zigatenetworkmap"></div>
 
 <script>
@@ -74,9 +75,9 @@ $( document ).ready(function() {
     _networkGraph = new vis.Network(container, data, _networkOptions);
     refreshData();  
 });
-      function refreshData() {
-        this._edgesDataset.clear();
-        this._nodesDataset.clear();
+      function refreshData(force=false) {
+        _edgesDataset.clear();
+        _nodesDataset.clear();
         
         let zigateDevicesStates = new Array();
         let addrToIeeeTable = new Array();
@@ -117,7 +118,7 @@ $( document ).ready(function() {
         });
 
         var duplicates = [];
-        $.getJSON('/api/network_table', function(data){
+        $.getJSON('/api/network_table',{'force':force}, function(data){
         	var network_table = data['network_table'];
 	        var links = network_table.sort((a,b) => a[2]>b[2] ? -1 : 0);
 	        links.forEach(function (link) {
@@ -155,5 +156,11 @@ $( document ).ready(function() {
 	        _nodesDataset.flush();
 	        _networkGraph.stabilize();
         });
+        
       }
+      $('#bt_refresh').click(function() {
+      	refreshData(true);
+      });
+      
+ 
   </script>
