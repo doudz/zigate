@@ -22,7 +22,7 @@ here = path.abspath(path.dirname(__file__))
 # Get __version without load zigate module
 main_ns = {}
 version_path = convert_path('zigate/version.py')
-with open(version_path) as version_file:
+with open(version_path, encoding='utf-8') as version_file:
     exec(version_file.read(), main_ns)
 
 # Get the long description from the README file
