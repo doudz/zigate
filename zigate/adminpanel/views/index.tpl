@@ -17,4 +17,4 @@
 {{groups}}
 
 <h2>Actions :</h2>
-<a href="/api/permit_join">Permit Join</a>
+<a href="{{get_url('api_permit_join')}}">Permit Join</a>

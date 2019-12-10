@@ -10,20 +10,21 @@ import threading
 import bottle
 from json import dumps
 from zigate.core import DeviceEncoder
-# from bottle import Bottle, route, view, template, redirect, TEMPLATE_PATH  # noqa
+from zigate.const import ADMINPANEL_PORT
 
-ADMINPANEL_PORT = 9998
+
 bottle.TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), 'views/'))
 
 
-def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, autostart=True, daemon=True, quiet=True, debug=False):
+def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, prefix=None,
+                     autostart=True, daemon=True, quiet=True, debug=False):
     app = bottle.Bottle()
     app.install(bottle.JSONPlugin(json_dumps=lambda s: dumps(s, cls=DeviceEncoder)))
     bottle.BaseTemplate.defaults['get_url'] = app.get_url
     bottle.BaseTemplate.defaults['zigate'] = zigate_instance
     app.zigate = zigate_instance
 
-    @app.route('/')
+    @app.route('/', name='index')
     @bottle.view('index')
     def index():
         from zigate import version
@@ -36,12 +37,12 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, autostart=True, daem
                 'groups': zigate_instance.groups
                 }
 
-    @app.route('/networkmap')
+    @app.route('/networkmap', name='networkmap')
     @bottle.view('networkmap')
     def networkmap():
         return
 
-    @app.route('/api/permit_join')
+    @app.route('/api/permit_join', name='api_permit_join')
     def permit_join():
         zigate_instance.permit_join()
         bottle.redirect('/')
@@ -49,7 +50,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, autostart=True, daem
     kwargs = {'host': '0.0.0.0', 'port': port,
               'quiet': quiet, 'debug': debug}
 
-    @app.route('/api/devices')
+    @app.route('/api/devices', name='api_devices')
     def devices():
         devices = [{'info': {'addr': zigate_instance.addr,
                              'ieee': zigate_instance.ieee
@@ -62,19 +63,24 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, autostart=True, daem
             devices.append(device)
         return {'devices': devices}
 
-    @app.route('/api/network_table')
+    @app.route('/api/network_table', name='api_network_table')
     def network_table():
         force = bottle.request.query.get('force', 'false') == 'true'
         return {'network_table': zigate_instance.build_neighbours_table(force)}
 
     if autostart:
+        r_app = app
+        if prefix:
+            root_app = bottle.Bottle()
+            root_app.mount(prefix, app)
+            r_app = root_app
         if daemon:
-            t = threading.Thread(target=app.run,
+            t = threading.Thread(target=r_app.run,
                                  kwargs=kwargs,
                                  daemon=True)
             t.start()
         else:
-            app.run(**kwargs)
+            r_app.run(**kwargs)
     return app
 
 

@@ -22,11 +22,15 @@ parser.add_argument('--path', help='ZiGate state file path',
 parser.add_argument('--gpio', help='Enable PiZigate', default=False, action='store_true')
 parser.add_argument('--channel', help='Zigbee channel', default=None)
 parser.add_argument('--admin_panel', help='Enable Admin panel', default=True, action='store_true')
+parser.add_argument('--admin_panel_port', help='Admin panel url prefix', default=9998)
+parser.add_argument('--admin_panel_prefix', help='Admin panel url prefix', default=None)
 args = parser.parse_args()
 z = connect(args.port, args.host, args.path, True, True, args.channel, args.gpio)
 if args.admin_panel:
-    logging.root.info('Starting Admin Panel on port 9998')
-    z.start_adminpanel()
+    logging.root.info(f'Starting Admin Panel on port {args.admin_panel_port}')
+    if args.admin_panel_prefix:
+        logging.root.info(f'URL prefix is {args.admin_panel_prefix}')
+    z.start_adminpanel(port=int(args.admin_panel_port), prefix=args.admin_panel_prefix)
 print('Press Ctrl+C to quit')
 try:
     while True:

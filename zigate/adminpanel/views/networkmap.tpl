@@ -82,7 +82,7 @@ $( document ).ready(function() {
         let zigateDevicesStates = new Array();
         let addrToIeeeTable = new Array();
         
-        $.getJSON('/api/devices', function(devices){
+        $.getJSON('{{get_url('api_devices')}}', function(devices){
         	devices['devices'].forEach(function (entity) {
                 let entityIeee = entity.info.ieee;
                 let entityAddr = entity.info.addr;
@@ -118,7 +118,7 @@ $( document ).ready(function() {
         });
 
         var duplicates = [];
-        $.getJSON('/api/network_table',{'force':force}, function(data){
+        $.getJSON('{{get_url('api_network_table')}}',{'force':force}, function(data){
         	var network_table = data['network_table'];
 	        var links = network_table.sort((a,b) => a[2]>b[2] ? -1 : 0);
 	        links.forEach(function (link) {
