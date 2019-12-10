@@ -717,7 +717,7 @@ class TestCore(unittest.TestCase):
                                                  unhexlify(b'010003030000000123456789abcdef0123456789abcdef01b645'
                                                            b'98760123456789abcdef0123456789abcdef01b616'
                                                            b'12340123456789abcdef0123456789abcdef00b622'))
-        table = self.zigate.build_neighbours_table()
+        table = self.zigate.build_neighbours_table(True)
         self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182),
                                  ('0000', '1234', 182)])
 

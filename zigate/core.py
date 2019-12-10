@@ -199,12 +199,13 @@ class ZiGate(object):
     def addr(self):
         return self._addr
 
-    def start_adminpanel(self):
+    def start_adminpanel(self, port=None, prefix=None):
         '''
         Start Admin panel in other thread
         '''
-        from .adminpanel import start_adminpanel
-        self.adminpanel = start_adminpanel(self)
+        from .adminpanel import start_adminpanel, ADMINPANEL_PORT
+        port = port or ADMINPANEL_PORT
+        self.adminpanel = start_adminpanel(self, port=port, prefix=prefix)
         return self.adminpanel
 
     def _event_loop(self):
@@ -2203,12 +2204,13 @@ class FakeZiGate(ZiGate):
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start, auto_save=auto_save,
                         channel=channel, adminpanel=adminpanel)
         self._addr = '0000'
-        self._ieee = '0123456789abcdef'
+        self._ieee = 'fedcba9876543210'
         # by default add a fake xiaomi temp sensor on address abcd
         device = Device({'addr': 'abcd', 'ieee': '0123456789abcdef'}, self)
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 170, 'data': 'lumi.weather'})
         device.load_template()
         self._devices['abcd'] = device
+        self._neighbours_table_cache = [['0000', 'abcd', 255]]
 
     def startup(self, channel=None):
         ZiGate.startup(self, channel=channel)
