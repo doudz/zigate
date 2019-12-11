@@ -33,7 +33,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         location = app.router.build(routename, **kargs).lstrip('/')
         url = bottle.urljoin(bottle.urljoin('/', scriptname), location)
         if prefix:
-            url = prefix+url
+            url = prefix + url
         return url
 
     bottle.BaseTemplate.defaults['get_url'] = get_url
