@@ -642,7 +642,7 @@ class ZiGate(object):
             LOGGER.debug('Client ended ota process')
             self._ota_handle_upgrade_end_request(response)
         elif response.msg == 0x8702:  # APS Data confirm Fail
-            LOGGER.error(response)
+            LOGGER.warning(response)
 #         else:
 #             LOGGER.debug('Do nothing special for response {}'.format(response))
 
