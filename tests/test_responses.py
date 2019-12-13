@@ -18,6 +18,20 @@ class TestResponses(unittest.TestCase):
                          '{"status": 0, "sequence": 0, '
                          '"packet_type": 1, "error": "", "lqi": 255}')
 
+    def test_response_8000(self):
+        msg_data = unhexlify(b'00010001')
+        r = responses.R8000(msg_data, 255)
+        self.assertEqual(r.status_text(), 'Success')
+        msg_data = unhexlify(b'05010001')
+        r = responses.R8000(msg_data, 255)
+        self.assertEqual(r.status_text(), 'Stack already started (no new configuration accepted)')
+        msg_data = unhexlify(b'15010001')
+        r = responses.R8000(msg_data, 255)
+        self.assertEqual(r.status_text(), 'E_ZCL_ERR_ZTRANSMIT_FAIL')
+        msg_data = unhexlify(b'aa010001')
+        r = responses.R8000(msg_data, 255)
+        self.assertEqual(r.status_text(), 'Failed (ZigBee event codes) 0xaa')
+
     def test_response_8002(self):
         msg_data = unhexlify(b'0001000006020102123402abcd0401234567')
         r = responses.R8002(msg_data, 255)
