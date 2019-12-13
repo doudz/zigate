@@ -75,6 +75,7 @@ def is_raspberry_pi(raise_on_errors=False):
 
 requires = ['pyserial>=3.2',
             'pydispatcher>=2.0.5',
+            'pyusb',
             'bottle',
             'requests'
             ]

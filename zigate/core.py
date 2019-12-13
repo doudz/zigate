@@ -47,6 +47,7 @@ except Exception:
         def __getattr__(self, *args, **kwargs):
             return self.fake
     GPIO = GPIO()
+import usb
 
 
 LOGGER = logging.getLogger('zigate')
@@ -152,6 +153,19 @@ def dispatch_signal(signal=dispatcher.Any, sender=dispatcher.Anonymous,
         LOGGER.error(traceback.format_exc())
 
 
+def ftdi_set_bitmode(dev, bitmask):
+    '''
+    Set mode for ZiGate DIN module
+    '''
+    BITMODE_CBUS = 0x20
+    SIO_SET_BITMODE_REQUEST = 0x0b
+    bmRequestType = usb.util.build_request_type(usb.util.CTRL_OUT,
+                                                usb.util.CTRL_TYPE_VENDOR,
+                                                usb.util.CTRL_RECIPIENT_DEVICE)
+    wValue = bitmask | (BITMODE_CBUS << BITMODE_CBUS)
+    dev.ctrl_transfer(bmRequestType, SIO_SET_BITMODE_REQUEST, wValue)
+
+
 class ZiGate(object):
 
     def __init__(self, port='auto', path='~/.zigate.json',
@@ -159,6 +173,7 @@ class ZiGate(object):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
+        self._model = 'TTL'  # TTL, WiFI, DIN, GPIO
         self._devices = {}
         self._groups = {}
         self._scenes = {}
@@ -183,6 +198,9 @@ class ZiGate(object):
 
         self._ota_reset_local_variables()
 
+        if self.model == 'DIN':
+            self.set_running_mode()
+
         if adminpanel:
             self.start_adminpanel()
 
@@ -190,6 +208,67 @@ class ZiGate(object):
             self.startup(channel)
             if auto_save:
                 self.start_auto_save()
+
+    @property
+    def model(self):
+        '''
+        return ZiGate model:
+        TTL, WiFi, GPIO, DIN
+        '''
+        return self._model
+
+    def set_bootloader_mode(self):
+        '''
+        configure ZiGate DIN in flash mode
+        '''
+        if self.model != 'DIN':
+            LOGGER.warning('Method only supported on ZiGate DIN')
+            return
+        dev = usb.core.find(custom_match=lambda d: d.idVendor == 0x0403 and d.idProduct == 0x6001)
+        if not dev:
+            LOGGER.error('ZiGate DIN not found.')
+            return
+        ftdi_set_bitmode(dev, 0x00)
+        sleep(0.5)
+        # Set CBUS2/3 high...
+        ftdi_set_bitmode(dev, 0xCC)
+        sleep(0.5)
+        # Set CBUS2/3 low...
+        ftdi_set_bitmode(dev, 0xC0)
+        sleep(0.5)
+        ftdi_set_bitmode(dev, 0xC4)
+        sleep(0.5)
+        # Set CBUS2/3 back to tristate
+        ftdi_set_bitmode(dev, 0xCC)
+        sleep(0.5)
+
+    def set_running_mode(self):
+        '''
+        configure ZiGate DIN in running mode
+        '''
+        if self.model != 'DIN':
+            LOGGER.warning('Method only supported on ZiGate DIN')
+            return
+        dev = usb.core.find(custom_match=lambda d: d.idVendor == 0x0403 and d.idProduct == 0x6001)
+        if not dev:
+            LOGGER.error('ZiGate DIN not found.')
+            return
+        ftdi_set_bitmode(dev, 0xC8)
+        sleep(0.5)
+        ftdi_set_bitmode(dev, 0xCC)
+        sleep(0.5)
+
+    def flash_firmware(self, path, erase_eeprom=False):
+        '''
+        flash specified firmware
+        '''
+        if self.model != 'DIN':
+            LOGGER.warning('Method only supported on ZiGate DIN')
+            return
+        from .flasher import flash
+        self.set_bootloader_mode()
+        flash(self._port, write=path, erase=erase_eeprom)
+        self.set_running_mode()
 
     @property
     def ieee(self):
@@ -2226,6 +2305,7 @@ class ZiGateGPIO(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
+        self._model = 'GPIO'
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(27, GPIO.OUT)  # GPIO2
         self.set_running_mode()
@@ -2266,6 +2346,7 @@ class ZiGateWiFi(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
+        self._model = 'WiFi'
         self._host = host
         ZiGate.__init__(self, port=port, path=path,
                         auto_start=auto_start,

@@ -17,9 +17,22 @@ import struct
 from operator import xor
 import datetime
 from .firmware import download_latest
-
+import time
 import serial
 from serial.tools.list_ports import comports
+try:
+    import RPi.GPIO as GPIO
+except Exception:
+    # Fake GPIO
+    class GPIO:
+        def fake(self, *args, **kwargs):
+            pass
+
+        def __getattr__(self, *args, **kwargs):
+            return self.fake
+    GPIO = GPIO()
+import usb
+
 
 logger = logging.getLogger(__name__)
 _responses = {}
@@ -369,6 +382,19 @@ def upgrade_firmware(port):
     print('ZiGate flashed with {}'.format(firmware_path))
 
 
+def ftdi_set_bitmode(dev, bitmask):
+    '''
+    Set mode for ZiGate DIN module
+    '''
+    BITMODE_CBUS = 0x20
+    SIO_SET_BITMODE_REQUEST = 0x0b
+    bmRequestType = usb.util.build_request_type(usb.util.CTRL_OUT,
+                                                usb.util.CTRL_TYPE_VENDOR,
+                                                usb.util.CTRL_RECIPIENT_DEVICE)
+    wValue = bitmask | (BITMODE_CBUS << BITMODE_CBUS)
+    dev.ctrl_transfer(bmRequestType, SIO_SET_BITMODE_REQUEST, wValue)
+
+
 def main():
     ports_available = [port for (port, _, _) in sorted(comports())]
     parser = argparse.ArgumentParser()
@@ -377,13 +403,44 @@ def main():
     parser.add_argument('-w', '--write', help='Firmware bin to flash onto the chip')
     parser.add_argument('-s', '--save', help='File to save the currently loaded firmware to')
     parser.add_argument('-u', '--upgrade', help='Download and flash the lastest available firmware',
-                        action='store_true')
+                        action='store_true', default=False)
 #     parser.add_argument('-e', '--erase', help='Erase EEPROM', action='store_true')
 #     parser.add_argument('--pdm-only', help='Erase PDM only, use it with --erase', action='store_true')
     parser.add_argument('-d', '--debug', help='Set log level to DEBUG', action='store_true')
+    parser.add_argument('--gpio', help='Configure GPIO for PiZiGate flash', action='store_true', default=False)
+    parser.add_argument('--din', help='Configure USB for ZiGate DIN flash', action='store_true', default=False)
     args = parser.parse_args()
     if args.debug:
         logger.setLevel(logging.DEBUG)
+
+    if args.pizigate:
+        logger.info('Put PiZiGate in flash mode')
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(27, GPIO.OUT)  # GPIO2
+        GPIO.output(27, GPIO.LOW)  # GPIO2
+        GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
+        time.sleep(0.5)
+        GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
+        time.sleep(0.5)
+    elif args.din:
+        logger.info('Put ZiGate DIN in flash mode')
+        dev = usb.core.find(custom_match=lambda d: d.idVendor == 0x0403 and d.idProduct == 0x6001)
+        if not dev:
+            logger.error('ZiGate DIN not found.')
+            return
+        ftdi_set_bitmode(dev, 0x00)
+        time.sleep(0.5)
+        # Set CBUS2/3 high...
+        ftdi_set_bitmode(dev, 0xCC)
+        time.sleep(0.5)
+        # Set CBUS2/3 low...
+        ftdi_set_bitmode(dev, 0xC0)
+        time.sleep(0.5)
+        ftdi_set_bitmode(dev, 0xC4)
+        time.sleep(0.5)
+        # Set CBUS2/3 back to tristate
+        ftdi_set_bitmode(dev, 0xCC)
+        time.sleep(0.5)
 
     if args.upgrade:
         upgrade_firmware(args.serialport)
@@ -401,7 +458,7 @@ def main():
         check_chip_id(ser)
         flash_type = get_flash_type(ser)
         mac_address = get_mac(ser)
-        print('Found MAC-address: %s' % mac_address)
+        logger.info('Found MAC-address: %s' % mac_address)
         if args.write or args.save:  # or args.erase:
             select_flash(ser, flash_type)
 
@@ -413,6 +470,20 @@ def main():
 
 #         if args.erase:
 #             erase_EEPROM(ser, args.pdm_only)
+
+    if args.pizigate:
+        logger.info('Put PiZiGate in running mode')
+        GPIO.output(27, GPIO.HIGH)  # GPIO2
+        GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
+        time.sleep(0.5)
+        GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # GPIO0
+        time.sleep(0.5)
+    elif args.din:
+        logger.info('Put ZiGate DIN in running mode')
+        ftdi_set_bitmode(dev, 0xC8)
+        time.sleep(0.5)
+        ftdi_set_bitmode(dev, 0xCC)
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":
