@@ -2615,7 +2615,7 @@ class Device(object):
                 if power_source == 3:  # battery
                     power_source = 3.1
                 if power_source and battery_voltage:
-                    power_end = 0.9 * power_source
+                    power_end = 0.91 * power_source
                     percent = (battery_voltage - power_end) * 100 / (power_source - power_end)
                 if percent > 100:
                     percent = 100
