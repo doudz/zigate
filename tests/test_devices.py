@@ -206,6 +206,19 @@ class TestCore(unittest.TestCase):
         device._reset_attribute(1, 0x0101, 0x0503)
         self.assertEqual(device.get_property_value('rotation'), 0.0)
 
+    def test_erratic_values(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0x0405, {'attribute': 0, 'lqi': 255, 'data': 5000})
+        self.assertEqual(device.get_property_value('humidity'), 50.0)
+        device.set_attribute(1, 0x0405, {'attribute': 0, 'lqi': 255, 'data': 30000})
+        self.assertEqual(device.get_property_value('humidity'), 50.0)
+        device.set_attribute(1, 0x0402, {'attribute': 0, 'lqi': 255, 'data': 2000})
+        self.assertEqual(device.get_property_value('temperature'), 20.0)
+        device.set_attribute(1, 0x0402, {'attribute': 0, 'lqi': 255, 'data': 10000})
+        self.assertEqual(device.get_property_value('temperature'), 20.0)
+        device.set_attribute(1, 0x0402, {'attribute': 0, 'lqi': 255, 'data': -10000})
+        self.assertEqual(device.get_property_value('temperature'), 20.0)
+
 
 if __name__ == '__main__':
     unittest.main()

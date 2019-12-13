@@ -478,6 +478,13 @@ class C0402(Cluster):
                                'unit': '°C', 'type': float},
                       }
 
+    def update(self, data):
+        # ignore erratic value sent by low battery device
+        print(data)
+        if data.get('data', 0) < -90*100 or data.get('data', 0) > 90*100:
+            return
+        return Cluster.update(self, data)
+
 
 @register_cluster
 class C0403(Cluster):
@@ -497,6 +504,12 @@ class C0405(Cluster):
     attributes_def = {0x0000: {'name': 'humidity', 'value': 'value/100.',
                                'unit': '%', 'type': float},
                       }
+
+    def update(self, data):
+        # ignore erratic value sent by low battery device
+        if data.get('data', 0) < 0 or data.get('data', 0) > 100*100:
+            return
+        return Cluster.update(self, data)
 
 
 @register_cluster

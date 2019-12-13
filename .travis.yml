@@ -27,7 +27,7 @@ matrix:
         - pip install -e ".[dev]"
       script:
         - tox
-    - python: 3.8-dev
+    - python: 3.8
       dist: xenial
       env: TOXENV=py38
       install:
