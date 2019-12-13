@@ -16,11 +16,27 @@ from zigate.const import ADMINPANEL_PORT
 bottle.TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), 'views/'))
 
 
-def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, prefix=None,
+def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=None,
                      autostart=True, daemon=True, quiet=True, debug=False):
+    '''
+    mount: url prefix used to mount bottle application
+    prefix: special prefix added when using get_url in template
+    '''
     app = bottle.Bottle()
     app.install(bottle.JSONPlugin(json_dumps=lambda s: dumps(s, cls=DeviceEncoder)))
-    bottle.BaseTemplate.defaults['get_url'] = app.get_url
+
+    def get_url(routename, **kargs):
+        '''
+        customized get_url to allow additionnal prefix args
+        '''
+        scriptname = bottle.request.environ.get('SCRIPT_NAME', '').strip('/') + '/'
+        location = app.router.build(routename, **kargs).lstrip('/')
+        url = bottle.urljoin(bottle.urljoin('/', scriptname), location)
+        if prefix:
+            url = prefix + url
+        return url
+
+    bottle.BaseTemplate.defaults['get_url'] = get_url
     bottle.BaseTemplate.defaults['zigate'] = zigate_instance
     app.zigate = zigate_instance
 
@@ -70,9 +86,9 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, prefix=None,
 
     if autostart:
         r_app = app
-        if prefix:
+        if mount:
             root_app = bottle.Bottle()
-            root_app.mount(prefix, app)
+            root_app.mount(mount, app)
             r_app = root_app
         if daemon:
             t = threading.Thread(target=r_app.run,

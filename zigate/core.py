@@ -199,13 +199,13 @@ class ZiGate(object):
     def addr(self):
         return self._addr
 
-    def start_adminpanel(self, port=None, prefix=None):
+    def start_adminpanel(self, port=None, mount=None, prefix=None):
         '''
         Start Admin panel in other thread
         '''
         from .adminpanel import start_adminpanel, ADMINPANEL_PORT
         port = port or ADMINPANEL_PORT
-        self.adminpanel = start_adminpanel(self, port=port, prefix=prefix)
+        self.adminpanel = start_adminpanel(self, port=port, mount=mount, prefix=prefix)
         return self.adminpanel
 
     def _event_loop(self):
@@ -642,7 +642,7 @@ class ZiGate(object):
             LOGGER.debug('Client ended ota process')
             self._ota_handle_upgrade_end_request(response)
         elif response.msg == 0x8702:  # APS Data confirm Fail
-            LOGGER.error(response)
+            LOGGER.warning(response)
 #         else:
 #             LOGGER.debug('Do nothing special for response {}'.format(response))
 
@@ -2615,7 +2615,7 @@ class Device(object):
                 if power_source == 3:  # battery
                     power_source = 3.1
                 if power_source and battery_voltage:
-                    power_end = 0.9 * power_source
+                    power_end = 0.91 * power_source
                     percent = (battery_voltage - power_end) * 100 / (power_source - power_end)
                 if percent > 100:
                     percent = 100
