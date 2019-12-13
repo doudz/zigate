@@ -480,8 +480,7 @@ class C0402(Cluster):
 
     def update(self, data):
         # ignore erratic value sent by low battery device
-        print(data)
-        if data.get('data', 0) < -90*100 or data.get('data', 0) > 90*100:
+        if data.get('data', 0) < -90 * 100 or data.get('data', 0) > 90 * 100:
             return
         return Cluster.update(self, data)
 
@@ -507,7 +506,7 @@ class C0405(Cluster):
 
     def update(self, data):
         # ignore erratic value sent by low battery device
-        if data.get('data', 0) < 0 or data.get('data', 0) > 100*100:
+        if data.get('data', 0) < 0 or data.get('data', 0) > 100 * 100:
             return
         return Cluster.update(self, data)
 
