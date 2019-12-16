@@ -18,7 +18,7 @@
 	<li>In clusters : {{endpoint.get('in_clusters')}}</li>
 	<li>Out clusters : {{endpoint.get('out_clusters')}}</li>
 </ul>
-<table>
+<table border=1>
 	<tr>
 		<th>Cluster ID</th>
 		<th>Cluster</th>

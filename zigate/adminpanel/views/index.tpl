@@ -7,7 +7,7 @@
 </ul>
 
 <h2>Devices :</h2>
-<table>
+<table border=1>
 	<tr>
 		<th>Device</th>
 		<th>Last Seen</th>
