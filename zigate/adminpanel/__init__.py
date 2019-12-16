@@ -62,12 +62,14 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     @bottle.view('device')
     def device(addr):
         device = zigate_instance.get_device_from_addr(addr)
+        if not device:
+            return bottle.redirect('/')
         return {'device': device}
 
     @app.route('/api/permit_join', name='api_permit_join')
     def permit_join():
         zigate_instance.permit_join()
-        bottle.redirect('/')
+        return bottle.redirect('/')
 
     kwargs = {'host': '0.0.0.0', 'port': port,
               'quiet': quiet, 'debug': debug}
