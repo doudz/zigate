@@ -3160,7 +3160,7 @@ class Device(object):
                 LOGGER.error('Failed to load template for {}'.format(template_filename))
                 LOGGER.error(traceback.format_exc())
         else:
-            LOGGER.warning('No template found for {}'.format(template_filename))
+            LOGGER.info('No template found for {}'.format(template_filename))
         if self.need_report:
             self._bind_report()
         if success:
