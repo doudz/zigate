@@ -58,6 +58,12 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     def networkmap():
         return
 
+    @app.route('/device/<addr>', name='device')
+    @bottle.view('device')
+    def device(addr):
+        device = zigate_instance.get_device_from_addr(addr)
+        return {'device': device}
+
     @app.route('/api/permit_join', name='api_permit_join')
     def permit_join():
         zigate_instance.permit_join()

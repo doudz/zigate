@@ -7,11 +7,18 @@
 </ul>
 
 <h2>Devices :</h2>
-<ul>
+<table>
+	<tr>
+		<th>Device</th>
+		<th>Last Seen</th>
+	<tr>
   % for device in devices:
-    <li>{{device}}</li>
+  	<tr>
+    	<td><a href="{{get_url('device', addr=device.addr)}}">{{device}}</a></td>
+    	<td>{{device.info.get('last_seen')}}</td>
+    </tr>
   % end
-</ul>
+</table>
 
 <h2>Groups :</h2>
 {{groups}}
