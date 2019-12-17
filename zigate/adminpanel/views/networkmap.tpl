@@ -6,8 +6,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.11/lodash.min.js"></script>
 <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" />
-<input  type="button" id="bt_refresh" value="Refresh"><br>
-<div id="zigatenetworkmap"></div>
+<input class="pure-button" type="button" id="bt_refresh" value="Refresh"><br>
+<div id="zigatenetworkmap" style="height:500px"></div>
 
 <script>
 $( document ).ready(function() {
