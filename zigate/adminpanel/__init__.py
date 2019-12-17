@@ -71,8 +71,21 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         zigate_instance.permit_join()
         return bottle.redirect('/')
 
-    kwargs = {'host': '0.0.0.0', 'port': port,
-              'quiet': quiet, 'debug': debug}
+    @app.route('/api/discover/<addr>', name='api_discover')
+    def api_discover(addr):
+        zigate_instance.discover_device(addr, True)
+        return bottle.redirect(get_url('device', addr=addr))
+
+    @app.route('/api/refresh/<addr>', name='api_refresh')
+    def api_refresh(addr):
+        zigate_instance.refresh_device(addr)
+        return bottle.redirect(get_url('device', addr=addr))
+
+    @app.route('/api/remove/<addr>', name='api_remove')
+    def api_remove(addr):
+        force = bottle.request.query.get('force', 'false') == 'true'
+        zigate_instance.remove_device(addr, force)
+        return bottle.redirect('/')
 
     @app.route('/api/devices', name='api_devices')
     def devices():
@@ -91,6 +104,9 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     def network_table():
         force = bottle.request.query.get('force', 'false') == 'true'
         return {'network_table': zigate_instance.build_neighbours_table(force)}
+
+    kwargs = {'host': '0.0.0.0', 'port': port,
+              'quiet': quiet, 'debug': debug}
 
     if autostart:
         r_app = app

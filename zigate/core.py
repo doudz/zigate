@@ -1038,7 +1038,7 @@ class ZiGate(object):
         ''' start network scan '''
         return self.send_data(0x0025)
 
-    def remove_device(self, addr):
+    def remove_device(self, addr, force=False):
         ''' remove device '''
         if addr in self._devices:
             ieee = self._devices[addr].ieee
@@ -1049,6 +1049,8 @@ class ZiGate(object):
                 ieee = self.__addr(ieee)
                 zigate_ieee = self.__addr(self.ieee)
                 data = struct.pack('!QQ', zigate_ieee, ieee)
+                if force:
+                    self._remove_device(addr)
                 return self.send_data(0x0026, data)
 
     def remove_device_ieee(self, ieee):

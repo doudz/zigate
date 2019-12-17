@@ -1,5 +1,11 @@
 % rebase('base.tpl', subtitle='Device ' + str(device))
 
+<a href="{{get_url('device', addr=device.addr)}}">Reload page</a>
+<br>
+<a href="{{get_url('api_discover', addr=device.addr)}}">Discover</a>
+<a href="{{get_url('api_refresh', addr=device.addr)}}">Refresh</a>
+<a href="{{get_url('api_remove', addr=device.addr)}}">Remove</a>
+<a href="{{get_url('api_remove', addr=device.addr)}}?force=true">Delete</a>
 <h3>Info :</h3>
 <table>
   % for k, v in device.info.items():
