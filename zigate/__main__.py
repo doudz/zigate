@@ -37,7 +37,8 @@ if args.admin_panel:
         logging.root.info('Mount point is %s', args.admin_panel_mount)
     if args.admin_panel_prefix:
         logging.root.info('URL prefix is %s', args.admin_panel_prefix)
-    z.start_adminpanel(port=int(args.admin_panel_port), mount=args.admin_panel_mount, prefix=args.admin_panel_prefix)
+    z.start_adminpanel(port=int(args.admin_panel_port), mount=args.admin_panel_mount, prefix=args.admin_panel_prefix,
+                       debug=args.debug)
 print('Press Ctrl+C to quit')
 try:
     while True:
