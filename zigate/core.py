@@ -1305,7 +1305,7 @@ class ZiGate(object):
                 LOGGER.debug('Found template, loading it')
                 device.load_template()
                 return
-        if 'mac_capability' not in device.info:
+        if not device.info.get('mac_capability'):
             LOGGER.debug('no mac_capability')
             self.node_descriptor_request(addr)
             return
