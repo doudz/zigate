@@ -215,6 +215,11 @@ class ZiGate(object):
         return ZiGate model:
         TTL, WiFi, GPIO, DIN
         '''
+        if self.connection:
+            if self.connection.vid_pid() == (0x0403, 0x6001):
+                self._model = 'DIN'
+            else:
+                self._model = 'TTL'
         return self._model
 
     def set_bootloader_mode(self):
@@ -224,7 +229,7 @@ class ZiGate(object):
         if self.model != 'DIN':
             LOGGER.warning('Method only supported on ZiGate DIN')
             return
-        dev = usb.core.find(custom_match=lambda d: d.idVendor == 0x0403 and d.idProduct == 0x6001)
+        dev = usb.core.find(idVendor=0x0403, idProduct=0x6001)
         if not dev:
             LOGGER.error('ZiGate DIN not found.')
             return
@@ -249,7 +254,7 @@ class ZiGate(object):
         if self.model != 'DIN':
             LOGGER.warning('Method only supported on ZiGate DIN')
             return
-        dev = usb.core.find(custom_match=lambda d: d.idVendor == 0x0403 and d.idProduct == 0x6001)
+        dev = usb.core.find(idVendor=0x0403, idProduct=0x6001)
         if not dev:
             LOGGER.error('ZiGate DIN not found.')
             return

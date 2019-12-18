@@ -50,7 +50,8 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
                 'version': zigate_instance.get_version_text(),
                 'connected': connected,
                 'devices': zigate_instance.devices,
-                'groups': zigate_instance.groups
+                'groups': zigate_instance.groups,
+                'model': zigate_instance.model
                 }
 
     @app.route('/networkmap', name='networkmap')

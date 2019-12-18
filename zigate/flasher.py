@@ -424,7 +424,7 @@ def main():
         time.sleep(0.5)
     elif args.din:
         logger.info('Put ZiGate DIN in flash mode')
-        dev = usb.core.find(custom_match=lambda d: d.idVendor == 0x0403 and d.idProduct == 0x6001)
+        dev = usb.core.find(idVendor=0x0403, idProduct=0x6001)
         if not dev:
             logger.error('ZiGate DIN not found.')
             return

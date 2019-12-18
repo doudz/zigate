@@ -4,6 +4,7 @@
 	<li>Port : {{port}}</li>
 	<li>Connected : {{connected}}</li>
 	<li>Firmware version : {{version}}</li>
+	<li>Model : {{model}}</li>
 </ul>
 
 <h2>Devices :</h2>
