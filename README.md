@@ -304,6 +304,8 @@ optional arguments:
   -s SAVE, --save SAVE  File to save the currently loaded firmware to
   -e, --erase           Erase EEPROM
   --pdm-only            Erase PDM only, use it with --erase
+  --gpio                Configure GPIO for PiZiGate flash
+  --din                 Configure USB for ZiGate DIN flash
 
 ```
 

@@ -75,6 +75,7 @@ def is_raspberry_pi(raise_on_errors=False):
 
 requires = ['pyserial>=3.2',
             'pydispatcher>=2.0.5',
+            'pyusb',
             'bottle',
             'requests'
             ]
@@ -109,7 +110,7 @@ setup(
         'dev': ['tox'],
         'mqtt': ['paho-mqtt']
     },
-    python_requires='>=3',
+    python_requires='>=3.5',
 
     project_urls={
         'Bug Reports': 'https://github.com/doudz/zigate/issues',

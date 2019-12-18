@@ -47,6 +47,7 @@ except Exception:
         def __getattr__(self, *args, **kwargs):
             return self.fake
     GPIO = GPIO()
+import usb
 
 
 LOGGER = logging.getLogger('zigate')
@@ -152,6 +153,19 @@ def dispatch_signal(signal=dispatcher.Any, sender=dispatcher.Anonymous,
         LOGGER.error(traceback.format_exc())
 
 
+def ftdi_set_bitmode(dev, bitmask):
+    '''
+    Set mode for ZiGate DIN module
+    '''
+    BITMODE_CBUS = 0x20
+    SIO_SET_BITMODE_REQUEST = 0x0b
+    bmRequestType = usb.util.build_request_type(usb.util.CTRL_OUT,
+                                                usb.util.CTRL_TYPE_VENDOR,
+                                                usb.util.CTRL_RECIPIENT_DEVICE)
+    wValue = bitmask | (BITMODE_CBUS << BITMODE_CBUS)
+    dev.ctrl_transfer(bmRequestType, SIO_SET_BITMODE_REQUEST, wValue)
+
+
 class ZiGate(object):
 
     def __init__(self, port='auto', path='~/.zigate.json',
@@ -159,6 +173,7 @@ class ZiGate(object):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
+        self._model = 'TTL'  # TTL, WiFI, DIN, GPIO
         self._devices = {}
         self._groups = {}
         self._scenes = {}
@@ -183,6 +198,9 @@ class ZiGate(object):
 
         self._ota_reset_local_variables()
 
+        if self.model == 'DIN':
+            self.set_running_mode()
+
         if adminpanel:
             self.start_adminpanel()
 
@@ -192,6 +210,72 @@ class ZiGate(object):
                 self.start_auto_save()
 
     @property
+    def model(self):
+        '''
+        return ZiGate model:
+        TTL, WiFi, GPIO, DIN
+        '''
+        if self.connection:
+            if self.connection.vid_pid() == (0x0403, 0x6001):
+                self._model = 'DIN'
+            else:
+                self._model = 'TTL'
+        return self._model
+
+    def set_bootloader_mode(self):
+        '''
+        configure ZiGate DIN in flash mode
+        '''
+        if self.model != 'DIN':
+            LOGGER.warning('Method only supported on ZiGate DIN')
+            return
+        dev = usb.core.find(idVendor=0x0403, idProduct=0x6001)
+        if not dev:
+            LOGGER.error('ZiGate DIN not found.')
+            return
+        ftdi_set_bitmode(dev, 0x00)
+        sleep(0.5)
+        # Set CBUS2/3 high...
+        ftdi_set_bitmode(dev, 0xCC)
+        sleep(0.5)
+        # Set CBUS2/3 low...
+        ftdi_set_bitmode(dev, 0xC0)
+        sleep(0.5)
+        ftdi_set_bitmode(dev, 0xC4)
+        sleep(0.5)
+        # Set CBUS2/3 back to tristate
+        ftdi_set_bitmode(dev, 0xCC)
+        sleep(0.5)
+
+    def set_running_mode(self):
+        '''
+        configure ZiGate DIN in running mode
+        '''
+        if self.model != 'DIN':
+            LOGGER.warning('Method only supported on ZiGate DIN')
+            return
+        dev = usb.core.find(idVendor=0x0403, idProduct=0x6001)
+        if not dev:
+            LOGGER.error('ZiGate DIN not found.')
+            return
+        ftdi_set_bitmode(dev, 0xC8)
+        sleep(0.5)
+        ftdi_set_bitmode(dev, 0xCC)
+        sleep(0.5)
+
+    def flash_firmware(self, path, erase_eeprom=False):
+        '''
+        flash specified firmware
+        '''
+        if self.model != 'DIN':
+            LOGGER.warning('Method only supported on ZiGate DIN')
+            return
+        from .flasher import flash
+        self.set_bootloader_mode()
+        flash(self._port, write=path, erase=erase_eeprom)
+        self.set_running_mode()
+
+    @property
     def ieee(self):
         return self._ieee
 
@@ -199,13 +283,13 @@ class ZiGate(object):
     def addr(self):
         return self._addr
 
-    def start_adminpanel(self, port=None, mount=None, prefix=None):
+    def start_adminpanel(self, port=None, mount=None, prefix=None, debug=False):
         '''
         Start Admin panel in other thread
         '''
         from .adminpanel import start_adminpanel, ADMINPANEL_PORT
         port = port or ADMINPANEL_PORT
-        self.adminpanel = start_adminpanel(self, port=port, mount=mount, prefix=prefix)
+        self.adminpanel = start_adminpanel(self, port=port, mount=mount, prefix=prefix, quiet=not debug, debug=debug)
         return self.adminpanel
 
     def _event_loop(self):
@@ -959,7 +1043,7 @@ class ZiGate(object):
         ''' start network scan '''
         return self.send_data(0x0025)
 
-    def remove_device(self, addr):
+    def remove_device(self, addr, force=False):
         ''' remove device '''
         if addr in self._devices:
             ieee = self._devices[addr].ieee
@@ -970,6 +1054,8 @@ class ZiGate(object):
                 ieee = self.__addr(ieee)
                 zigate_ieee = self.__addr(self.ieee)
                 data = struct.pack('!QQ', zigate_ieee, ieee)
+                if force:
+                    self._remove_device(addr)
                 return self.send_data(0x0026, data)
 
     def remove_device_ieee(self, ieee):
@@ -1226,7 +1312,7 @@ class ZiGate(object):
                 LOGGER.debug('Found template, loading it')
                 device.load_template()
                 return
-        if 'mac_capability' not in device.info:
+        if not device.info.get('mac_capability'):
             LOGGER.debug('no mac_capability')
             self.node_descriptor_request(addr)
             return
@@ -2226,6 +2312,7 @@ class ZiGateGPIO(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
+        self._model = 'GPIO'
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(27, GPIO.OUT)  # GPIO2
         self.set_running_mode()
@@ -2266,6 +2353,7 @@ class ZiGateWiFi(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
+        self._model = 'WiFi'
         self._host = host
         ZiGate.__init__(self, port=port, path=path,
                         auto_start=auto_start,
@@ -3079,7 +3167,7 @@ class Device(object):
                 LOGGER.error('Failed to load template for {}'.format(template_filename))
                 LOGGER.error(traceback.format_exc())
         else:
-            LOGGER.warning('No template found for {}'.format(template_filename))
+            LOGGER.info('No template found for {}'.format(template_filename))
         if self.need_report:
             self._bind_report()
         if success:

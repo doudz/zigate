@@ -50,7 +50,8 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
                 'version': zigate_instance.get_version_text(),
                 'connected': connected,
                 'devices': zigate_instance.devices,
-                'groups': zigate_instance.groups
+                'groups': zigate_instance.groups,
+                'model': zigate_instance.model
                 }
 
     @app.route('/networkmap', name='networkmap')
@@ -58,13 +59,34 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     def networkmap():
         return
 
+    @app.route('/device/<addr>', name='device')
+    @bottle.view('device')
+    def device(addr):
+        device = zigate_instance.get_device_from_addr(addr)
+        if not device:
+            return bottle.redirect('/')
+        return {'device': device}
+
     @app.route('/api/permit_join', name='api_permit_join')
     def permit_join():
         zigate_instance.permit_join()
-        bottle.redirect('/')
+        return bottle.redirect('/')
 
-    kwargs = {'host': '0.0.0.0', 'port': port,
-              'quiet': quiet, 'debug': debug}
+    @app.route('/api/discover/<addr>', name='api_discover')
+    def api_discover(addr):
+        zigate_instance.discover_device(addr, True)
+        return bottle.redirect(get_url('device', addr=addr))
+
+    @app.route('/api/refresh/<addr>', name='api_refresh')
+    def api_refresh(addr):
+        zigate_instance.refresh_device(addr)
+        return bottle.redirect(get_url('device', addr=addr))
+
+    @app.route('/api/remove/<addr>', name='api_remove')
+    def api_remove(addr):
+        force = bottle.request.query.get('force', 'false') == 'true'
+        zigate_instance.remove_device(addr, force)
+        return bottle.redirect('/')
 
     @app.route('/api/devices', name='api_devices')
     def devices():
@@ -83,6 +105,9 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     def network_table():
         force = bottle.request.query.get('force', 'false') == 'true'
         return {'network_table': zigate_instance.build_neighbours_table(force)}
+
+    kwargs = {'host': '0.0.0.0', 'port': port,
+              'quiet': quiet, 'debug': debug}
 
     if autostart:
         r_app = app

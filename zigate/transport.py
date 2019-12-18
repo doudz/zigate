@@ -67,6 +67,12 @@ class BaseTransport(object):
     def reconnect(self):
         pass
 
+    def vid_pid(self):
+        '''
+        return idVendor and idProduct
+        '''
+        return (0, 0)
+
 
 class FakeTransport(BaseTransport):
     '''
@@ -198,6 +204,12 @@ class ThreadSerialConnection(BaseTransport):
     def initSerial(self):
         self._port = self._find_port(self._port)
         return serial.Serial(self._port, 115200)
+
+    def vid_pid(self):
+        if self.serial:
+            port = list(serial.tools.list_ports.grep(self.serial.port))[0]
+            return (port.vid, port.pid)
+        return BaseTransport.vid_pid(self)
 
     def reconnect(self, retry=True):
         delay = 1
