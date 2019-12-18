@@ -110,7 +110,7 @@ setup(
         'dev': ['tox'],
         'mqtt': ['paho-mqtt']
     },
-    python_requires='>=3',
+    python_requires='>=3.5',
 
     project_urls={
         'Bug Reports': 'https://github.com/doudz/zigate/issues',
