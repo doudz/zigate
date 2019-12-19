@@ -525,8 +525,9 @@ class ZiGate(object):
         return chcksum
 
     def send_to_transport(self, data):
-        if not self.connection.is_connected():
-            raise Exception('Not connected to zigate')
+        if not self.connection or not self.connection.is_connected():
+            LOGGER.error('Not connected to zigate')
+            return
         self.connection.send(data)
 
     def send_data(self, cmd, data="", wait_response=None, wait_status=True):
@@ -2310,12 +2311,12 @@ class ZiGateGPIO(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
-        self._model = 'GPIO'
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(27, GPIO.OUT)  # GPIO2
         self.set_running_mode()
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start,
                         auto_save=auto_save, channel=channel, adminpanel=adminpanel)
+        self._model = 'GPIO'
 
     def set_running_mode(self):
         GPIO.output(27, GPIO.HIGH)  # GPIO2
@@ -2351,7 +2352,6 @@ class ZiGateWiFi(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
-        self._model = 'WiFi'
         self._host = host
         ZiGate.__init__(self, port=port, path=path,
                         auto_start=auto_start,
@@ -2359,6 +2359,7 @@ class ZiGateWiFi(ZiGate):
                         channel=channel,
                         adminpanel=adminpanel
                         )
+        self._model = 'WiFi'
 
     def setup_connection(self):
         self.connection = ThreadSocketConnection(self, self._host, self._port)

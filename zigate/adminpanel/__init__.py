@@ -44,6 +44,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     @bottle.view('index')
     def index():
         from zigate import version
+        print(zigate_instance)
         connected = zigate_instance.connection and zigate_instance.connection.is_connected()
         return {'port': zigate_instance._port or 'auto',
                 'libversion': version.__version__,
