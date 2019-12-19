@@ -218,8 +218,6 @@ class ZiGate(object):
         if self.connection:
             if self.connection.vid_pid() == (0x0403, 0x6001):
                 self._model = 'DIN'
-            else:
-                self._model = 'TTL'
         return self._model
 
     def set_bootloader_mode(self):
