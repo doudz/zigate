@@ -207,8 +207,9 @@ class ThreadSerialConnection(BaseTransport):
 
     def vid_pid(self):
         if self.serial:
-            port = list(serial.tools.list_ports.grep(self.serial.port))[0]
-            return (port.vid, port.pid)
+            ports = list(serial.tools.list_ports.grep(self.serial.port))
+            if ports:
+                return (ports[0].vid, ports[0].pid)
         return BaseTransport.vid_pid(self)
 
     def reconnect(self, retry=True):
