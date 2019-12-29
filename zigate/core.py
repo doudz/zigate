@@ -2197,7 +2197,7 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         manufacturer_specific = manufacturer_code != 0
-        mode = {'stop': '0000', 'burglar': '1000', 'fire': '01000', 'emergency': '1100',
+        mode = {'stop': '0000', 'burglar': '1000', 'fire': '0100', 'emergency': '1100',
                 'policepanic': '0010', 'firepanic': '1010', 'emergencypanic': '0110'
                 }.get(mode, '0000')
         strobe = '10' if strobe else '00'
