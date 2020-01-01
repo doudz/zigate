@@ -368,6 +368,12 @@ class ThreadSocketConnection(ThreadSerialConnection):
         self.serial.shutdown(2)
         self.serial.close()
 
+    def vid_pid(self):
+        '''
+        return idVendor and idProduct
+        '''
+        return (0, 0)
+
 
 def discover_host():
     from zeroconf import ServiceBrowser, Zeroconf
