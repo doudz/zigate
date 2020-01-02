@@ -718,12 +718,14 @@ class R804E(Response):
         additional = self.data.pop('additional')
         neighbours = []
         for i in range(self.data['count']):
+            if len(additional) < 3:
+                break
             neighbour, additional = self._decode('!HQQBBB',
                                                  ['addr', 'extended_panid', 'ieee', 'depth', 'lqi', 'bit_field'],
                                                  additional)
             neighbours.append(neighbour)
         self.data['neighbours'] = neighbours
-        if additional:
+        if len(additional) >= 2:
             self.data['addr'] = struct.unpack('!H', additional)[0]
         self._format(self.data)
 # Bit map of attributes Described below: uint8_t

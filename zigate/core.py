@@ -57,7 +57,7 @@ AUTO_SAVE = 5 * 60  # 5 minutes
 BIND_REPORT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
-WAIT_TIMEOUT = 3
+WAIT_TIMEOUT = 10
 
 # Device id
 ACTUATORS = [0x0009, 0x0010, 0x0051,
@@ -385,6 +385,7 @@ class ZiGate(object):
                 self._groups = groups
                 self._scenes = data.get('scenes', {})
                 self._neighbours_table_cache = data.get('neighbours_table', [])
+                LOGGER.debug('Load neighbours cache: %s', self._neighbours_table_cache)
                 devices = data.get('devices', [])
                 for data in devices:
                     try:
@@ -1254,8 +1255,8 @@ class ZiGate(object):
         while index < entries:
             r = self.lqi_request(addr, index, True)
             if not r:
-                LOGGER.error('Failed to build neighbours table')
-                return
+                LOGGER.error('Failed to build neighbours table: addr=%s, index=%s', addr, index)
+                return []
             data = r.cleaned_data()
             entries = data['entries']
             for n in data['neighbours']:
@@ -1266,7 +1267,10 @@ class ZiGate(object):
                 # bit 6-7 = u2DeviceType 0/1/2
                 is_parent = n['bit_field'][2:4] == '00'
                 is_child = n['bit_field'][2:4] == '01'
-                is_router = n['bit_field'][6:8] == '01'
+
+                # The coordinator acts as a router once the network is bootstrapped
+                is_router = n['bit_field'][6:8] in ('00', '01')
+
                 if is_parent:
                     neighbours.append((n['addr'], addr, n['lqi']))
                 elif is_child:
@@ -1279,6 +1283,7 @@ class ZiGate(object):
                     if n2:
                         neighbours += n2
             index += data['count']
+        LOGGER.debug('Gathered neighbours for addr=%s: %s', addr, neighbours)
         return neighbours
 
     def refresh_device(self, addr, full=False):
