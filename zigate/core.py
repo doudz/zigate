@@ -1238,25 +1238,21 @@ class ZiGate(object):
         Build neighbours table
         '''
         if force or not self._neighbours_table_cache:
-            self._neighbours_table_cache = self._neighbours_table(self.addr)
+            self._neighbours_table_cache = self._neighbours_table()
         return self._neighbours_table_cache
 
-    def _neighbours_table(self, addr, nodes=None):
+    def _neighbours_table(self):
         '''
         Build neighbours table
         '''
-        if nodes is None:
-            nodes = []
-        LOGGER.debug('Search for children of %s', addr)
-        nodes.append(addr)
-        index = 0
         neighbours = []
-        entries = 255
-        while index < entries:
-            r = self.lqi_request(addr, index, True)
+        LOGGER.debug('Build neighbours tables')
+        for addr in [self.addr] + [device.addr for device in self.devices]:
+            LOGGER.debug('Gathering neighbours for addr=%s...', addr)
+            r = self.lqi_request(addr, 0, True)
             if not r:
-                LOGGER.error('Failed to build neighbours table: addr=%s, index=%s', addr, index)
-                return []
+                LOGGER.error('Failed to request LQI for %s device', addr)
+                continue
             data = r.cleaned_data()
             entries = data['entries']
             for n in data['neighbours']:
@@ -1273,17 +1269,11 @@ class ZiGate(object):
 
                 if is_parent:
                     neighbours.append((n['addr'], addr, n['lqi']))
-                elif is_child:
+                else:
                     neighbours.append((addr, n['addr'], n['lqi']))
-                elif n['depth'] == 0:
-                    neighbours.append((self.addr, n['addr'], n['lqi']))
-                if is_router and n['addr'] not in nodes:
-                    LOGGER.debug('%s is a router, search for children', n['addr'])
-                    n2 = self._neighbours_table(n['addr'], nodes)
-                    if n2:
-                        neighbours += n2
-            index += data['count']
-        LOGGER.debug('Gathered neighbours for addr=%s: %s', addr, neighbours)
+            LOGGER.debug('Gathered neighbours for addr=%s: %s', addr, neighbours)
+
+        LOGGER.debug('Gathered neighbours table: %s', neighbours)
         return neighbours
 
     def refresh_device(self, addr, full=False):
