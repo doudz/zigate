@@ -1238,6 +1238,7 @@ class ZiGate(object):
         Build neighbours table
         '''
         if force or not self._neighbours_table_cache:
+            # TODO: avoid concurrent invocations
             self._neighbours_table_cache = self._neighbours_table()
         return self._neighbours_table_cache
 
@@ -1248,6 +1249,14 @@ class ZiGate(object):
         neighbours = []
         LOGGER.debug('Build neighbours tables')
         for addr in [self.addr] + [device.addr for device in self.devices]:
+            if addr != self.addr:
+                # Skip known Zigbee End Devices (not ZC or ZR)
+                device = self._get_device(addr)
+                if device and device.info and device.info.get('bit_field'):
+                    logical_type = device.info['bit_field'][-2:]
+                    if logical_type not in ('00', '01'):
+                        LOGGER.debug('Skip gathering of neighbours for addr=%s (logical type=%s, device type=%s)', addr, logical_type, device.get_type())
+                        continue
             LOGGER.debug('Gathering neighbours for addr=%s...', addr)
             r = self.lqi_request(addr, 0, True)
             if not r:
@@ -1262,11 +1271,6 @@ class ZiGate(object):
                 # bit 4-5 = u2PermitJoining 0/1
                 # bit 6-7 = u2DeviceType 0/1/2
                 is_parent = n['bit_field'][2:4] == '00'
-                is_child = n['bit_field'][2:4] == '01'
-
-                # The coordinator acts as a router once the network is bootstrapped
-                is_router = n['bit_field'][6:8] in ('00', '01')
-
                 if is_parent:
                     neighbours.append((n['addr'], addr, n['lqi']))
                 else:
