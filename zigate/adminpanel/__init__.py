@@ -28,7 +28,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
 
     def get_url(routename, **kargs):
         '''
-        customized get_url to allow additionnal prefix args
+        customized get_url to allow additional prefix args
         '''
         scriptname = bottle.request.environ.get('SCRIPT_NAME', '').strip('/') + '/'
         location = app.router.build(routename, **kargs).lstrip('/')
