@@ -46,6 +46,7 @@
 		<thead>
 			<tr>
 				<th>Group</th>
+				<th>Endpoint</th>
 				<th>Device</th>
 				<th>Last Seen</th>
 			<tr>
@@ -56,6 +57,9 @@
 			<tr>
 				% if i == 0:
 				<td rowspan="{{len(group_devices)}}">{{group}}</td>
+				% end
+				% if group or i == 0:
+				<td rowspan="{{1 if group else len(group_devices)}}">{{device['endpoint']}}</td>
 				% end
 				<td><a href="{{get_url('device', addr=device['addr'])}}">{{device['name']}}</a></td>
 				<td>{{device['last_seen']}}</td>
