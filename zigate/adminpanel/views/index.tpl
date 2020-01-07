@@ -1,32 +1,87 @@
 % rebase('base.tpl')
-<ul>
-	<li>Lib version : {{libversion}}</li>
-	<li>Port : {{port}}</li>
-	<li>Connected : {{connected}}</li>
-	<li>Firmware version : {{version}}</li>
-	<li>Model : {{model}}</li>
-</ul>
+<div style="display: inline-block; vertical-align: top;">
+	<h3>ZiGate</h3>
+	<table class="pure-table pure-table-bordered">
+		<thead>
+			<tr>
+				<th>Attribute</th>
+				<th>Value</th>
+			<tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Lib version</td>
+				<td>{{libversion}}</td>
+			</tr>
+			<tr>
+				<td>Port</td>
+				<td>{{port}}</td>
+			</tr>
+			<tr>
+				<td>Connected</td>
+				<td>{{connected}}</td>
+			</tr>
+			<tr>
+				<td>Firmware version</td>
+				<td>{{version}}</td>
+			</tr>
+			<tr>
+				<td>Model</td>
+				<td>{{model}}</td>
+			</tr>
+		</tbody>
+	</table>
+</div>
 
-<h2>Devices :</h2>
-<table class="pure-table pure-table-bordered">
-	<thead>
-		<tr>
-			<th>Device</th>
-			<th>Last Seen</th>
-		<tr>
-	</thead>
-	<tbody>
-	  % for device in devices:
-	  	<tr>
-	    	<td><a href="{{get_url('device', addr=device.addr)}}">{{device}}</a></td>
-	    	<td>{{device.info.get('last_seen')}}</td>
-	    </tr>
-	  % end
-  	</tbody>
-</table>
+<div style="display: inline-block; vertical-align: top;">
+	<h3>Actions</h3>
+	<a class="pure-button" href="{{get_url('api_permit_join')}}">Permit Join</a>
+</div>
 
-<h2>Groups :</h2>
-{{groups}}
+<br>
 
-<h2>Actions :</h2>
-<a class="pure-button" href="{{get_url('api_permit_join')}}">Permit Join</a>
+<div style="display: inline-block; vertical-align: top;">
+	<h3>Devices</h3>
+	<table class="pure-table pure-table-bordered">
+		<thead>
+			<tr>
+				<th>Group</th>
+				<th>Device</th>
+				<th>Last Seen</th>
+			<tr>
+		</thead>
+		<tbody>
+		% for group, group_devices in grouped_devices.items():
+			% for i, device in enumerate(group_devices):
+			<tr>
+				% if i == 0:
+				<td rowspan="{{len(group_devices)}}">{{group}}</td>
+				% end
+				<td><a href="{{get_url('device', addr=device['addr'])}}">{{device['name']}}</a></td>
+				<td>{{device['last_seen']}}</td>
+			</tr>
+			%end
+		% end
+		</tbody>
+	</table>
+</div>
+
+<div style="display: inline-block; vertical-align: top;">
+	<h3>Groups</h3>
+	<table class="pure-table pure-table-bordered">
+		<thead>
+			<tr>
+				<th>Group</th>
+				<th>Devices</th>
+			<tr>
+		</thead>
+		<tbody>
+		% for group, group_devices in groups.items():
+			<tr>
+				<td>{{group}}</td>
+				<td>{{group_devices}}</td>
+			</tr>
+		% end
+		</tbody>
+	</table>
+</div>

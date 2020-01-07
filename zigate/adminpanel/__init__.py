@@ -9,6 +9,7 @@ import os
 import threading
 import bottle
 from json import dumps
+from zigate import version as zigate_version
 from zigate.core import DeviceEncoder
 from zigate.const import ADMINPANEL_PORT
 
@@ -43,17 +44,44 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     @app.route('/', name='index')
     @bottle.view('index')
     def index():
-        from zigate import version
-        print(zigate_instance)
         connected = zigate_instance.connection and zigate_instance.connection.is_connected()
-        return {'port': zigate_instance._port or 'auto',
-                'libversion': version.__version__,
-                'version': zigate_instance.get_version_text(),
-                'connected': connected,
-                'devices': zigate_instance.devices,
-                'groups': zigate_instance.groups,
-                'model': zigate_instance.model
-                }
+
+        grouped_devices = {}
+        processed = []
+        def add_device_to_group(group, addr):
+            name = "Missing"
+            last_seen = ""
+            if addr == "0000":
+                name = "ZiGate"
+            zdev = zigate_instance.get_device_from_addr(addr)
+            if zdev:
+                name = str(zdev)
+                last_seen = zdev.info["last_seen"]
+            else:
+                name = "{} ({})".format(name, addr)
+            group.append({"addr": addr, "name": name, "last_seen": last_seen})
+
+        for group, group_devices in zigate_instance.groups.items():
+            grouped_devices[group] = []
+            for device in group_devices:
+                addr = device[0]
+                processed.append(addr)
+                add_device_to_group(grouped_devices[group], addr)
+		
+        grouped_devices[""] = []
+        for device in zigate_instance.devices:
+            if not device.addr in processed:
+                add_device_to_group(grouped_devices[""], device.addr)
+
+        return {
+            'libversion': zigate_version.__version__,
+            'port': zigate_instance._port or 'auto',
+            'connected': connected,
+            'version': zigate_instance.get_version_text(),
+            'model': zigate_instance.model,
+            'groups': zigate_instance.groups,
+            'grouped_devices': grouped_devices,
+        }
 
     @app.route('/networkmap', name='networkmap')
     @bottle.view('networkmap')
