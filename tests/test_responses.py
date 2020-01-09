@@ -281,6 +281,16 @@ class TestResponses(unittest.TestCase):
                                           ('addr', 'abcd')
                                           ])
                              )
+        msg_data = unhexlify(b'38c10701060000')
+        r = responses.R804E(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('sequence', 56), ('status', 193), ('entries', 7),
+                                          ('count', 1), ('index', 6),
+                                          ('lqi', 255),
+                                          ('neighbours', []),
+                                          ('addr', '0000')
+                                          ])
+                             )
 
     def test_response_8120(self):
         msg_data = unhexlify(b'011234010006000000')
