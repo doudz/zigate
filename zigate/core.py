@@ -57,7 +57,7 @@ AUTO_SAVE = 5 * 60  # 5 minutes
 BIND_REPORT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
-WAIT_TIMEOUT = 10
+WAIT_TIMEOUT = 5
 
 # Device id
 ACTUATORS = [0x0009, 0x0010, 0x0051,
