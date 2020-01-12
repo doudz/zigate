@@ -48,6 +48,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
 
         grouped_devices = {}
         processed = []
+
         def add_device_to_group(group, addr, endpoint=""):
             name = "Missing"
             last_seen = ""
@@ -68,10 +69,10 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
                 endpoint = device[1]
                 processed.append(addr)
                 add_device_to_group(grouped_devices[group], addr, endpoint)
-		
+
         grouped_devices[""] = []
         for device in zigate_instance.devices:
-            if not device.addr in processed:
+            if device.addr not in processed:
                 add_device_to_group(grouped_devices[""], device.addr)
 
         return {
