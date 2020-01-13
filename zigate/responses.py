@@ -98,7 +98,7 @@ class Response(object):
         sdata, msg_data = self._decode(fmt, keys, msg_data)
         self.data.update(sdata)
         if msg_data:
-            self.data['additionnal'] = msg_data
+            self.data['additional'] = msg_data
 
         # reformat output, TODO: do it live
         self._format(self.data)
@@ -246,35 +246,35 @@ class R8002(Response):
 
     def decode(self):
         Response.decode(self)
-        additionnal = self.data.pop('additionnal')
-        source_address_mode = struct.unpack('!B', additionnal[:1])[0]
+        additional = self.data.pop('additional')
+        source_address_mode = struct.unpack('!B', additional[:1])[0]
         self.data['source_address_mode'] = source_address_mode
-        additionnal = additionnal[1:]
+        additional = additional[1:]
         if source_address_mode == 3:
-            source_address = struct.unpack('!Q', additionnal[:8])[0]
+            source_address = struct.unpack('!Q', additional[:8])[0]
             source_address = '{:016x}'.format(source_address)
-            additionnal = additionnal[8:]
+            additional = additional[8:]
         else:
-            source_address = struct.unpack('!H', additionnal[:2])[0]
+            source_address = struct.unpack('!H', additional[:2])[0]
             source_address = '{:04x}'.format(source_address)
-            additionnal = additionnal[2:]
+            additional = additional[2:]
         self.data['source_address'] = source_address
 
-        dst_address_mode = struct.unpack('!B', additionnal[:1])[0]
+        dst_address_mode = struct.unpack('!B', additional[:1])[0]
         self.data['dst_address_mode'] = dst_address_mode
-        additionnal = additionnal[1:]
+        additional = additional[1:]
         if dst_address_mode == 3:
-            dst_address = struct.unpack('!Q', additionnal[:8])[0]
+            dst_address = struct.unpack('!Q', additional[:8])[0]
             dst_address = '{:016x}'.format(dst_address)
-            additionnal = additionnal[8:]
+            additional = additional[8:]
         else:
-            dst_address = struct.unpack('!H', additionnal[:2])[0]
+            dst_address = struct.unpack('!H', additional[:2])[0]
             dst_address = '{:04x}'.format(dst_address)
-            additionnal = additionnal[2:]
+            additional = additional[2:]
         self.data['dst_address'] = dst_address
-#         payload_size = struct.unpack('!B', additionnal[:1])[0]
+#         payload_size = struct.unpack('!B', additional[:1])[0]
 #         self.data['payload_size'] = payload_size
-        self.data['payload'] = additionnal
+        self.data['payload'] = additional
 
 
 @register_response
@@ -399,7 +399,7 @@ class R8024(Response):
     def decode(self):
         Response.decode(self)
         if self.data['status'] < 2:
-            data = self.data.pop('additionnal')
+            data = self.data.pop('additional')
             data = struct.unpack('!HQB', data)
             self.data['addr'] = data[0]
             self.data['ieee'] = data[1]
@@ -650,12 +650,12 @@ class R804A(Response):
 
     def decode(self):
         Response.decode(self)
-        additionnal = self.data.pop('additionnal')
-        if self.data['channel_count'] == len(additionnal):
-            channels = struct.unpack('!{}B'.format(self.data['channel_count']), additionnal)
+        additional = self.data.pop('additional')
+        if self.data['channel_count'] == len(additional):
+            channels = struct.unpack('!{}B'.format(self.data['channel_count']), additional)
             self.data['channels'] = [OrderedDict([('channel', c)]) for c in channels]
         else:
-            channels = struct.unpack('!{}BH'.format(self.data['channel_count']), additionnal)
+            channels = struct.unpack('!{}BH'.format(self.data['channel_count']), additional)
             self.data['channels'] = [{'channel': c} for c in channels[:-1]]
             self.data['addr'] = channels[-1]
         self._format(self.data)
@@ -715,16 +715,16 @@ class R804E(Response):
 
     def decode(self):
         Response.decode(self)
-        additionnal = self.data.pop('additionnal')
+        additional = self.data.pop('additional')
         neighbours = []
         for i in range(self.data['count']):
-            neighbour, additionnal = self._decode('!HQQBBB',
+            neighbour, additional = self._decode('!HQQBBB',
                                                   ['addr', 'extended_panid', 'ieee', 'depth', 'lqi', 'bit_field'],
-                                                  additionnal)
+                                                  additional)
             neighbours.append(neighbour)
         self.data['neighbours'] = neighbours
-        if additionnal:
-            self.data['addr'] = struct.unpack('!H', additionnal)[0]
+        if additional:
+            self.data['addr'] = struct.unpack('!H', additional)[0]
         self._format(self.data)
 # Bit map of attributes Described below: uint8_t
 # {bit 0-1 Device Type
@@ -791,8 +791,8 @@ class R8062(Response):
     def decode(self):
         try:
             Response.decode(self)
-            additionnal = self.data.pop('additionnal')
-            d = struct.unpack('!{}HH'.format(self.data['group_count']), additionnal)
+            additional = self.data.pop('additional')
+            d = struct.unpack('!{}HH'.format(self.data['group_count']), additional)
             self.data['groups'] = [{'group': gaddr} for gaddr in d[:-1]]
             self.data['addr'] = d[-1]
             self._format(self.data)
@@ -964,8 +964,8 @@ class R80A6(Response):
     def decode(self):
         try:
             Response.decode(self)
-            additionnal = self.data.pop('additionnal')
-            d = struct.unpack('!{}BH'.format(self.data['scene_count']), additionnal)
+            additional = self.data.pop('additional')
+            d = struct.unpack('!{}BH'.format(self.data['scene_count']), additional)
             self.data['scenes'] = [{'scene': gaddr} for gaddr in d[:-1]]
             self.data['addr'] = d[-1]
             self._format(self.data, ['addr'])
@@ -1210,9 +1210,9 @@ class R8702(Response):
             self.s['dst_address'] = 'H'
             self.s['sequence'] = 'B'
         Response.decode(self)
-        if 'additionnal' in self.data:
-            additionnal = self.data.pop('additionnal')
-            self.data['dst_address'], self.data['sequence'] = struct.unpack('!QB', additionnal)
+        if 'additional' in self.data:
+            additional = self.data.pop('additional')
+            self.data['dst_address'], self.data['sequence'] = struct.unpack('!QB', additional)
             self.data['dst_address'] = '{:016x}'.format(self.data['dst_address'])
             if self.data['dst_address_mode'] == 2:
                 self.data['dst_address'] = self.data['dst_address'][:4]
