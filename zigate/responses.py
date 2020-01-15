@@ -719,8 +719,8 @@ class R804E(Response):
         neighbours = []
         for i in range(self.data['count']):
             neighbour, additional = self._decode('!HQQBBB',
-                                                  ['addr', 'extended_panid', 'ieee', 'depth', 'lqi', 'bit_field'],
-                                                  additional)
+                                                 ['addr', 'extended_panid', 'ieee', 'depth', 'lqi', 'bit_field'],
+                                                 additional)
             neighbours.append(neighbour)
         self.data['neighbours'] = neighbours
         if additional:
