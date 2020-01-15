@@ -49,18 +49,18 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         grouped_devices = {}
         processed = []
 
-        def add_device_to_group(group, addr, endpoint=""):
-            name = "Missing"
-            last_seen = ""
-            if addr == "0000":
-                name = "ZiGate"
+        def add_device_to_group(group, addr, endpoint=''):
+            name = 'Missing'
+            last_seen = ''
+            if addr == zigate_instance.addr:
+                name = 'ZiGate'
             zdev = zigate_instance.get_device_from_addr(addr)
             if zdev:
                 name = str(zdev)
-                last_seen = zdev.info["last_seen"]
+                last_seen = zdev.info.get('last_seen', '')
             else:
-                name = "{} ({})".format(name, addr)
-            group.append({"addr": addr, "endpoint": endpoint, "name": name, "last_seen": last_seen})
+                name = '{} ({})'.format(name, addr)
+            group.append({'addr': addr, 'endpoint': endpoint, 'name': name, 'last_seen': last_seen})
 
         for group, group_devices in zigate_instance.groups.items():
             grouped_devices[group] = []
@@ -70,14 +70,18 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
                 processed.append(addr)
                 add_device_to_group(grouped_devices[group], addr, endpoint)
 
-        grouped_devices[""] = []
+        grouped_devices[''] = []
         for device in zigate_instance.devices:
             if device.addr not in processed:
-                add_device_to_group(grouped_devices[""], device.addr)
+                add_device_to_group(grouped_devices[''], device.addr)
+
+        port = zigate_instance._port or 'auto'
+        if hasattr(zigate_instance, '_host'):
+            port = '{}:{}'.format(zigate_instance._host, port)
 
         return {
             'libversion': zigate_version.__version__,
-            'port': zigate_instance._port or 'auto',
+            'port': port,
             'connected': connected,
             'version': zigate_instance.get_version_text(),
             'model': zigate_instance.model,
