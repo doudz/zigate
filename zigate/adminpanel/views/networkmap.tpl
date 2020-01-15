@@ -191,13 +191,12 @@
                 _networkGraph.stabilize();
             });
         });
-
-        $('#bt_refresh').click(function () {
-            refreshData(false);
-        });
-
-        $('#bt_force_refresh').click(function () {
-            refreshData(true);
-        });
     }
+    $('#bt_refresh').click(function () {
+        refreshData(false);
+    });
+
+    $('#bt_force_refresh').click(function () {
+        refreshData(true);
+    });
 </script>
