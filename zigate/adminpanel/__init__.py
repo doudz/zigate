@@ -104,14 +104,22 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         return bottle.redirect('/')
 
     @app.route('/api/discover/<addr>', name='api_discover')
+    @bottle.view('device')
     def api_discover(addr):
         zigate_instance.discover_device(addr, True)
-        return bottle.redirect(get_url('device', addr=addr))
+        device = zigate_instance.get_device_from_addr(addr)
+        if not device:
+            return bottle.redirect('/')
+        return {'device': device}
 
     @app.route('/api/refresh/<addr>', name='api_refresh')
+    @bottle.view('device')
     def api_refresh(addr):
         zigate_instance.refresh_device(addr)
-        return bottle.redirect(get_url('device', addr=addr))
+        device = zigate_instance.get_device_from_addr(addr)
+        if not device:
+            return bottle.redirect('/')
+        return {'device': device}
 
     @app.route('/api/remove/<addr>', name='api_remove')
     def api_remove(addr):
