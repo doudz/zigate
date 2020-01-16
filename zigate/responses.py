@@ -1118,7 +1118,7 @@ class R8140(Response):
         Response.decode(self)
 
     def cleaned_data(self):
-        return self._filter_data(['attribute'])
+        return self._filter_data(['addr', 'endpoint', 'cluster', 'attribute'])
 
 
 @register_response
