@@ -207,8 +207,9 @@ class ThreadSerialConnection(BaseTransport):
 
     def vid_pid(self):
         if self.serial:
-            port = list(serial.tools.list_ports.grep(self.serial.port))[0]
-            return (port.vid, port.pid)
+            ports = list(serial.tools.list_ports.grep(self.serial.port))
+            if ports:
+                return (ports[0].vid, ports[0].pid)
         return BaseTransport.vid_pid(self)
 
     def reconnect(self, retry=True):
@@ -366,6 +367,12 @@ class ThreadSocketConnection(ThreadSerialConnection):
             time.sleep(0.1)
         self.serial.shutdown(2)
         self.serial.close()
+
+    def vid_pid(self):
+        '''
+        return idVendor and idProduct
+        '''
+        return (0, 0)
 
 
 def discover_host():

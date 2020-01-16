@@ -109,7 +109,10 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 768),
                                           ('lqi', 255)]))
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([('attribute', 8),
+                             OrderedDict([('addr', '932d'),
+                                          ('endpoint', 3),
+                                          ('cluster', 768),
+                                          ('attribute', 8),
                                           ]))
 
     def test_response_8062(self):
@@ -261,6 +264,7 @@ class TestResponses(unittest.TestCase):
                                                                       ('extended_panid', 15822734423051652312),
                                                                       ('ieee', '00158d0001e45b44'), ('depth', 1),
                                                                       ('lqi', 111), ('bit_field', '00011010')])]),
+                                          ('addr', 'ffff')
                                           ])
                              )
         msg_data = unhexlify(b'e6000e02001d4ddb95a5201556ccd800158d0001e56372'
@@ -279,6 +283,16 @@ class TestResponses(unittest.TestCase):
                                                                       ('ieee', '00158d0001e45b44'), ('depth', 1),
                                                                       ('lqi', 111), ('bit_field', '00011010')])]),
                                           ('addr', 'abcd')
+                                          ])
+                             )
+        msg_data = unhexlify(b'38c10701060000')
+        r = responses.R804E(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('sequence', 56), ('status', 193), ('entries', 7),
+                                          ('count', 1), ('index', 6),
+                                          ('lqi', 255),
+                                          ('neighbours', []),
+                                          ('addr', '0000')
                                           ])
                              )
 

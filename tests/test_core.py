@@ -711,6 +711,12 @@ class TestCore(unittest.TestCase):
         self.assertEqual(self.zigate.channel, 11)
 
     def test_build_neighbours_table(self):
+        device = core.Device({'addr': 'abcd', 'ieee': '0023456789abcdef', 'bit_field': '00011000'}, self.zigate)
+        self.zigate._devices['abcd'] = device
+        device = core.Device({'addr': '9876', 'ieee': '0003456789abcdef', 'bit_field': '00011010'}, self.zigate)
+        self.zigate._devices['9876'] = device
+        device = core.Device({'addr': '1234', 'ieee': '0000456789abcdef', 'bit_field': '00011010'}, self.zigate)
+        self.zigate._devices['1234'] = device
         self.zigate.connection.add_auto_response((0x004e, b'000000'), 0x804e,
                                                  unhexlify(b'0100010100abcd0123456789abcdef0123456789abcdef01b665'))
         self.zigate.connection.add_auto_response((0x004e, b'abcd00'), 0x804e,
@@ -719,7 +725,7 @@ class TestCore(unittest.TestCase):
                                                            b'12340123456789abcdef0123456789abcdef00b622'))
         table = self.zigate.build_neighbours_table(True)
         self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182),
-                                 ('0000', '1234', 182)])
+                                 ('abcd', '1234', 182)])
 
     def test_unsupported_attribute(self):
         # some device like profalux doesn't have model identifier

@@ -9,6 +9,7 @@ import os
 import threading
 import bottle
 from json import dumps
+from zigate import version as zigate_version
 from zigate.core import DeviceEncoder
 from zigate.const import ADMINPANEL_PORT
 
@@ -25,14 +26,15 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     app = bottle.Bottle()
     app.install(bottle.JSONPlugin(json_dumps=lambda s: dumps(s, cls=DeviceEncoder)))
 
-    def get_url(routename, **kargs):
+    def get_url(routename, **kwargs):
         '''
-        customized get_url to allow additionnal prefix args
+        customized get_url to allow additional prefix args
         '''
+        redirect = kwargs.pop('redirect', False)
         scriptname = bottle.request.environ.get('SCRIPT_NAME', '').strip('/') + '/'
-        location = app.router.build(routename, **kargs).lstrip('/')
+        location = app.router.build(routename, **kwargs).lstrip('/')
         url = bottle.urljoin(bottle.urljoin('/', scriptname), location)
-        if prefix:
+        if prefix and not redirect:
             url = prefix + url
         return url
 
@@ -43,16 +45,50 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     @app.route('/', name='index')
     @bottle.view('index')
     def index():
-        from zigate import version
         connected = zigate_instance.connection and zigate_instance.connection.is_connected()
-        return {'port': zigate_instance._port or 'auto',
-                'libversion': version.__version__,
-                'version': zigate_instance.get_version_text(),
-                'connected': connected,
-                'devices': zigate_instance.devices,
-                'groups': zigate_instance.groups,
-                'model': zigate_instance.model
-                }
+
+        grouped_devices = {}
+        processed = []
+
+        def add_device_to_group(group, addr, endpoint=''):
+            name = 'Missing'
+            last_seen = ''
+            if addr == zigate_instance.addr:
+                name = 'ZiGate'
+            zdev = zigate_instance.get_device_from_addr(addr)
+            if zdev:
+                name = str(zdev)
+                last_seen = zdev.info.get('last_seen', '')
+            else:
+                name = '{} ({})'.format(name, addr)
+            group.append({'addr': addr, 'endpoint': endpoint, 'name': name, 'last_seen': last_seen})
+
+        for group, group_devices in zigate_instance.groups.items():
+            grouped_devices[group] = []
+            for device in group_devices:
+                addr = device[0]
+                endpoint = device[1]
+                processed.append(addr)
+                add_device_to_group(grouped_devices[group], addr, endpoint)
+
+        grouped_devices[''] = []
+        for device in zigate_instance.devices:
+            if device.addr not in processed:
+                add_device_to_group(grouped_devices[''], device.addr)
+
+        port = zigate_instance._port or 'auto'
+        if hasattr(zigate_instance, '_host'):
+            port = '{}:{}'.format(zigate_instance._host, port)
+
+        return {
+            'libversion': zigate_version.__version__,
+            'port': port,
+            'connected': connected,
+            'version': zigate_instance.get_version_text(),
+            'model': zigate_instance.model,
+            'groups': zigate_instance.groups,
+            'grouped_devices': grouped_devices,
+        }
 
     @app.route('/networkmap', name='networkmap')
     @bottle.view('networkmap')
@@ -64,29 +100,29 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     def device(addr):
         device = zigate_instance.get_device_from_addr(addr)
         if not device:
-            return bottle.redirect('/')
+            return bottle.redirect(get_url('index'))
         return {'device': device}
 
     @app.route('/api/permit_join', name='api_permit_join')
     def permit_join():
         zigate_instance.permit_join()
-        return bottle.redirect('/')
+        return bottle.redirect(get_url('index'))
 
     @app.route('/api/discover/<addr>', name='api_discover')
     def api_discover(addr):
         zigate_instance.discover_device(addr, True)
-        return bottle.redirect(get_url('device', addr=addr))
+        return bottle.redirect(get_url('device', addr=addr, redirect=True))
 
     @app.route('/api/refresh/<addr>', name='api_refresh')
     def api_refresh(addr):
         zigate_instance.refresh_device(addr)
-        return bottle.redirect(get_url('device', addr=addr))
+        return bottle.redirect(get_url('device', addr=addr, redirect=True))
 
     @app.route('/api/remove/<addr>', name='api_remove')
     def api_remove(addr):
         force = bottle.request.query.get('force', 'false') == 'true'
         zigate_instance.remove_device(addr, force)
-        return bottle.redirect('/')
+        return bottle.redirect(get_url('index'))
 
     @app.route('/api/devices', name='api_devices')
     def devices():

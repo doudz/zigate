@@ -57,10 +57,10 @@ AUTO_SAVE = 5 * 60  # 5 minutes
 BIND_REPORT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
-WAIT_TIMEOUT = 3
+WAIT_TIMEOUT = 5
 
 # Device id
-ACTUATORS = [0x0010, 0x0051,
+ACTUATORS = [0x0009, 0x0010, 0x0051,
              0x010a, 0x010b, 0x010c, 0x010d,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0202, 0x0210, 0x0220,
@@ -178,6 +178,7 @@ class ZiGate(object):
         self._groups = {}
         self._scenes = {}
         self._neighbours_table_cache = []
+        self._building_neighbours_table = False
         self._path = path
         self._version = None
         self._port = port
@@ -385,6 +386,7 @@ class ZiGate(object):
                 self._groups = groups
                 self._scenes = data.get('scenes', {})
                 self._neighbours_table_cache = data.get('neighbours_table', [])
+                LOGGER.debug('Load neighbours cache: %s', self._neighbours_table_cache)
                 devices = data.get('devices', [])
                 for data in devices:
                     try:
@@ -525,8 +527,9 @@ class ZiGate(object):
         return chcksum
 
     def send_to_transport(self, data):
-        if not self.connection.is_connected():
-            raise Exception('Not connected to zigate')
+        if not self.connection or not self.connection.is_connected():
+            LOGGER.error('Not connected to zigate')
+            return
         self.connection.send(data)
 
     def send_data(self, cmd, data="", wait_response=None, wait_status=True):
@@ -1236,27 +1239,39 @@ class ZiGate(object):
         Build neighbours table
         '''
         if force or not self._neighbours_table_cache:
-            self._neighbours_table_cache = self._neighbours_table(self.addr)
+            if not self._building_neighbours_table:
+                self._building_neighbours_table = True
+                try:
+                    self._neighbours_table_cache = self._neighbours_table()
+                finally:
+                    self._building_neighbours_table = False
+            else:
+                LOGGER.warning('building neighbours table already started')
         return self._neighbours_table_cache
 
-    def _neighbours_table(self, addr, nodes=None):
+    def _neighbours_table(self):
         '''
         Build neighbours table
         '''
-        if nodes is None:
-            nodes = []
-        LOGGER.debug('Search for children of %s', addr)
-        nodes.append(addr)
-        index = 0
         neighbours = []
-        entries = 255
-        while index < entries:
-            r = self.lqi_request(addr, index, True)
-            if not r:
-                LOGGER.error('Failed to build neighbours table')
-                return
+        LOGGER.debug('Build neighbours tables')
+        for addr in [self.addr] + [device.addr for device in self.devices]:
+            if addr != self.addr:
+                # Skip known Zigbee End Devices (not ZC or ZR)
+                device = self._get_device(addr)
+                if device and device.info and device.info.get('bit_field'):
+                    logical_type = device.info['bit_field'][-2:]
+                    if logical_type not in ('00', '01'):
+                        LOGGER.debug('Skip gathering of neighbours for addr=%s (logical type=%s, device type=%s)',
+                                     addr, logical_type, device.get_type())
+                        continue
+            LOGGER.debug('Gathering neighbours for addr=%s...', addr)
+            r = self.lqi_request(addr, 0, True)
+            if not r or r['status'] != 0:
+                LOGGER.error('Failed to request LQI for %s device', addr)
+                continue
             data = r.cleaned_data()
-            entries = data['entries']
+            # entries = data['entries']
             for n in data['neighbours']:
                 # bit_field
                 # bit 0-1 = u2RxOnWhenIdle 0/1
@@ -1264,20 +1279,15 @@ class ZiGate(object):
                 # bit 4-5 = u2PermitJoining 0/1
                 # bit 6-7 = u2DeviceType 0/1/2
                 is_parent = n['bit_field'][2:4] == '00'
-                is_child = n['bit_field'][2:4] == '01'
-                is_router = n['bit_field'][6:8] == '01'
                 if is_parent:
-                    neighbours.append((n['addr'], addr, n['lqi']))
-                elif is_child:
-                    neighbours.append((addr, n['addr'], n['lqi']))
-                elif n['depth'] == 0:
-                    neighbours.append((self.addr, n['addr'], n['lqi']))
-                if is_router and n['addr'] not in nodes:
-                    LOGGER.debug('%s is a router, search for children', n['addr'])
-                    n2 = self._neighbours_table(n['addr'], nodes)
-                    if n2:
-                        neighbours += n2
-            index += data['count']
+                    entry = (n['addr'], addr, n['lqi'])
+                else:
+                    entry = (addr, n['addr'], n['lqi'])
+                if entry not in neighbours:
+                    neighbours.append(entry)
+            LOGGER.debug('Gathered neighbours for addr=%s: %s', addr, neighbours)
+
+        LOGGER.debug('Gathered neighbours table: %s', neighbours)
         return neighbours
 
     def refresh_device(self, addr, full=False):
@@ -2196,7 +2206,7 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         manufacturer_specific = manufacturer_code != 0
-        mode = {'stop': '0000', 'burglar': '1000', 'fire': '01000', 'emergency': '1100',
+        mode = {'stop': '0000', 'burglar': '1000', 'fire': '0100', 'emergency': '1100',
                 'policepanic': '0010', 'firepanic': '1010', 'emergencypanic': '0110'
                 }.get(mode, '0000')
         strobe = '10' if strobe else '00'
@@ -2310,12 +2320,12 @@ class ZiGateGPIO(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
-        self._model = 'GPIO'
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(27, GPIO.OUT)  # GPIO2
         self.set_running_mode()
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start,
                         auto_save=auto_save, channel=channel, adminpanel=adminpanel)
+        self._model = 'GPIO'
 
     def set_running_mode(self):
         GPIO.output(27, GPIO.HIGH)  # GPIO2
@@ -2351,7 +2361,6 @@ class ZiGateWiFi(ZiGate):
                  auto_save=True,
                  channel=None,
                  adminpanel=False):
-        self._model = 'WiFi'
         self._host = host
         ZiGate.__init__(self, port=port, path=path,
                         auto_start=auto_start,
@@ -2359,6 +2368,7 @@ class ZiGateWiFi(ZiGate):
                         channel=channel,
                         adminpanel=adminpanel
                         )
+        self._model = 'WiFi'
 
     def setup_connection(self):
         self.connection = ThreadSocketConnection(self, self._host, self._port)
