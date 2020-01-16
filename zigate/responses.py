@@ -727,6 +727,8 @@ class R804E(Response):
         self.data['neighbours'] = neighbours
         if len(additional) >= 2:
             self.data['addr'] = struct.unpack('!H', additional)[0]
+        if 'addr' not in self.data:  # firmware < 3.1a
+            self.data['addr'] = 0xffff
         self._format(self.data)
 # Bit map of attributes Described below: uint8_t
 # {bit 0-1 Device Type

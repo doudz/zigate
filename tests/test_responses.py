@@ -264,6 +264,7 @@ class TestResponses(unittest.TestCase):
                                                                       ('extended_panid', 15822734423051652312),
                                                                       ('ieee', '00158d0001e45b44'), ('depth', 1),
                                                                       ('lqi', 111), ('bit_field', '00011010')])]),
+                                          ('addr', 'ffff')
                                           ])
                              )
         msg_data = unhexlify(b'e6000e02001d4ddb95a5201556ccd800158d0001e56372'

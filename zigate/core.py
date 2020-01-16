@@ -1256,6 +1256,7 @@ class ZiGate(object):
         neighbours = []
         LOGGER.debug('Build neighbours tables')
         for addr in [self.addr] + [device.addr for device in self.devices]:
+            print(addr)
             if addr != self.addr:
                 # Skip known Zigbee End Devices (not ZC or ZR)
                 device = self._get_device(addr)
@@ -1264,13 +1265,14 @@ class ZiGate(object):
                     if logical_type not in ('00', '01'):
                         LOGGER.debug('Skip gathering of neighbours for addr=%s (logical type=%s, device type=%s)', addr, logical_type, device.get_type())
                         continue
+            print('ok', addr)
             LOGGER.debug('Gathering neighbours for addr=%s...', addr)
             r = self.lqi_request(addr, 0, True)
-            if not r:
+            if not r or r['status'] != 0:
                 LOGGER.error('Failed to request LQI for %s device', addr)
                 continue
             data = r.cleaned_data()
-            entries = data['entries']
+            # entries = data['entries']
             for n in data['neighbours']:
                 # bit_field
                 # bit 0-1 = u2RxOnWhenIdle 0/1
@@ -1279,9 +1281,11 @@ class ZiGate(object):
                 # bit 6-7 = u2DeviceType 0/1/2
                 is_parent = n['bit_field'][2:4] == '00'
                 if is_parent:
-                    neighbours.append((n['addr'], addr, n['lqi']))
+                    entry = (n['addr'], addr, n['lqi'])
                 else:
-                    neighbours.append((addr, n['addr'], n['lqi']))
+                    entry = (addr, n['addr'], n['lqi'])
+                if entry not in neighbours:
+                    neighbours.append(entry)
             LOGGER.debug('Gathered neighbours for addr=%s: %s', addr, neighbours)
 
         LOGGER.debug('Gathered neighbours table: %s', neighbours)
