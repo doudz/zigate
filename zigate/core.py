@@ -1262,7 +1262,8 @@ class ZiGate(object):
                 if device and device.info and device.info.get('bit_field'):
                     logical_type = device.info['bit_field'][-2:]
                     if logical_type not in ('00', '01'):
-                        LOGGER.debug('Skip gathering of neighbours for addr=%s (logical type=%s, device type=%s)', addr, logical_type, device.get_type())
+                        LOGGER.debug('Skip gathering of neighbours for addr=%s (logical type=%s, device type=%s)',
+                                     addr, logical_type, device.get_type())
                         continue
             LOGGER.debug('Gathering neighbours for addr=%s...', addr)
             r = self.lqi_request(addr, 0, True)
