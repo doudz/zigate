@@ -1256,7 +1256,6 @@ class ZiGate(object):
         neighbours = []
         LOGGER.debug('Build neighbours tables')
         for addr in [self.addr] + [device.addr for device in self.devices]:
-            print(addr)
             if addr != self.addr:
                 # Skip known Zigbee End Devices (not ZC or ZR)
                 device = self._get_device(addr)
@@ -1265,7 +1264,6 @@ class ZiGate(object):
                     if logical_type not in ('00', '01'):
                         LOGGER.debug('Skip gathering of neighbours for addr=%s (logical type=%s, device type=%s)', addr, logical_type, device.get_type())
                         continue
-            print('ok', addr)
             LOGGER.debug('Gathering neighbours for addr=%s...', addr)
             r = self.lqi_request(addr, 0, True)
             if not r or r['status'] != 0:
