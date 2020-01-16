@@ -1,6 +1,6 @@
 # zigate
 
-[![Build Status](https://travis-ci.org/doudz/zigate.svg?branch=master)](https://travis-ci.org/doudz/zigate)
+[![Build Status](https://travis-ci.com/doudz/zigate.svg?branch=master)](https://travis-ci.com/doudz/zigate)
 [![PyPI version](https://badge.fury.io/py/zigate.svg)](https://pypi.python.org/pypi/zigate)
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Percentage of issues still open")
