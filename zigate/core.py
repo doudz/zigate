@@ -178,6 +178,7 @@ class ZiGate(object):
         self._groups = {}
         self._scenes = {}
         self._neighbours_table_cache = []
+        self._building_neighbours_table = False
         self._path = path
         self._version = None
         self._port = port
@@ -1238,8 +1239,14 @@ class ZiGate(object):
         Build neighbours table
         '''
         if force or not self._neighbours_table_cache:
-            # TODO: avoid concurrent invocations
-            self._neighbours_table_cache = self._neighbours_table()
+            if not self._building_neighbours_table:
+                self._building_neighbours_table = True
+                try:
+                    self._neighbours_table_cache = self._neighbours_table()
+                finally:
+                    self._building_neighbours_table = False
+            else:
+                LOGGER.warning('building neighbours table already started')
         return self._neighbours_table_cache
 
     def _neighbours_table(self):
