@@ -260,6 +260,7 @@ class C0008(Cluster):
     cluster_id = 0x0008
     type = 'General: Level control'
     attributes_def = {0x0000: {'name': 'current_level', 'value': 'int(value*100/254)', 'type': int},
+                      0x0011: {'name': 'current_level2', 'value': 'int(value*100/254)', 'type': int},
                       0xfff0: {'name': 'remote_level_button', 'value': 'value',
                                'type': str, 'expire': 2}
                       }
