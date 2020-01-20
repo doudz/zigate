@@ -12,6 +12,7 @@ from json import dumps
 from zigate import version as zigate_version
 from zigate.core import DeviceEncoder
 from zigate.const import ADMINPANEL_PORT
+import time
 
 
 bottle.TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), 'views/'))
@@ -36,6 +37,10 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         url = bottle.urljoin(bottle.urljoin('/', scriptname), location)
         if prefix and not redirect:
             url = prefix + url
+        append = '?'
+        if '?' in url:
+            append = '&'
+        url += '{}_={}'.format(append, time.time())
         return url
 
     bottle.BaseTemplate.defaults['get_url'] = get_url
@@ -106,6 +111,12 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     @app.route('/api/permit_join', name='api_permit_join')
     def permit_join():
         zigate_instance.permit_join()
+        return bottle.redirect(get_url('index'))
+
+    @app.route('/api/led', name='api_led')
+    def set_led():
+        on = bottle.request.query.get('on', 'true') == 'true'
+        zigate_instance.set_led(on)
         return bottle.redirect(get_url('index'))
 
     @app.route('/api/discover/<addr>', name='api_discover')

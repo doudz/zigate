@@ -36,6 +36,8 @@
 <div style="display: inline-block; vertical-align: top;">
 	<h3>Actions</h3>
 	<a class="pure-button" href="{{get_url('api_permit_join')}}">Permit Join</a>
+	<a class="pure-button" href="{{get_url('api_led', on='true')}}">Led ON</a>
+	<a class="pure-button" href="{{get_url('api_led', on='false')}}">Led OFF</a>
 </div>
 
 <br>

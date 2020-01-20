@@ -46,6 +46,5 @@ def download_latest(dest='/tmp'):
 
 
 if __name__ == '__main__':
-    logging.basicConfig()
-    logging.root.setLevel(logging.INFO)
+    logging.basicConfig(level=logging.INFO)
     download_latest()

@@ -1,7 +1,7 @@
 % rebase('base.tpl', subtitle='Network Map')
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"
     integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/vis-network@6.5.0/standalone/umd/vis-network.min.js"></script>
+<script src="https://unpkg.com/vis-network@7.1.0/standalone/umd/vis-network.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.15/lodash.min.js"></script>
 
 <div id="zigatenetworkmap"
@@ -27,14 +27,11 @@
             physics: {
                 enabled: true,
                 stabilization: false,
-                barnesHut: {
-                    "centralGravity": 2.7,
-                    "springLength": 0,
-                    "springConstant": 0,
-                    "damping": 0.21,
+                forceAtlas2Based: {
+                    "springLength": 100,
                     "avoidOverlap": 1
                 },
-                solver: 'barnesHut'
+                solver: 'forceAtlas2Based'
             },
             autoResize: true,
             width: '100%',

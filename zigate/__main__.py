@@ -9,8 +9,7 @@ import logging
 import argparse
 import time
 from zigate import connect
-logging.basicConfig()
-logging.root.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', help='Debug',
@@ -45,4 +44,5 @@ try:
         time.sleep(1)
 except KeyboardInterrupt:
     print('Interrupted by user')
+z.save_state()
 z.close()

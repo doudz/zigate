@@ -12,7 +12,6 @@ from time import (sleep, strftime, time)
 import logging
 import json
 import os
-from shutil import copyfile
 from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection,
                         ThreadSocketConnection,
@@ -177,6 +176,7 @@ class ZiGate(object):
         self._devices = {}
         self._groups = {}
         self._scenes = {}
+        self._led = True
         self._neighbours_table_cache = []
         self._building_neighbours_table = False
         self._path = path
@@ -328,27 +328,17 @@ class ZiGate(object):
                 self._autosavetimer.cancel()
             return
         self._path = os.path.expanduser(path)
-        backup_path = self._path + '.0'
         LOGGER.debug('Acquire Lock to save persistent file')
         r = self._save_lock.acquire(True, 5)
         if not r:
             LOGGER.error('Failed to acquire Lock to save persistent file')
             return
         try:
-            if os.path.exists(self._path):
-                LOGGER.debug('File already existing, make a backup before')
-                copyfile(self._path, backup_path)
-        except Exception:
-            LOGGER.error('Failed to create backup, cancel saving.')
-            LOGGER.error(traceback.format_exc())
-            LOGGER.debug('Release Lock of persistent file')
-            self._save_lock.release()
-            return
-        try:
             data = {'devices': list(self._devices.values()),
                     'groups': self._groups,
                     'scenes': self._scenes,
-                    'neighbours_table': self._neighbours_table_cache
+                    'neighbours_table': self._neighbours_table_cache,
+                    'led': self._led
                     }
             with open(self._path, 'w') as fp:
                 json.dump(data, fp, cls=DeviceEncoder,
@@ -356,8 +346,6 @@ class ZiGate(object):
         except Exception:
             LOGGER.error('Failed to save persistent file %s', self._path)
             LOGGER.error(traceback.format_exc())
-            LOGGER.error('Restoring backup...')
-            copyfile(backup_path, self._path)
         LOGGER.debug('Release Lock of persistent file')
         self._save_lock.release()
 
@@ -368,38 +356,36 @@ class ZiGate(object):
             LOGGER.warning('Persistent file is disabled')
             return
         self._path = os.path.expanduser(path)
-        backup_path = self._path + '.0'
-        files = [self._path, backup_path]
-        for f in files:
-            LOGGER.debug('Trying to load %s', f)
-            if not os.path.exists(f):
-                LOGGER.warning('Persistent file %s doesn\'t exist', f)
-                continue
-            try:
-                with open(f) as fp:
-                    data = json.load(fp)
-                if not isinstance(data, dict):  # old version
-                    data = {'devices': data, 'groups': {}}
-                groups = data.get('groups', {})
-                for k, v in groups.items():
-                    groups[k] = set([tuple(r) for r in v])
-                self._groups = groups
-                self._scenes = data.get('scenes', {})
-                self._neighbours_table_cache = data.get('neighbours_table', [])
-                LOGGER.debug('Load neighbours cache: %s', self._neighbours_table_cache)
-                devices = data.get('devices', [])
-                for data in devices:
-                    try:
-                        device = Device.from_json(data, self)
-                        self._devices[device.addr] = device
-                        device._create_actions()
-                    except Exception:
-                        LOGGER.error('Error loading device %s', data)
-                LOGGER.debug('Load success')
-                return True
-            except Exception:
-                LOGGER.error('Failed to load persistent file %s', self._path)
-                LOGGER.error(traceback.format_exc())
+        LOGGER.debug('Trying to load %s', self._path)
+        if not os.path.exists(self._path):
+            LOGGER.warning('Persistent file %s doesn\'t exist', self._path)
+            return False
+        try:
+            with open(self._path) as fp:
+                data = json.load(fp)
+            if not isinstance(data, dict):  # old version
+                data = {'devices': data, 'groups': {}}
+            groups = data.get('groups', {})
+            for k, v in groups.items():
+                groups[k] = set([tuple(r) for r in v])
+            self._groups = groups
+            self._scenes = data.get('scenes', {})
+            self._led = data.get('led', True)
+            self._neighbours_table_cache = data.get('neighbours_table', [])
+            LOGGER.debug('Load neighbours cache: %s', self._neighbours_table_cache)
+            devices = data.get('devices', [])
+            for data in devices:
+                try:
+                    device = Device.from_json(data, self)
+                    self._devices[device.addr] = device
+                    device._create_actions()
+                except Exception:
+                    LOGGER.error('Error loading device %s', data)
+            LOGGER.debug('Load success')
+            return True
+        except Exception:
+            LOGGER.error('Failed to load persistent file %s', self._path)
+            LOGGER.error(traceback.format_exc())
         LOGGER.debug('No file to load')
         return False
 
@@ -441,6 +427,7 @@ class ZiGate(object):
         self._start_event_thread()
         self.load_state()
         self.setup_connection()
+        self.set_led(self._led)
         version = self.get_version()
         self.set_channel(channel)
         self.set_type(TYPE_COORDINATOR)
@@ -965,6 +952,7 @@ class ZiGate(object):
         '''
         Set Blue Led state ON/OFF
         '''
+        self._led = on
         data = struct.pack('!?', on)
         return self.send_data(0x0018, data)
 
@@ -1000,7 +988,7 @@ class ZiGate(object):
         '''
         set channel
         '''
-        channels = channels or [11, 14, 15, 19, 20, 24, 25]
+        channels = channels or [11, 14, 15, 19, 20, 24, 25, 26]
         if not isinstance(channels, list):
             channels = [channels]
         mask = functools.reduce(lambda acc, x: acc ^ 2 ** x, channels, 0)
@@ -1249,7 +1237,50 @@ class ZiGate(object):
                 LOGGER.warning('building neighbours table already started')
         return self._neighbours_table_cache
 
-    def _neighbours_table(self):
+    def _neighbours_table(self, addr=None, nodes=None):
+        '''
+        Build neighbours table
+        '''
+        if addr is None:
+            addr = self.addr
+        if nodes is None:
+            nodes = []
+        LOGGER.debug('Search for children of %s', addr)
+        nodes.append(addr)
+        index = 0
+        neighbours = []
+        entries = 255
+        while index < entries:
+            r = self.lqi_request(addr, index, True)
+            if not r:
+                LOGGER.error('Failed to build neighbours table')
+                break
+            data = r.cleaned_data()
+            entries = data['entries']
+            for n in data['neighbours']:
+                # bit_field
+                # bit 0-1 = u2RxOnWhenIdle 0/1
+                # bit 2-3 = u2Relationship 0/1/2
+                # bit 4-5 = u2PermitJoining 0/1
+                # bit 6-7 = u2DeviceType 0/1/2
+                is_parent = n['bit_field'][2:4] == '00'
+                is_child = n['bit_field'][2:4] == '01'
+                is_router = n['bit_field'][6:8] == '01'
+                if is_parent:
+                    neighbours.append((n['addr'], addr, n['lqi']))
+                elif is_child:
+                    neighbours.append((addr, n['addr'], n['lqi']))
+                elif n['depth'] == 0:
+                    neighbours.append((self.addr, n['addr'], n['lqi']))
+                if is_router and n['addr'] not in nodes:
+                    LOGGER.debug('%s is a router, search for children', n['addr'])
+                    n2 = self._neighbours_table(n['addr'], nodes)
+                    if n2:
+                        neighbours += n2
+            index += data['count']
+        return neighbours
+
+    def _neighbours_table2(self):
         '''
         Build neighbours table
         '''

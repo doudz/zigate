@@ -96,8 +96,7 @@ class MQTT_Broker(object):
 
 
 if __name__ == '__main__':
-    logging.basicConfig()
-    logging.root.setLevel(logging.INFO)
+    logging.basicConfig(level=logging.INFO)
     import argparse
     from zigate import ZiGate, ZiGateWiFi, ZiGateGPIO
 

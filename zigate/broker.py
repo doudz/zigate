@@ -63,8 +63,7 @@ class Broker(threading.Thread):
 if __name__ == '__main__':
     from zigate.core import ZiGate
     import logging
-    logging.basicConfig()
-    logging.root.setLevel(logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
     z = ZiGate(auto_start=False)
     server = Broker(z)
     server.run()
