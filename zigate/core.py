@@ -12,7 +12,6 @@ from time import (sleep, strftime, time)
 import logging
 import json
 import os
-from shutil import copyfile
 from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection,
                         ThreadSocketConnection,
@@ -328,21 +327,10 @@ class ZiGate(object):
                 self._autosavetimer.cancel()
             return
         self._path = os.path.expanduser(path)
-        backup_path = self._path + '.0'
         LOGGER.debug('Acquire Lock to save persistent file')
         r = self._save_lock.acquire(True, 5)
         if not r:
             LOGGER.error('Failed to acquire Lock to save persistent file')
-            return
-        try:
-            if os.path.exists(self._path):
-                LOGGER.debug('File already existing, make a backup before')
-                copyfile(self._path, backup_path)
-        except Exception:
-            LOGGER.error('Failed to create backup, cancel saving.')
-            LOGGER.error(traceback.format_exc())
-            LOGGER.debug('Release Lock of persistent file')
-            self._save_lock.release()
             return
         try:
             data = {'devices': list(self._devices.values()),
@@ -356,8 +344,6 @@ class ZiGate(object):
         except Exception:
             LOGGER.error('Failed to save persistent file %s', self._path)
             LOGGER.error(traceback.format_exc())
-            LOGGER.error('Restoring backup...')
-            copyfile(backup_path, self._path)
         LOGGER.debug('Release Lock of persistent file')
         self._save_lock.release()
 
@@ -368,38 +354,35 @@ class ZiGate(object):
             LOGGER.warning('Persistent file is disabled')
             return
         self._path = os.path.expanduser(path)
-        backup_path = self._path + '.0'
-        files = [self._path, backup_path]
-        for f in files:
-            LOGGER.debug('Trying to load %s', f)
-            if not os.path.exists(f):
-                LOGGER.warning('Persistent file %s doesn\'t exist', f)
-                continue
-            try:
-                with open(f) as fp:
-                    data = json.load(fp)
-                if not isinstance(data, dict):  # old version
-                    data = {'devices': data, 'groups': {}}
-                groups = data.get('groups', {})
-                for k, v in groups.items():
-                    groups[k] = set([tuple(r) for r in v])
-                self._groups = groups
-                self._scenes = data.get('scenes', {})
-                self._neighbours_table_cache = data.get('neighbours_table', [])
-                LOGGER.debug('Load neighbours cache: %s', self._neighbours_table_cache)
-                devices = data.get('devices', [])
-                for data in devices:
-                    try:
-                        device = Device.from_json(data, self)
-                        self._devices[device.addr] = device
-                        device._create_actions()
-                    except Exception:
-                        LOGGER.error('Error loading device %s', data)
-                LOGGER.debug('Load success')
-                return True
-            except Exception:
-                LOGGER.error('Failed to load persistent file %s', self._path)
-                LOGGER.error(traceback.format_exc())
+        LOGGER.debug('Trying to load %s', self._path)
+        if not os.path.exists(self._path):
+            LOGGER.warning('Persistent file %s doesn\'t exist', self._path)
+            continue
+        try:
+            with open(self._path) as fp:
+                data = json.load(fp)
+            if not isinstance(data, dict):  # old version
+                data = {'devices': data, 'groups': {}}
+            groups = data.get('groups', {})
+            for k, v in groups.items():
+                groups[k] = set([tuple(r) for r in v])
+            self._groups = groups
+            self._scenes = data.get('scenes', {})
+            self._neighbours_table_cache = data.get('neighbours_table', [])
+            LOGGER.debug('Load neighbours cache: %s', self._neighbours_table_cache)
+            devices = data.get('devices', [])
+            for data in devices:
+                try:
+                    device = Device.from_json(data, self)
+                    self._devices[device.addr] = device
+                    device._create_actions()
+                except Exception:
+                    LOGGER.error('Error loading device %s', data)
+            LOGGER.debug('Load success')
+            return True
+        except Exception:
+            LOGGER.error('Failed to load persistent file %s', self._path)
+            LOGGER.error(traceback.format_exc())
         LOGGER.debug('No file to load')
         return False
 
