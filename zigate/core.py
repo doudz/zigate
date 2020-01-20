@@ -1000,7 +1000,7 @@ class ZiGate(object):
         '''
         set channel
         '''
-        channels = channels or [11, 14, 15, 19, 20, 24, 25]
+        channels = channels or [11, 14, 15, 19, 20, 24, 25, 26]
         if not isinstance(channels, list):
             channels = [channels]
         mask = functools.reduce(lambda acc, x: acc ^ 2 ** x, channels, 0)
