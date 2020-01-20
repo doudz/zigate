@@ -113,6 +113,12 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         zigate_instance.permit_join()
         return bottle.redirect(get_url('index'))
 
+    @app.route('/api/led', name='api_led')
+    def set_led():
+        on = bottle.request.query.get('on', 'true') == 'true'
+        zigate_instance.set_led(on)
+        return bottle.redirect(get_url('index'))
+
     @app.route('/api/discover/<addr>', name='api_discover')
     def api_discover(addr):
         zigate_instance.discover_device(addr, True)

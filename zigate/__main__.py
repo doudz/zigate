@@ -44,4 +44,5 @@ try:
         time.sleep(1)
 except KeyboardInterrupt:
     print('Interrupted by user')
+z.save_state()
 z.close()

@@ -359,7 +359,7 @@ class ZiGate(object):
         LOGGER.debug('Trying to load %s', self._path)
         if not os.path.exists(self._path):
             LOGGER.warning('Persistent file %s doesn\'t exist', self._path)
-            continue
+            return False
         try:
             with open(self._path) as fp:
                 data = json.load(fp)
