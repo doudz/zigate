@@ -176,6 +176,7 @@ class ZiGate(object):
         self._devices = {}
         self._groups = {}
         self._scenes = {}
+        self._led = True
         self._neighbours_table_cache = []
         self._building_neighbours_table = False
         self._path = path
@@ -336,7 +337,8 @@ class ZiGate(object):
             data = {'devices': list(self._devices.values()),
                     'groups': self._groups,
                     'scenes': self._scenes,
-                    'neighbours_table': self._neighbours_table_cache
+                    'neighbours_table': self._neighbours_table_cache,
+                    'led': self._led
                     }
             with open(self._path, 'w') as fp:
                 json.dump(data, fp, cls=DeviceEncoder,
@@ -368,6 +370,7 @@ class ZiGate(object):
                 groups[k] = set([tuple(r) for r in v])
             self._groups = groups
             self._scenes = data.get('scenes', {})
+            self._led = data.get('led', True)
             self._neighbours_table_cache = data.get('neighbours_table', [])
             LOGGER.debug('Load neighbours cache: %s', self._neighbours_table_cache)
             devices = data.get('devices', [])
@@ -424,6 +427,7 @@ class ZiGate(object):
         self._start_event_thread()
         self.load_state()
         self.setup_connection()
+        self.set_led(self._led)
         version = self.get_version()
         self.set_channel(channel)
         self.set_type(TYPE_COORDINATOR)
@@ -948,6 +952,7 @@ class ZiGate(object):
         '''
         Set Blue Led state ON/OFF
         '''
+        self._led = on
         data = struct.pack('!?', on)
         return self.send_data(0x0018, data)
 
