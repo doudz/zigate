@@ -1266,7 +1266,7 @@ class ZiGate(object):
             r = self.lqi_request(addr, index, True)
             if not r:
                 LOGGER.error('Failed to build neighbours table')
-                return
+                break
             data = r.cleaned_data()
             entries = data['entries']
             for n in data['neighbours']:
