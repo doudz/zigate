@@ -39,7 +39,6 @@ class TestCore(unittest.TestCase):
 
     def test_persistent(self):
         path = os.path.join(self.test_dir, 'test_zigate.json')
-        backup_path = path + '.0'
 
         result = self.zigate.load_state(path)
         self.assertFalse(result)
@@ -53,15 +52,12 @@ class TestCore(unittest.TestCase):
 
         self.zigate.save_state(path)
         self.assertTrue(os.path.exists(path))
-        self.assertFalse(os.path.exists(backup_path))
         self.zigate.save_state(path)
-        self.assertTrue(os.path.exists(backup_path))
 
         result = self.zigate.load_state(path)
         self.assertTrue(result)
 
         os.remove(path)
-        os.remove(backup_path)
 
     def test_persistent_loading(self):
         data = '''{
@@ -725,7 +721,9 @@ class TestCore(unittest.TestCase):
                                                            b'12340123456789abcdef0123456789abcdef00b622'))
         table = self.zigate.build_neighbours_table(True)
         self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182),
-                                 ('abcd', '1234', 182)])
+                                 ('0000', '1234', 182)])
+#         self.assertEqual(table, [('0000', 'abcd', 182), ('abcd', '9876', 182),
+#                                  ('abcd', '1234', 182)])
 
     def test_unsupported_attribute(self):
         # some device like profalux doesn't have model identifier
