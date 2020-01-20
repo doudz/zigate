@@ -27,14 +27,11 @@
             physics: {
                 enabled: true,
                 stabilization: false,
-                barnesHut: {
-                    "centralGravity": 2.7,
-                    "springLength": 0,
-                    "springConstant": 0,
-                    "damping": 0.21,
+                forceAtlas2Based: {
+                    "springLength": 100,
                     "avoidOverlap": 1
                 },
-                solver: 'barnesHut'
+                solver: 'forceAtlas2Based'
             },
             autoResize: true,
             width: '100%',
