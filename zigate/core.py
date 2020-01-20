@@ -1249,7 +1249,50 @@ class ZiGate(object):
                 LOGGER.warning('building neighbours table already started')
         return self._neighbours_table_cache
 
-    def _neighbours_table(self):
+    def _neighbours_table(self, addr=None, nodes=None):
+        '''
+        Build neighbours table
+        '''
+        if addr is None:
+            addr = self.addr
+        if nodes is None:
+            nodes = []
+        LOGGER.debug('Search for children of %s', addr)
+        nodes.append(addr)
+        index = 0
+        neighbours = []
+        entries = 255
+        while index < entries:
+            r = self.lqi_request(addr, index, True)
+            if not r:
+                LOGGER.error('Failed to build neighbours table')
+                return
+            data = r.cleaned_data()
+            entries = data['entries']
+            for n in data['neighbours']:
+                # bit_field
+                # bit 0-1 = u2RxOnWhenIdle 0/1
+                # bit 2-3 = u2Relationship 0/1/2
+                # bit 4-5 = u2PermitJoining 0/1
+                # bit 6-7 = u2DeviceType 0/1/2
+                is_parent = n['bit_field'][2:4] == '00'
+                is_child = n['bit_field'][2:4] == '01'
+                is_router = n['bit_field'][6:8] == '01'
+                if is_parent:
+                    neighbours.append((n['addr'], addr, n['lqi']))
+                elif is_child:
+                    neighbours.append((addr, n['addr'], n['lqi']))
+                elif n['depth'] == 0:
+                    neighbours.append((self.addr, n['addr'], n['lqi']))
+                if is_router and n['addr'] not in nodes:
+                    LOGGER.debug('%s is a router, search for children', n['addr'])
+                    n2 = self._neighbours_table(n['addr'], nodes)
+                    if n2:
+                        neighbours += n2
+            index += data['count']
+        return neighbours
+
+    def _neighbours_table2(self):
         '''
         Build neighbours table
         '''
