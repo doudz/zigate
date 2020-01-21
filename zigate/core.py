@@ -451,6 +451,8 @@ class ZiGate(object):
                     break
             if tries <= 0:
                 LOGGER.error('Failed to start network')
+                self.reset()
+                return
 
         if version and version['version'] >= '3.1a':
             LOGGER.debug('Set Zigate normal mode (firmware >= 3.1a)')
