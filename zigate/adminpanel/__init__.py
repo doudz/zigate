@@ -43,6 +43,12 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         url += '{}_={}'.format(append, time.time())
         return url
 
+    def redirect(routename, **kwargs):
+        '''
+        convenient function to redirect using routename instead of url
+        '''
+        return bottle.redirect(get_url(routename, redirect=True, **kwargs))
+
     bottle.BaseTemplate.defaults['get_url'] = get_url
     bottle.BaseTemplate.defaults['zigate'] = zigate_instance
     app.zigate = zigate_instance
@@ -105,35 +111,35 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
     def device(addr):
         device = zigate_instance.get_device_from_addr(addr)
         if not device:
-            return bottle.redirect(get_url('index'))
+            return redirect('index')
         return {'device': device}
 
     @app.route('/api/permit_join', name='api_permit_join')
     def permit_join():
         zigate_instance.permit_join()
-        return bottle.redirect(get_url('index'))
+        return redirect('index')
 
     @app.route('/api/led', name='api_led')
     def set_led():
         on = bottle.request.query.get('on', 'true') == 'true'
         zigate_instance.set_led(on)
-        return bottle.redirect(get_url('index'))
+        return redirect('index')
 
     @app.route('/api/discover/<addr>', name='api_discover')
     def api_discover(addr):
         zigate_instance.discover_device(addr, True)
-        return bottle.redirect(get_url('device', addr=addr, redirect=True))
+        return redirect('device', addr=addr)
 
     @app.route('/api/refresh/<addr>', name='api_refresh')
     def api_refresh(addr):
         zigate_instance.refresh_device(addr)
-        return bottle.redirect(get_url('device', addr=addr, redirect=True))
+        return redirect('device', addr=addr)
 
     @app.route('/api/remove/<addr>', name='api_remove')
     def api_remove(addr):
         force = bottle.request.query.get('force', 'false') == 'true'
         zigate_instance.remove_device(addr, force)
-        return bottle.redirect(get_url('index'))
+        return redirect('index')
 
     @app.route('/api/devices', name='api_devices')
     def devices():
