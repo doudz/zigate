@@ -109,10 +109,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 768),
                                           ('lqi', 255)]))
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([('addr', '932d'),
-                                          ('endpoint', 3),
-                                          ('cluster', 768),
-                                          ('attribute', 8),
+                             OrderedDict([('attribute', 8),
                                           ]))
 
     def test_response_8062(self):
