@@ -22,7 +22,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
                      autostart=True, daemon=True, quiet=True, debug=False):
     '''
     mount: url prefix used to mount bottle application
-    prefix: special prefix added when using get_url in template
+    proxy: special prefix added when using get_url in template, eg proxy.php
     '''
     app = bottle.Bottle()
     app.install(bottle.JSONPlugin(json_dumps=lambda s: dumps(s, cls=DeviceEncoder)))
@@ -36,7 +36,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         location = app.router.build(routename, **kwargs).lstrip('/')
         url = bottle.urljoin(bottle.urljoin('/', scriptname), location)
         if prefix and not redirect:
-            url = prefix + url
+            url = prefix + '?' + bottle.urlencode({'q': url})
         append = '?'
         if '?' in url:
             append = '&'
