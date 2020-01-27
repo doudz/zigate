@@ -539,6 +539,17 @@ class TestResponses(unittest.TestCase):
                                           ])
                              )
 
+        msg_data = unhexlify(b'3200026ff0')
+        r = responses.R8030(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 50),
+                                          ('status', 0),
+                                          ('address_mode', 2),
+                                          ('addr', '6ff0'),
+                                          ('lqi', 255),
+                                          ])
+                             )
+
     def test_response_004d(self):
         msg_data = unhexlify(b'abcd0123456789abcdef01')  # fw < 3.1b
         r = responses.R004D(msg_data, 255)
