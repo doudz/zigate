@@ -446,6 +446,9 @@ class R8030(Response):
             del self.s['address_mode']
             del self.s['addr']
             del self.s['cluster']
+        if len(self.msg_data) == 5:  # firmware 3.1a/b/c
+            self.s = self.s.copy()
+            del self.s['cluster']
         Response.decode(self)
 
 
@@ -1122,7 +1125,7 @@ class R8140(Response):
         Response.decode(self)
 
     def cleaned_data(self):
-        return self._filter_data(['addr', 'endpoint', 'cluster', 'attribute'])
+        return self._filter_data(['attribute'])
 
 
 @register_response

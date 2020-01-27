@@ -109,10 +109,7 @@ class TestResponses(unittest.TestCase):
                                           ('cluster', 768),
                                           ('lqi', 255)]))
         self.assertDictEqual(r.cleaned_data(),
-                             OrderedDict([('addr', '932d'),
-                                          ('endpoint', 3),
-                                          ('cluster', 768),
-                                          ('attribute', 8),
+                             OrderedDict([('attribute', 8),
                                           ]))
 
     def test_response_8062(self):
@@ -538,6 +535,17 @@ class TestResponses(unittest.TestCase):
                                           ('address_mode', 2),
                                           ('addr', 'abcd'),
                                           ('cluster', 1),
+                                          ('lqi', 255),
+                                          ])
+                             )
+
+        msg_data = unhexlify(b'3200026ff0')
+        r = responses.R8030(msg_data, 255)
+        self.assertDictEqual(r.data,
+                             OrderedDict([('sequence', 50),
+                                          ('status', 0),
+                                          ('address_mode', 2),
+                                          ('addr', '6ff0'),
                                           ('lqi', 255),
                                           ])
                              )
