@@ -6,6 +6,7 @@ ZiGate devices Tests
 import unittest
 from unittest import mock
 from zigate import core
+import time
 import json
 import os
 import tempfile
@@ -218,6 +219,19 @@ class TestCore(unittest.TestCase):
         self.assertEqual(device.get_property_value('temperature'), 20.0)
         device.set_attribute(1, 0x0402, {'attribute': 0, 'lqi': 255, 'data': -10000})
         self.assertEqual(device.get_property_value('temperature'), 20.0)
+
+    def test_fast_change(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.set_attribute(1, 0x0006, {'attribute': 0x0000, 'lqi': 255, 'data': True})
+        self.assertEqual(device.get_property_value('onoff'), True)
+        device.set_attribute(1, 0x0006, {'attribute': 0x0000, 'lqi': 255, 'data': False})
+        self.assertEqual(device.get_property_value('onoff'), True)
+        time.sleep(core.DELAY_FASTCHANGE)
+        self.assertEqual(device.get_property_value('onoff'), False)
+        device.set_attribute(1, 0x0006, {'attribute': 0x0000, 'lqi': 255, 'data': True})
+        self.assertEqual(device.get_property_value('onoff'), False)
+        time.sleep(core.DELAY_FASTCHANGE)
+        self.assertEqual(device.get_property_value('onoff'), True)
 
 
 if __name__ == '__main__':
