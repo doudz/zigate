@@ -226,7 +226,7 @@ class TestCore(unittest.TestCase):
         self.assertEqual(device.get_property_value('onoff'), True)
         device.set_attribute(1, 0x0006, {'attribute': 0x0000, 'lqi': 255, 'data': False})
         self.assertEqual(device.get_property_value('onoff'), True)
-        time.sleep(core.DELAY_FASTCHANGE)
+        time.sleep(core.DELAY_FASTCHANGE + 1)
         self.assertEqual(device.get_property_value('onoff'), False)
 
 
