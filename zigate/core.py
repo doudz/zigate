@@ -3003,9 +3003,9 @@ class Device(object):
         '''
         timer = threading.Timer(DELAY_FASTCHANGE,
                                 functools.partial(self.set_attribute,
-                                                endpoint_id,
-                                                cluster_id,
-                                                data))
+                                                  endpoint_id,
+                                                  cluster_id,
+                                                  data))
         timer.setDaemon(True)
         timer.start()
 
