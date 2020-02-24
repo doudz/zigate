@@ -8,7 +8,7 @@
 
 from binascii import hexlify
 import traceback
-from time import (sleep, strftime, time)
+from time import (sleep, strftime, monotonic)
 import logging
 import json
 import os
@@ -57,6 +57,7 @@ BIND_REPORT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
 WAIT_TIMEOUT = 5
+DELAY_FASTCHANGE = 1.0  # delay fast change for cluster 0x0006
 
 # Device id
 ACTUATORS = [0x0009, 0x0010, 0x0051,
@@ -815,10 +816,10 @@ class ZiGate(object):
         wait for next msg_type response
         '''
         LOGGER.debug('Waiting for message 0x{:04x}'.format(msg_type))
-        t1 = time()
+        t1 = monotonic()
         while self._last_response.get(msg_type) is None:
             sleep(0.01)
-            t2 = time()
+            t2 = monotonic()
             if t2 - t1 > WAIT_TIMEOUT:  # no response timeout
                 LOGGER.warning('No response waiting command 0x{:04x}'.format(msg_type))
                 return
@@ -830,10 +831,10 @@ class ZiGate(object):
         wait for status of cmd
         '''
         LOGGER.debug('Waiting for status message for command 0x{:04x}'.format(cmd))
-        t1 = time()
+        t1 = monotonic()
         while self._last_status.get(cmd) is None:
             sleep(0.01)
-            t2 = time()
+            t2 = monotonic()
             if t2 - t1 > WAIT_TIMEOUT:  # no response timeout
                 self._no_response_count += 1
                 LOGGER.warning('No response after command 0x{:04x} ({})'.format(cmd, self._no_response_count))
@@ -2438,6 +2439,7 @@ class Device(object):
         self.info = info or {}
         self.endpoints = {}
         self._expire_timer = {}
+        self._fast_change = {}
         self.missing = False
         self.genericType = ''
         self.discovery = ''
@@ -2773,10 +2775,10 @@ class Device(object):
             if not wait or not self.endpoints:
                 return
             # wait for type
-            t1 = time()
+            t1 = monotonic()
             while self.get_value('type') is None:
                 sleep(0.01)
-                t2 = time()
+                t2 = monotonic()
                 if t2 - t1 > WAIT_TIMEOUT:
                     LOGGER.warning('No response waiting for type')
                     return
@@ -2968,6 +2970,18 @@ class Device(object):
             self.info['lqi'] = lqi
         self.info['last_seen'] = strftime('%Y-%m-%d %H:%M:%S')
         self.missing = False
+
+        # delay fast change for cluster 0x0006
+        if cluster_id == 0x0006 and data['attribute'] == 0x0000:
+            now = monotonic()
+            k = (endpoint_id, cluster_id, data['attribute'])
+            last_change = self._fast_change.setdefault(k, 0)
+            self._fast_change[k] = now
+            if (now - last_change) < DELAY_FASTCHANGE:
+                LOGGER.debug('Fast change detected, delay it for %s %s %s', endpoint_id, cluster_id, data)
+                self._delay_change(endpoint_id, cluster_id, data)
+                return
+
         cluster = self.get_cluster(endpoint_id, cluster_id)
         self._lock_acquire()
         r = cluster.update(data)
@@ -2982,6 +2996,18 @@ class Device(object):
         if not r:
             return
         return added, attribute['attribute']
+
+    def _delay_change(self, endpoint_id, cluster_id, data):
+        '''
+            Delay attribute change
+        '''
+        timer = threading.Timer(DELAY_FASTCHANGE,
+                                functools.partial(self.set_attribute,
+                                                  endpoint_id,
+                                                  cluster_id,
+                                                  data))
+        timer.setDaemon(True)
+        timer.start()
 
     def _set_expire_timer(self, endpoint_id, cluster_id, attribute_id, expire):
         LOGGER.debug('Set expire timer for %s-%s-%s in %s', endpoint_id,

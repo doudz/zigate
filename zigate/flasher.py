@@ -17,6 +17,7 @@ import struct
 from operator import xor
 import datetime
 from .firmware import download_latest
+from .transport import discover_port
 import time
 import serial
 from serial.tools.list_ports import comports
@@ -124,15 +125,15 @@ def read_response(ser):
     answer = ser.read(length)
     logger.debug('read_response answer {}'.format(answer))
     return _unpack_raw_message(length, answer)
-    type_, data, chksum = struct.unpack('!B%dsB' % (length - 2), answer)
-    return {'type': type_, 'data': data, 'chksum': chksum}
+    # type_, data, chksum = struct.unpack('!B%dsB' % (length - 2), answer)
+    # return {'type': type_, 'data': data, 'chksum': chksum}
 
 
 def _unpack_raw_message(length, decoded):
     logger.debug('unpack raw message {} {}'.format(length, decoded))
     if len(decoded) != length or length < 2:
-        print("Unpack failed, length: %d, msg %s" % (length, decoded.hex()))
-        return False
+        logger.exception("Unpack failed, length: %d, msg %s" % (length, decoded.hex()))
+        return
     type_, data, chksum = \
         struct.unpack('!B%dsB' % (length - 2), decoded)
     return _responses.get(type_, Response)(type_, data, chksum)
@@ -301,6 +302,9 @@ def write_flash_to_file(ser, filename):
                 read_bytes = flash_end - cur
             ser.write(req_flash_read(cur, read_bytes))
             res = read_response(ser)
+            if not res or not res.ok:
+                print('Reading flash failed')
+                raise SystemExit(1)
             if cur == 0:
                 (flash_end,) = struct.unpack('>L', res.data[0x20:0x24])
             fd.write(res.data)
@@ -346,7 +350,11 @@ def erase_EEPROM(ser, pdm_only=False):
         raise SystemExit(1)
 
 
-def flash(serialport, write=None, save=None, erase=False, pdm_only=False):
+def flash(serialport='auto', write=None, save=None, erase=False, pdm_only=False):
+    """
+    Read or write firmware
+    """
+    serialport = discover_port(serialport)
     try:
         ser = serial.Serial(serialport, 38400, timeout=5)
     except serial.SerialException:

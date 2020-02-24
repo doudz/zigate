@@ -437,7 +437,6 @@ class R8030(Response):
                      ('status', 'B'),
                      ('address_mode', 'B'),
                      ('addr', 'H'),
-                     ('cluster', 'H'),
                      ])
 
     def decode(self):
@@ -445,10 +444,6 @@ class R8030(Response):
             self.s = self.s.copy()
             del self.s['address_mode']
             del self.s['addr']
-            del self.s['cluster']
-        if len(self.msg_data) == 5:  # firmware 3.1a/b/c
-            self.s = self.s.copy()
-            del self.s['cluster']
         Response.decode(self)
 
 
