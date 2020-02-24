@@ -17,6 +17,7 @@ import struct
 from operator import xor
 import datetime
 from .firmware import download_latest
+from .transport import discover_port
 import time
 import serial
 from serial.tools.list_ports import comports
@@ -346,7 +347,11 @@ def erase_EEPROM(ser, pdm_only=False):
         raise SystemExit(1)
 
 
-def flash(serialport, write=None, save=None, erase=False, pdm_only=False):
+def flash(serialport='auto', write=None, save=None, erase=False, pdm_only=False):
+    """
+    Read or write firmware
+    """
+    serialport = discover_port(serialport)
     try:
         ser = serial.Serial(serialport, 38400, timeout=5)
     except serial.SerialException:

@@ -258,23 +258,7 @@ class ThreadSerialConnection(BaseTransport):
         '''
         automatically discover zigate port if needed
         '''
-        port = port or 'auto'
-        if port == 'auto':
-            LOGGER.info('Searching ZiGate port')
-            devices = list(serial.tools.list_ports.grep(self._search_re))
-            if devices:
-                port = devices[0].device
-                if len(devices) == 1:
-                    LOGGER.info('ZiGate found at {}'.format(port))
-                else:
-                    LOGGER.warning('Found the following devices')
-                    for device in devices:
-                        LOGGER.warning('* {0} - {0.manufacturer}'.format(device))
-                    LOGGER.warning('Choose the first device... {}'.format(port))
-            else:
-                LOGGER.error('ZiGate not found')
-                raise ZIGATE_NOT_FOUND('ZiGate not found')
-        return port
+        return discover_port(port, self._search_re)
 
     def is_connected(self):
         return self.serial.isOpen()
@@ -375,7 +359,34 @@ class ThreadSocketConnection(ThreadSerialConnection):
         return (0, 0)
 
 
+def discover_port(port='auto', search_re='ZiGate|067b:2303|CP2102'):
+    '''
+    automatically discover zigate port if needed
+    '''
+    port = port or 'auto'
+    if port == 'auto':
+        LOGGER.info('Searching ZiGate port')
+        devices = list(serial.tools.list_ports.grep(search_re))
+        if devices:
+            port = devices[0].device
+            if len(devices) == 1:
+                LOGGER.info('ZiGate found at {}'.format(port))
+            else:
+                LOGGER.warning('Found the following devices')
+                for device in devices:
+                    LOGGER.warning('* {0} - {0.manufacturer}'.format(device))
+                LOGGER.warning('Choose the first device... {}'.format(port))
+        else:
+            LOGGER.error('ZiGate not found')
+            raise ZIGATE_NOT_FOUND('ZiGate not found')
+    return port
+
+
 def discover_host():
+    """
+    Automatically discover WiFi ZiGate using zeroconf
+    only compatible with WiFi firmware 2.x
+    """
     from zeroconf import ServiceBrowser, Zeroconf
     host = None
 
