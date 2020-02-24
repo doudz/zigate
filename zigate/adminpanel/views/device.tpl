@@ -4,7 +4,7 @@
 <a class="pure-button" href="{{get_url('api_discover', addr=device.addr)}}">Discover</a>
 <a class="pure-button" href="{{get_url('api_refresh', addr=device.addr)}}">Refresh</a>
 <a class="pure-button" href="{{get_url('api_remove', addr=device.addr)}}">Remove</a>
-<a class="pure-button" href="{{get_url('api_remove', addr=device.addr)}}?force=true">Delete</a>
+<a class="pure-button" href="{{get_url('api_remove', addr=device.addr, force='true')}}">Delete</a>
 <h3>Info :</h3>
 <table class="pure-table pure-table-bordered">
   % for k, v in device.info.items():
