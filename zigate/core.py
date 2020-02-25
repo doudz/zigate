@@ -3002,7 +3002,7 @@ class Device(object):
         '''
             Delay attribute change
         '''
-        timer = threading.Timer(DELAY_FASTCHANGE,
+        timer = threading.Timer(DELAY_FASTCHANGE * 2,
                                 functools.partial(self.set_attribute,
                                                   endpoint_id,
                                                   cluster_id,
