@@ -57,6 +57,7 @@ BIND_REPORT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
 WAIT_TIMEOUT = 5
+DETECT_FASTCHANGE = False  # enable fast change detection
 DELAY_FASTCHANGE = 1.0  # delay fast change for cluster 0x0006
 
 # Device id
@@ -2972,7 +2973,7 @@ class Device(object):
         self.missing = False
 
         # delay fast change for cluster 0x0006
-        if cluster_id == 0x0006 and data['attribute'] == 0x0000:
+        if DETECT_FASTCHANGE and cluster_id == 0x0006 and data['attribute'] == 0x0000:
             now = monotonic()
             k = (endpoint_id, cluster_id, data['attribute'])
             last_change = self._fast_change.setdefault(k, 0)
