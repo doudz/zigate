@@ -2148,7 +2148,7 @@ class ZiGate(object):
                            squawk_mode_strobe_level)
         self.send_data(0x0112, data)
     
-	@register_actions(ACTIONS_THERMOSTAT)
+    @register_actions(ACTIONS_THERMOSTAT)
     def action_thermostat_occupied_heating_setpoint(self, addr, endpoint, temperature, direction=0, manufacturer_code=0):
         addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
