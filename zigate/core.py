@@ -2278,9 +2278,10 @@ class ZiGate(object):
                            direction, manufacturer_specific, manufacturer_code,
                            squawk_mode_strobe_level)
         self.send_data(0x0112, data)
-    
+
     @register_actions(ACTIONS_THERMOSTAT)
-    def action_thermostat_occupied_heating_setpoint(self, addr, endpoint, temperature, direction=0, manufacturer_code=0):
+    def action_thermostat_occupied_heating_setpoint(self, addr, endpoint, temperature,
+                                                    direction=0, manufacturer_code=0):
         addr = self._translate_addr(addr)
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
@@ -2288,9 +2289,9 @@ class ZiGate(object):
         data = struct.pack('!B' + addr_fmt + 'BBHBBHBHBH', addr_mode, addr, 1,
                            endpoint, 0x201,
                            direction, manufacturer_specific,
-                           manufacturer_code, 1, 0x0012,0x29,(temperature*100))
+                           manufacturer_code, 1, 0x0012, 0x29, (temperature * 100))
         return self.send_data(0x0110, data)
-		
+
     @register_actions(ACTIONS_THERMOSTAT)
     def action_thermostat_system_mode(self, addr, endpoint, mode, direction=0, manufacturer_code=0):
         addr = self._translate_addr(addr)
@@ -2299,33 +2300,33 @@ class ZiGate(object):
         manufacturer_specific = manufacturer_code != 0
         if mode == 3:
             data = struct.pack('!B' + addr_fmt + 'BBHBBHBHBB', addr_mode, addr, 1,
-                           endpoint, 0x201,
-                           direction, manufacturer_specific,
-                           manufacturer_code, 1, 0x001B,0x30,0)
+                               endpoint, 0x201,
+                               direction, manufacturer_specific,
+                               manufacturer_code, 1, 0x001B, 0x30, 0)
             self.send_data(0x0110, data)
 
             data = struct.pack('!B' + addr_fmt + 'BBHBBHBHBB', addr_mode, addr, 1,
-                           endpoint, 0x201,
-                           direction, manufacturer_specific,
-                           manufacturer_code, 1, 0x001C,0x30,mode)
+                               endpoint, 0x201,
+                               direction, manufacturer_specific,
+                               manufacturer_code, 1, 0x001C, 0x30, mode)
             self.send_data(0x0110, data)
         elif mode == 4:
             data = struct.pack('!B' + addr_fmt + 'BBHBBHBHBB', addr_mode, addr, 1,
-                           endpoint, 0x201,
-                           direction, manufacturer_specific,
-                           manufacturer_code, 1, 0x001B,0x30,2)
-            self.send_data(0x0110,data)
+                               endpoint, 0x201,
+                               direction, manufacturer_specific,
+                               manufacturer_code, 1, 0x001B, 0x30, 2)
+            self.send_data(0x0110, data)
 
             data = struct.pack('!B' + addr_fmt + 'BBHBBHBHBB', addr_mode, addr, 1,
-                           endpoint, 0x201,
-                           direction, manufacturer_specific,
-                           manufacturer_code, 1, 0x001C,0x30,mode)
+                               endpoint, 0x201,
+                               direction, manufacturer_specific,
+                               manufacturer_code, 1, 0x001C, 0x30, mode)
             self.send_data(0x0110, data)
         else:
             data = struct.pack('!B' + addr_fmt + 'BBHBBHBHBB', addr_mode, addr, 1,
-                           endpoint, 0x201,
-                           direction, manufacturer_specific,
-                           manufacturer_code, 1, 0x001C,0x30,mode)
+                               endpoint, 0x201,
+                               direction, manufacturer_specific,
+                               manufacturer_code, 1, 0x001C, 0x30, mode)
             self.send_data(0x0110, data)
 
     def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, addr_mode=2, security=0):
@@ -2377,6 +2378,7 @@ class FakeZiGate(ZiGate):
     '''
     Fake ZiGate for test only without real hardware
     '''
+
     def __init__(self, port='auto', path='~/.zigate.json',
                  auto_start=False, auto_save=False, channel=None, adminpanel=False):
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start, auto_save=auto_save,
