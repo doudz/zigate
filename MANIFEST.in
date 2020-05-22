@@ -4,8 +4,8 @@ include LICENSE
 recursive-include zigate *.json
 recursive-include zigate *.py
 recursive-include zigate *.tpl
-prune .editorconfig
-prune *.rb
-prune build_upload.sh
+exclude .editorconfig
+exclude *.rb
+exclude build_upload.sh
 prune tests
-prune zigate2zigpy.py
+exclude zigate2zigpy.py
