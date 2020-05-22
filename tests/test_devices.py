@@ -104,7 +104,7 @@ class TestCore(unittest.TestCase):
                                         'manufacturer_code': '1037',
                                         'power_type': 0,
                                         'server_mask': 0},
-                                'name': ''}
+                               'name': ''}
                               )
         # another test
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
