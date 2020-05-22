@@ -22,7 +22,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
                      autostart=True, daemon=True, quiet=True, debug=False):
     '''
     mount: url prefix used to mount bottle application
-    proxy: special prefix added when using get_url in template, eg proxy.php
+    prefix: special prefix added when using get_url in template, eg proxy.php
     '''
     app = bottle.Bottle()
     app.install(bottle.JSONPlugin(json_dumps=lambda s: dumps(s, cls=DeviceEncoder)))
