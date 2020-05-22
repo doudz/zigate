@@ -2488,6 +2488,7 @@ class Device(object):
         self.missing = False
         self.genericType = ''
         self.discovery = ''
+        self.name = ''
 
     def _lock_acquire(self):
         LOGGER.debug('Acquire Lock on device %s', self)
@@ -2697,6 +2698,7 @@ class Device(object):
         d.info = data.get('info', {})
         d.genericType = data.get('generictype', '')
         d.discovery = data.get('discovery', '')
+        d.name = data.get('name', '')
         for ep in data.get('endpoints', []):
             if 'attributes' in ep:  # old version
                 LOGGER.debug('Old version found, convert it')
@@ -2736,13 +2738,16 @@ class Device(object):
                             'out_clusters': v['out_clusters']
                             } for k, v in self.endpoints.items()],
              'generictype': self.genericType,
-             'discovery': self.discovery
+             'discovery': self.discovery,
+             'name': self.name
              }
         if properties:
             r['properties'] = list(self.properties)
         return r
 
     def __str__(self):
+        if self.name:
+            return self.name
         name = self.get_property_value('type', '')
         manufacturer = self.get_property_value('manufacturer', 'Device')
         return '{} {} ({}) {}'.format(manufacturer, name, self.info.get('addr'), self.info.get('ieee'))

@@ -1,4 +1,4 @@
-% rebase('base.tpl', subtitle='Device ' + str(device))
+% rebase('base.tpl', subtitle='Device : ' + str(device))
 
 <a class="pure-button" href="{{get_url('device', addr=device.addr)}}">Reload page</a>
 <a class="pure-button" href="{{get_url('api_discover', addr=device.addr)}}">Discover</a>
@@ -6,6 +6,10 @@
 <a class="pure-button" href="{{get_url('api_remove', addr=device.addr)}}">Remove</a>
 <a class="pure-button" href="{{get_url('api_remove', addr=device.addr, force='true')}}">Delete</a>
 <h3>Info :</h3>
+<form method="post" action="{{get_url('device_save', addr=device.addr)}}">
+	Name : <input type="text" name="name" value="{{device.name}}"/>
+	<input type="submit" value="Save"/>
+</form>
 <table class="pure-table pure-table-bordered">
   % for k, v in device.info.items():
   	<tr>
