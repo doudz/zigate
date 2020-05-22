@@ -2680,6 +2680,9 @@ class Device(object):
                     self._zigate.reporting_request(self.addr,
                                                    endpoint_id,
                                                    0x0300, (0x0004, 0x21))
+            if 0x0400 in endpoint['in_clusters']:
+                LOGGER.debug('bind for cluster 0x0400')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0400)
             if 0xFC00 in endpoint['in_clusters']:
                 LOGGER.debug('bind for cluster 0xFC00')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0xFC00)
