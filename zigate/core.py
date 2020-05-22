@@ -2288,7 +2288,6 @@ class ZiGate(object):
         return self.write_attribute_request(addr, endpoint, 0x0201,
                                             (0x0012, 0x29, temperature * 100),
                                             direction, manufacturer_code)
-        
 
     @register_actions(ACTIONS_THERMOSTAT)
     def action_thermostat_system_mode(self, addr, endpoint, mode, direction=0, manufacturer_code=0):
@@ -2309,17 +2308,16 @@ class ZiGate(object):
                  'heat': 0x04,
                  'emergency_heat': 0x05,
                  'precooling': 0x06,
-                 'fan': 0x07
-                }
+                 'fan': 0x07}
         mode = modes.get(mode, mode)
         if mode == 0x03:
             self.write_attribute_request(addr, endpoint, 0x0201,
-                                        (0x001B, 0x30, 0),
-                                        direction, manufacturer_code)
+                                         (0x001B, 0x30, 0),
+                                         direction, manufacturer_code)
         elif mode == 0x04:
             self.write_attribute_request(addr, endpoint, 0x0201,
-                                        (0x001B, 0x30, 2),
-                                        direction, manufacturer_code)
+                                         (0x001B, 0x30, 2),
+                                         direction, manufacturer_code)
         return self.write_attribute_request(addr, endpoint, 0x0201,
                                             (0x001C, 0x30, mode),
                                             direction, manufacturer_code)
