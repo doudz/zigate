@@ -146,7 +146,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         device = zigate_instance.get_device_from_addr(addr)
         if not device:
             return redirect('index')
-        device.name = bottle.request.forms['name']
+        device.name = bottle.request.forms.name
         return redirect('device', addr=addr)
 
     @app.route('/api/devices', name='api_devices')

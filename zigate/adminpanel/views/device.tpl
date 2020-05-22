@@ -7,7 +7,7 @@
 <a class="pure-button" href="{{get_url('api_remove', addr=device.addr, force='true')}}">Delete</a>
 <h3>Info :</h3>
 <form method="post" action="{{get_url('device_save', addr=device.addr)}}">
-	Name : <input type="text" name="name" value="{{device.name}}"/>
+	<label>Name : <input type="text" name="name" value="{{device.name}}"/></label>
 	<input type="submit" value="Save"/>
 </form>
 <table class="pure-table pure-table-bordered">
