@@ -479,7 +479,7 @@ def main():
 #         if args.erase:
 #             erase_EEPROM(ser, args.pdm_only)
 
-    if args.pizigate:
+    if args.gpio:
         logger.info('Put PiZiGate in running mode')
         GPIO.output(27, GPIO.HIGH)  # GPIO2
         GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # GPIO0
