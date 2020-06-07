@@ -421,7 +421,7 @@ def main():
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
-    if args.pizigate:
+    if args.gpio:
         logger.info('Put PiZiGate in flash mode')
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(27, GPIO.OUT)  # GPIO2
