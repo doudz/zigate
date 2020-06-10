@@ -2579,13 +2579,13 @@ class Device(object):
         for endpoint_id, endpoint in endpoints_list:
             # if endpoint['device'] in ACTUATORS:  # light
             LOGGER.debug('Bind and report endpoint %s for device %s', endpoint_id, self)
-#             if 0x0001 in endpoint['in_clusters']:
-#                 LOGGER.debug('bind and report for cluster 0x0001')
-#                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
-#                 self._zigate.reporting_request(self.addr, endpoint_id,
-#                                                0x0001, (0x0020, 0x20))
-#                 self._zigate.reporting_request(self.addr, endpoint_id,
-#                                                0x0001, (0x0021, 0x20))
+            if 0x0001 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0001')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0001, (0x0020, 0x20))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0001, (0x0021, 0x20))
             if 0x0006 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0006')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
@@ -2596,6 +2596,9 @@ class Device(object):
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0008, (0x0000, 0x20))
+            if 0x0009 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0009')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0009)
             if 0x000f in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x000f')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x000f)
@@ -2603,13 +2606,9 @@ class Device(object):
                                                0x000f, (0x0055, 0x10))
             if 0x0101 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0101')
-                self._zigate.bind_addr(self.addr, endpoint_id, 0x0009)
-                self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0101)
                 self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0001, (0x0021, 0x20))
-                self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0101, (0x0000, 0x30), 0, 0, 1, 20)
+                                               0x0101, (0x0000, 0x30))
             if 0x0102 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0102')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0102)
