@@ -61,7 +61,7 @@ DETECT_FASTCHANGE = False  # enable fast change detection
 DELAY_FASTCHANGE = 1.0  # delay fast change for cluster 0x0006
 
 # Device id
-ACTUATORS = [0x0009, 0x0010, 0x0051,
+ACTUATORS = [0x0009, 0x0010, 0x0051, 0x000a,
              0x010a, 0x010b, 0x010c, 0x010d,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0202, 0x0210, 0x0220,
@@ -2601,6 +2601,15 @@ class Device(object):
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x000f)
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x000f, (0x0055, 0x10))
+            if 0x0101 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0101')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0009)
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0101)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0001, (0x0021, 0x20))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0101, (0x0000, 0x30), 0, 0, 1, 20)
             if 0x0102 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0102')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0102)
