@@ -32,6 +32,7 @@ class TestCore(unittest.TestCase):
 
     def test_device_dump(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device.name = "sample"
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'test'})
         last_seen = device.info['last_seen']
         data = json.dumps(device, cls=core.DeviceEncoder, sort_keys=True)
@@ -42,7 +43,7 @@ class TestCore(unittest.TestCase):
                           '"test", "name": "type", "type": "str", "value": "test"}], "cluster": 0}], "device": 0, '
                           '"endpoint": 1, "in_clusters": [], "out_clusters": [], "profile": 0}], "generictype": "", '
                           '"info": {"addr": "1234", "ieee": "0123456789abcdef", "last_seen": "' + last_seen + '", '
-                          '"lqi": 255}}'))
+                          '"lqi": 255}, "name": "sample"}'))
 
     def test_template(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
@@ -102,7 +103,8 @@ class TestCore(unittest.TestCase):
                                         'mac_capability': '10000000',
                                         'manufacturer_code': '1037',
                                         'power_type': 0,
-                                        'server_mask': 0}}
+                                        'server_mask': 0},
+                               'name': ''}
                               )
         # another test
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
@@ -221,13 +223,14 @@ class TestCore(unittest.TestCase):
         self.assertEqual(device.get_property_value('temperature'), 20.0)
 
     def test_fast_change(self):
-        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
-        device.set_attribute(1, 0x0006, {'attribute': 0x0000, 'lqi': 255, 'data': True})
-        self.assertEqual(device.get_property_value('onoff'), True)
-        device.set_attribute(1, 0x0006, {'attribute': 0x0000, 'lqi': 255, 'data': False})
-        self.assertEqual(device.get_property_value('onoff'), True)
-        time.sleep(core.DELAY_FASTCHANGE + 1)
-        self.assertEqual(device.get_property_value('onoff'), False)
+        if core.DETECT_FASTCHANGE:
+            device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+            device.set_attribute(1, 0x0006, {'attribute': 0x0000, 'lqi': 255, 'data': True})
+            self.assertEqual(device.get_property_value('onoff'), True)
+            device.set_attribute(1, 0x0006, {'attribute': 0x0000, 'lqi': 255, 'data': False})
+            self.assertEqual(device.get_property_value('onoff'), True)
+            time.sleep(core.DELAY_FASTCHANGE + 1)
+            self.assertEqual(device.get_property_value('onoff'), False)
 
 
 if __name__ == '__main__':

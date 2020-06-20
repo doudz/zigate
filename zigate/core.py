@@ -57,10 +57,11 @@ BIND_REPORT = True  # automatically bind and report state for light
 SLEEP_INTERVAL = 0.1
 ACTIONS = {}
 WAIT_TIMEOUT = 5
+DETECT_FASTCHANGE = False  # enable fast change detection
 DELAY_FASTCHANGE = 1.0  # delay fast change for cluster 0x0006
 
 # Device id
-ACTUATORS = [0x0009, 0x0010, 0x0051,
+ACTUATORS = [0x0009, 0x0010, 0x0051, 0x000a,
              0x010a, 0x010b, 0x010c, 0x010d,
              0x0100, 0x0101, 0x0102, 0x0103, 0x0105, 0x0110,
              0x0200, 0x0202, 0x0210, 0x0220,
@@ -2278,6 +2279,49 @@ class ZiGate(object):
                            squawk_mode_strobe_level)
         self.send_data(0x0112, data)
 
+    @register_actions(ACTIONS_THERMOSTAT)
+    def action_thermostat_occupied_heating_setpoint(self, addr, endpoint, temperature,
+                                                    direction=0, manufacturer_code=0):
+        """
+        Convenient function to set heating temperature on thermostat
+        """
+        return self.write_attribute_request(addr, endpoint, 0x0201,
+                                            (0x0012, 0x29, temperature * 100),
+                                            direction, manufacturer_code)
+
+    @register_actions(ACTIONS_THERMOSTAT)
+    def action_thermostat_system_mode(self, addr, endpoint, mode, direction=0, manufacturer_code=0):
+        """
+        Convenient function to set thermostat mode
+        mode :
+            'off': 0x00,
+            'auto': 0x01,
+            'cool': 0x03,
+            'heat': 0x04,
+            'emergency_heat': 0x05,
+            'precooling': 0x06,
+            'fan': 0x07
+        """
+        modes = {'off': 0x00,
+                 'auto': 0x01,
+                 'cool': 0x03,
+                 'heat': 0x04,
+                 'emergency_heat': 0x05,
+                 'precooling': 0x06,
+                 'fan': 0x07}
+        mode = modes.get(mode, mode)
+        if mode == 0x03:
+            self.write_attribute_request(addr, endpoint, 0x0201,
+                                         (0x001B, 0x30, 0),
+                                         direction, manufacturer_code)
+        elif mode == 0x04:
+            self.write_attribute_request(addr, endpoint, 0x0201,
+                                         (0x001B, 0x30, 2),
+                                         direction, manufacturer_code)
+        return self.write_attribute_request(addr, endpoint, 0x0201,
+                                            (0x001C, 0x30, mode),
+                                            direction, manufacturer_code)
+
     def raw_aps_data_request(self, addr, src_ep, dst_ep, profile, cluster, payload, addr_mode=2, security=0):
         '''
         Send raw APS Data request
@@ -2327,6 +2371,7 @@ class FakeZiGate(ZiGate):
     '''
     Fake ZiGate for test only without real hardware
     '''
+
     def __init__(self, port='auto', path='~/.zigate.json',
                  auto_start=False, auto_save=False, channel=None, adminpanel=False):
         ZiGate.__init__(self, port=port, path=path, auto_start=auto_start, auto_save=auto_save,
@@ -2443,6 +2488,7 @@ class Device(object):
         self.missing = False
         self.genericType = ''
         self.discovery = ''
+        self.name = ''
 
     def _lock_acquire(self):
         LOGGER.debug('Acquire Lock on device %s', self)
@@ -2533,13 +2579,13 @@ class Device(object):
         for endpoint_id, endpoint in endpoints_list:
             # if endpoint['device'] in ACTUATORS:  # light
             LOGGER.debug('Bind and report endpoint %s for device %s', endpoint_id, self)
-#             if 0x0001 in endpoint['in_clusters']:
-#                 LOGGER.debug('bind and report for cluster 0x0001')
-#                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
-#                 self._zigate.reporting_request(self.addr, endpoint_id,
-#                                                0x0001, (0x0020, 0x20))
-#                 self._zigate.reporting_request(self.addr, endpoint_id,
-#                                                0x0001, (0x0021, 0x20))
+            if 0x0001 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0001')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0001, (0x0020, 0x20))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0001, (0x0021, 0x20))
             if 0x0006 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0006')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
@@ -2550,11 +2596,19 @@ class Device(object):
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0008, (0x0000, 0x20))
+            if 0x0009 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0009')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0009)
             if 0x000f in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x000f')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x000f)
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x000f, (0x0055, 0x10))
+            if 0x0101 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0101')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0101)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0101, (0x0000, 0x30))
             if 0x0102 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0102')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0102)
@@ -2633,6 +2687,9 @@ class Device(object):
                     self._zigate.reporting_request(self.addr,
                                                    endpoint_id,
                                                    0x0300, (0x0004, 0x21))
+            if 0x0400 in endpoint['in_clusters']:
+                LOGGER.debug('bind for cluster 0x0400')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0400)
             if 0xFC00 in endpoint['in_clusters']:
                 LOGGER.debug('bind for cluster 0xFC00')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0xFC00)
@@ -2649,6 +2706,7 @@ class Device(object):
         d.info = data.get('info', {})
         d.genericType = data.get('generictype', '')
         d.discovery = data.get('discovery', '')
+        d.name = data.get('name', '')
         for ep in data.get('endpoints', []):
             if 'attributes' in ep:  # old version
                 LOGGER.debug('Old version found, convert it')
@@ -2688,13 +2746,16 @@ class Device(object):
                             'out_clusters': v['out_clusters']
                             } for k, v in self.endpoints.items()],
              'generictype': self.genericType,
-             'discovery': self.discovery
+             'discovery': self.discovery,
+             'name': self.name
              }
         if properties:
             r['properties'] = list(self.properties)
         return r
 
     def __str__(self):
+        if self.name:
+            return self.name
         name = self.get_property_value('type', '')
         manufacturer = self.get_property_value('manufacturer', 'Device')
         return '{} {} ({}) {}'.format(manufacturer, name, self.info.get('addr'), self.info.get('ieee'))
@@ -2972,7 +3033,7 @@ class Device(object):
         self.missing = False
 
         # delay fast change for cluster 0x0006
-        if cluster_id == 0x0006 and data['attribute'] == 0x0000:
+        if DETECT_FASTCHANGE and cluster_id == 0x0006 and data['attribute'] == 0x0000:
             now = monotonic()
             k = (endpoint_id, cluster_id, data['attribute'])
             last_change = self._fast_change.setdefault(k, 0)
@@ -3001,7 +3062,7 @@ class Device(object):
         '''
             Delay attribute change
         '''
-        timer = threading.Timer(DELAY_FASTCHANGE,
+        timer = threading.Timer(DELAY_FASTCHANGE * 2,
                                 functools.partial(self.set_attribute,
                                                   endpoint_id,
                                                   cluster_id,
