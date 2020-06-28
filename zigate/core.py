@@ -3056,8 +3056,21 @@ class Device(object):
                                'device': self,
                                'attribute': changed})
 
+        self._handle_quirks(changed)
 
         return added, attribute['attribute']
+    
+    def _handle_quirks(self, attribute):
+        """
+        Handle special attributes
+        """
+        if 'name' not in attribute:
+            return
+        if attribute['name'] == 'xiaomi':
+            LOGGER.debug('Handle special xiaomi attribute %s', attribute)
+            values = attribute['value']
+            self.set_attribute(0x0001, 0x0001, {'attribute': 0x0020, 'data': values[1] / 100.})
+            # TODO: Handle more special attribute
 
     def _delay_change(self, endpoint_id, cluster_id, data):
         '''
