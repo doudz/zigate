@@ -6,7 +6,6 @@ ZiGate clusters Tests
 import unittest
 from zigate import clusters, core
 import json
-from binascii import unhexlify
 
 
 class TestResponses(unittest.TestCase):
@@ -158,7 +157,8 @@ class TestResponses(unittest.TestCase):
                 }
         c = clusters.C0000.from_json(data, endpoint)
         self.assertEqual(c.attributes,
-                         {65281: {'attribute': 65281, 'data': '0121a90b03281f0421a84305211c00062429000a01030a2100006410000b219b00',
+                         {65281: {'attribute': 65281,
+                                  'data': '0121a90b03281f0421a84305211c00062429000a01030a2100006410000b219b00',
                                   'name': 'xiaomi', 'value': {1: 2985,
                                                               3: 31,
                                                               4: 17320,
@@ -176,7 +176,8 @@ class TestResponses(unittest.TestCase):
                 }
         c = clusters.C0000.from_json(data, endpoint)
         self.assertEqual(c.attributes,
-                         {65281: {'attribute': 65281, 'data': '0121130b0421a84305211300062401000000006429ed0965219513662be18201000a210000',
+                         {65281: {'attribute': 65281,
+                                  'data': '0121130b0421a84305211300062401000000006429ed0965219513662be18201000a210000',
                                   'name': 'xiaomi', 'value': {1: 2835,
                                                               4: 17320,
                                                               5: 19,
@@ -186,8 +187,6 @@ class TestResponses(unittest.TestCase):
                                                               102: 99041,
                                                               10: 0}, 'type': dict}}
                          )
-
-
         endpoint = {'device': 1}
         data = {"attributes": [{"attribute": 65282,
                                 "data": '100121e50b21a801240000000000217c012067',

@@ -56,7 +56,7 @@ class TestCore(unittest.TestCase):
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.weather'})
 
         self.assertEqual(device.get_type(), 'lumi.weather')
-        
+
         device.set_attribute(1, 0x0402, {'attribute': 0, 'lqi': 255, 'data': 1200})
         self.assertEqual(device.get_property_value('temperature'), 12.0)
         device.set_attribute(1, 0, {'attribute': 1, 'lqi': 255, 'data': 'test'})
@@ -228,10 +228,11 @@ class TestCore(unittest.TestCase):
             self.assertEqual(device.get_property_value('onoff'), True)
             time.sleep(core.DELAY_FASTCHANGE + 1)
             self.assertEqual(device.get_property_value('onoff'), False)
-    
+
     def test_quirks(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
-        device.set_attribute(1, 0x0000, {'attribute': 0xff01, 'lqi': 255, 'data': '0121130b0421a84305211300062401000000006429ed0965219513662be18201000a210000'})
+        device.set_attribute(1, 0x0000, {'attribute': 0xff01, 'lqi': 255,
+                             'data': '0121130b0421a84305211300062401000000006429ed0965219513662be18201000a210000'})
         self.assertEqual(device.get_property_value('xiaomi'), {1: 2835,
                                                                4: 17320,
                                                                5: 19,

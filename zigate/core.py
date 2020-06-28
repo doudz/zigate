@@ -691,9 +691,9 @@ class ZiGate(object):
                 if response['addr'] == self.addr:
                     return
                 device = self._get_device(response['addr'])
-                r = device.set_attribute(response['endpoint'],
-                                         response['cluster'],
-                                         response.cleaned_data())
+                device.set_attribute(response['endpoint'],
+                                     response['cluster'],
+                                     response.cleaned_data())
         elif response.msg == 0x8501:  # OTA image block request
             LOGGER.debug('Client is requesting ota image data')
             self._ota_send_image_data(response)
@@ -3040,8 +3040,8 @@ class Device(object):
         if not r:
             return
         changed = self.get_attribute(endpoint_id,
-                                    cluster_id,
-                                    attribute['attribute'], True)
+                                     cluster_id,
+                                     attribute['attribute'], True)
         if cluster_id == 0 and attribute['attribute'] == 5:
             if not self.discovery:
                 self.load_template()
@@ -3059,7 +3059,7 @@ class Device(object):
         self._handle_quirks(changed)
 
         return added, attribute['attribute']
-    
+
     def _handle_quirks(self, attribute):
         """
         Handle special attributes
