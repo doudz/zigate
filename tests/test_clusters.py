@@ -12,7 +12,7 @@ from binascii import unhexlify
 class TestResponses(unittest.TestCase):
     def test_xiaomi_struct(self):
         # lumi.weather
-        rawdata = unhexlify(b'0121bd0b0421a81305210e0006240100000000642971086521610f662ba58201000a210000')
+        rawdata = b'0121bd0b0421a81305210e0006240100000000642971086521610f662ba58201000a210000'
         data = clusters.decode_xiaomi(rawdata)
         self.assertEqual(data[1], 3005)  # battery
         self.assertEqual(data[100], 2161)  # temperature
@@ -20,14 +20,14 @@ class TestResponses(unittest.TestCase):
         self.assertEqual(data[102], 98981)  # pressure
 
         # lumi magnet sensor
-        rawdata = unhexlify(b'0121030c0328100421a81305211f00062401000000000a210000')
+        rawdata = b'0121030c0328100421a81305211f00062401000000000a210000'
         data = clusters.decode_xiaomi(rawdata)
 
         # aqara bulb
-        rawdata = unhexlify(b'03283c0521a4000727000000000000000008211601092100010a2100006420016520fe6621d901')
+        rawdata = b'03283c0521a4000727000000000000000008211601092100010a2100006420016520fe6621d901'
         data = clusters.decode_xiaomi(rawdata)
         self.assertEqual(data[100], 1)  # ON
-        rawdata = unhexlify(b'03283c0521a4000727000000000000000008211601092100010a2100006420006520fe6621d901')
+        rawdata = b'03283c0521a4000727000000000000000008211601092100010a2100006420006520fe6621d901'
         data = clusters.decode_xiaomi(rawdata)
         self.assertEqual(data[100], 0)  # OFF
 
@@ -149,6 +149,44 @@ class TestResponses(unittest.TestCase):
         self.assertEqual(jdata,
                          ('{"attributes": [{"attribute": 5, "data": "test.test", "name": "type", '
                           '"type": "str", "value": "test.test"}], "cluster": 0}'))
+
+        endpoint = {'device': 1}
+        data = {"attributes": [{"attribute": 65281,
+                                "data": '0121a90b03281f0421a84305211c00062429000a01030a2100006410000b219b00',
+                                }],
+                "cluster": 0
+                }
+        c = clusters.C0000.from_json(data, endpoint)
+        self.assertEqual(c.attributes,
+                         {65281: {'attribute': 65281, 'data': '0121a90b03281f0421a84305211c00062429000a01030a2100006410000b219b00',
+                                  'name': 'xiaomi', 'value': {1: 2985,
+                                                              3: 31,
+                                                              4: 17320,
+                                                              5: 28,
+                                                              6: b')\x00\n\x01\x03',
+                                                              10: 0,
+                                                              11: 155,
+                                                              100: False}, 'type': dict}}
+                         )
+        endpoint = {'device': 1}
+        data = {"attributes": [{"attribute": 65281,
+                                "data": '0121130b0421a84305211300062401000000006429ed0965219513662be18201000a210000',
+                                }],
+                "cluster": 0
+                }
+        c = clusters.C0000.from_json(data, endpoint)
+        self.assertEqual(c.attributes,
+                         {65281: {'attribute': 65281, 'data': '0121130b0421a84305211300062401000000006429ed0965219513662be18201000a210000',
+                                  'name': 'xiaomi', 'value': {1: 2835,
+                                                              4: 17320,
+                                                              5: 19,
+                                                              6: b'\x01\x00\x00\x00\x00',
+                                                              100: 2541,
+                                                              101: 5013,
+                                                              102: 99041,
+                                                              10: 0}, 'type': dict}}
+                         )
+
 
         endpoint = {'device': 1}
         data = {"attributes": [{"attribute": 65282,

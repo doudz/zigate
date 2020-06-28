@@ -678,26 +678,9 @@ class ZiGate(object):
                 return
             device = self._get_device(response['addr'])
             device.lqi = response['lqi']
-            r = device.set_attribute(response['endpoint'],
-                                     response['cluster'],
-                                     response.cleaned_data())
-            if r is None:
-                return
-            added, attribute_id = r
-            changed = device.get_attribute(response['endpoint'],
-                                           response['cluster'],
-                                           attribute_id, True)
-            if response['cluster'] == 0 and attribute_id == 5:
-                if not device.discovery:
-                    device.load_template()
-            if added:
-                dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
-                                                                 'device': device,
-                                                                 'attribute': changed})
-            else:
-                dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self, **{'zigate': self,
-                                                                   'device': device,
-                                                                   'attribute': changed})
+            device.set_attribute(response['endpoint'],
+                                 response['cluster'],
+                                 response.cleaned_data())
         elif response.msg == 0x004D:  # device announce
             LOGGER.debug('Device Announce %s', response)
             device = Device(response.data, self)
@@ -3056,6 +3039,24 @@ class Device(object):
         self._lock_release()
         if not r:
             return
+        changed = self.get_attribute(endpoint_id,
+                                    cluster_id,
+                                    attribute['attribute'], True)
+        if cluster_id == 0 and attribute['attribute'] == 5:
+            if not self.discovery:
+                self.load_template()
+        if added:
+            dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self._zigate,
+                            **{'zigate': self._zigate,
+                               'device': self,
+                               'attribute': changed})
+        else:
+            dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self._zigate,
+                            **{'zigate': self._zigate,
+                               'device': self,
+                               'attribute': changed})
+
+
         return added, attribute['attribute']
 
     def _delay_change(self, endpoint_id, cluster_id, data):
@@ -3284,6 +3285,7 @@ class Device(object):
             return
         path = os.path.join(BASE_PATH, 'templates', template_filename + '.json')
         success = False
+        LOGGER.debug('Try loading template %s', path)
         if os.path.exists(path):
             try:
                 with open(path) as fp:
