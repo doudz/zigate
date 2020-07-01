@@ -678,26 +678,9 @@ class ZiGate(object):
                 return
             device = self._get_device(response['addr'])
             device.lqi = response['lqi']
-            r = device.set_attribute(response['endpoint'],
-                                     response['cluster'],
-                                     response.cleaned_data())
-            if r is None:
-                return
-            added, attribute_id = r
-            changed = device.get_attribute(response['endpoint'],
-                                           response['cluster'],
-                                           attribute_id, True)
-            if response['cluster'] == 0 and attribute_id == 5:
-                if not device.discovery:
-                    device.load_template()
-            if added:
-                dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
-                                                                 'device': device,
-                                                                 'attribute': changed})
-            else:
-                dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self, **{'zigate': self,
-                                                                   'device': device,
-                                                                   'attribute': changed})
+            device.set_attribute(response['endpoint'],
+                                 response['cluster'],
+                                 response.cleaned_data())
         elif response.msg == 0x004D:  # device announce
             LOGGER.debug('Device Announce %s', response)
             device = Device(response.data, self)
@@ -708,9 +691,9 @@ class ZiGate(object):
                 if response['addr'] == self.addr:
                     return
                 device = self._get_device(response['addr'])
-                r = device.set_attribute(response['endpoint'],
-                                         response['cluster'],
-                                         response.cleaned_data())
+                device.set_attribute(response['endpoint'],
+                                     response['cluster'],
+                                     response.cleaned_data())
         elif response.msg == 0x8501:  # OTA image block request
             LOGGER.debug('Client is requesting ota image data')
             self._ota_send_image_data(response)
@@ -2241,11 +2224,11 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         manufacturer_specific = manufacturer_code != 0
-        mode = {'stop': '0000', 'burglar': '1000', 'fire': '0100', 'emergency': '1100',
-                'policepanic': '0010', 'firepanic': '1010', 'emergencypanic': '0110'
+        mode = {'stop': '0000', 'burglar': '0001', 'fire': '0010', 'emergency': '0011',
+                'policepanic': '0100', 'firepanic': '0101', 'emergencypanic': '0110'
                 }.get(mode, '0000')
-        strobe = '10' if strobe else '00'
-        level = {'low': '00', 'medium': '10', 'high': '01', 'veryhigh': '11'}.get(level, '00')
+        strobe = '01' if strobe else '00'
+        level = {'low': '00', 'medium': '01', 'high': '10', 'veryhigh': '11'}.get(level, '00')
         warning_mode_strobe_level = int(mode + strobe + level, 2)
         strobe_level = {'low': 0, 'medium': 1, 'high': 2, 'veryhigh': 3}.get(strobe_level, 0)
         data = struct.pack('!B' + addr_fmt + 'BBBBHBHBB', addr_mode, addr, 1,
@@ -2271,7 +2254,7 @@ class ZiGate(object):
         manufacturer_specific = manufacturer_code != 0
         mode = {'armed': '0000', 'disarmed': '1000'}.get(mode, '0000')
         strobe = '1' if strobe else '0'
-        level = {'low': '00', 'medium': '10', 'high': '01', 'veryhigh': '11'}.get(level, '00')
+        level = {'low': '00', 'medium': '01', 'high': '10', 'veryhigh': '11'}.get(level, '00')
         squawk_mode_strobe_level = int(mode + strobe + '0' + level, 2)
         data = struct.pack('!B' + addr_fmt + 'BBBBHB', addr_mode, addr, 1,
                            endpoint,
@@ -3056,7 +3039,39 @@ class Device(object):
         self._lock_release()
         if not r:
             return
+        changed = self.get_attribute(endpoint_id,
+                                     cluster_id,
+                                     attribute['attribute'], True)
+        if cluster_id == 0 and attribute['attribute'] == 5:
+            if not self.discovery:
+                self.load_template()
+        if added:
+            dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self._zigate,
+                            **{'zigate': self._zigate,
+                               'device': self,
+                               'attribute': changed})
+        else:
+            dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self._zigate,
+                            **{'zigate': self._zigate,
+                               'device': self,
+                               'attribute': changed})
+
+        self._handle_quirks(changed)
+
         return added, attribute['attribute']
+
+    def _handle_quirks(self, attribute):
+        """
+        Handle special attributes
+        """
+        if 'name' not in attribute:
+            return
+        if attribute['name'] == 'xiaomi':
+            LOGGER.debug('Handle special xiaomi attribute %s', attribute)
+            values = attribute['value']
+            # Battery voltage
+            self.set_attribute(0x0001, 0x0001, {'attribute': 0x0020, 'data': values[1] / 100.})
+            # TODO: Handle more special attribute
 
     def _delay_change(self, endpoint_id, cluster_id, data):
         '''
@@ -3284,6 +3299,7 @@ class Device(object):
             return
         path = os.path.join(BASE_PATH, 'templates', template_filename + '.json')
         success = False
+        LOGGER.debug('Try loading template %s', path)
         if os.path.exists(path):
             try:
                 with open(path) as fp:

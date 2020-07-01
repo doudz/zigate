@@ -173,12 +173,18 @@ class C0000(Cluster):
                       0x0007: {'name': 'power_source', 'value': 'value'},
                       0x0010: {'name': 'description',
                                'value': 'clean_str(value)'},
-                      0xff01: {'name': 'battery_voltage',
-                               'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
-                               'unit': 'V', 'type': float},
+                      #   0xff01: {'name': 'battery_voltage',
+                      #            'value': "struct.unpack('H', unhexlify(value)[2:4])[0]/1000.",
+                      #            'unit': 'V', 'type': float},
+                      0xff01: {'name': 'xiaomi',
+                               'value': "decode_xiaomi(value)",
+                               'type': dict},
                       0xff02: {'name': 'battery_voltage',
                                'value': "struct.unpack('H', unhexlify(value)[3:5])[0]/1000.",
                                'unit': 'V', 'type': float},
+                      #   0xff02: {'name': 'xiaomi',
+                      #            'value': "decode_xiaomi(value)",
+                      #            'type': dict},
                       }
 
     def update(self, data):
@@ -190,6 +196,7 @@ class C0000(Cluster):
 
 
 def decode_xiaomi(rawdata):
+    rawdata = unhexlify(rawdata)
     data = {}
     i = 0
     while i < len(rawdata):
