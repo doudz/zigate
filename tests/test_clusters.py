@@ -18,6 +18,9 @@ class TestResponses(unittest.TestCase):
         self.assertEqual(data[101], 3937)  # humidity
         self.assertEqual(data[102], 98981)  # pressure
         self.assertEqual(data[6], '0100000000')  # binary data
+
+        rawdata = b'01219f0b03281e0421a81305219d0006240100000000082105140a21ed7721'
+        data = clusters.decode_xiaomi(rawdata)
         
         # lumi magnet sensor
         rawdata = b'0121030c0328100421a81305211f00062401000000000a210000'

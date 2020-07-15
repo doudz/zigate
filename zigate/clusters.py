@@ -199,7 +199,7 @@ def decode_xiaomi(rawdata):
     rawdata = unhexlify(rawdata)
     data = {}
     i = 0
-    while i < len(rawdata):
+    while i < len(rawdata) - 1:
         index = rawdata[i]
         _type = rawdata[i + 1]
         byteLength = (_type & 0x7) + 1
