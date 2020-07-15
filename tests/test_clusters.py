@@ -17,7 +17,8 @@ class TestResponses(unittest.TestCase):
         self.assertEqual(data[100], 2161)  # temperature
         self.assertEqual(data[101], 3937)  # humidity
         self.assertEqual(data[102], 98981)  # pressure
-
+        self.assertEqual(data[6], '0100000000')  # binary data
+        
         # lumi magnet sensor
         rawdata = b'0121030c0328100421a81305211f00062401000000000a210000'
         data = clusters.decode_xiaomi(rawdata)
@@ -163,7 +164,7 @@ class TestResponses(unittest.TestCase):
                                                               3: 31,
                                                               4: 17320,
                                                               5: 28,
-                                                              6: b')\x00\n\x01\x03',
+                                                              6: '29000a0103',
                                                               10: 0,
                                                               11: 155,
                                                               100: False}, 'type': dict}}
@@ -181,7 +182,7 @@ class TestResponses(unittest.TestCase):
                                   'name': 'xiaomi', 'value': {1: 2835,
                                                               4: 17320,
                                                               5: 19,
-                                                              6: b'\x01\x00\x00\x00\x00',
+                                                              6: '0100000000',
                                                               100: 2541,
                                                               101: 5013,
                                                               102: 99041,
