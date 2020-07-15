@@ -188,8 +188,8 @@ class C0000(Cluster):
                       }
 
     def update(self, data):
-        if data['attribute'] == 0xff01 and not data.get('data', '').startswith('0121'):
-            return
+        # if data['attribute'] == 0xff01 and not data.get('data', '').startswith('0121'):
+        #     return
         if data['attribute'] == 0xff02 and not data.get('data', '').startswith('10'):
             return
         return Cluster.update(self, data)
@@ -207,6 +207,8 @@ def decode_xiaomi(rawdata):
         data[index] = rawdata[i + 2: i + 2 + byteLength]
         if fmt:
             data[index] = struct.unpack(fmt, data[index])[0]
+        if isinstance(data[index], bytes):
+            data[index] = hexlify(data[index]).decode()
         i += byteLength + 2
     return data
 

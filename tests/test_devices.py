@@ -236,7 +236,7 @@ class TestCore(unittest.TestCase):
         self.assertEqual(device.get_property_value('xiaomi'), {1: 2835,
                                                                4: 17320,
                                                                5: 19,
-                                                               6: b'\x01\x00\x00\x00\x00',
+                                                               6: '0100000000',
                                                                100: 2541,
                                                                101: 5013,
                                                                102: 99041,
