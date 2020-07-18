@@ -242,6 +242,11 @@ class TestCore(unittest.TestCase):
                                                                102: 99041,
                                                                10: 0})
         self.assertEqual(device.get_property_value('battery_voltage'), 2.835)
+    
+    def test_available_actions(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.vibration.aq1'})
+        self.assertEqual(device.available_actions(), {1: []})
 
 
 if __name__ == '__main__':
