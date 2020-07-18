@@ -2512,7 +2512,8 @@ class Device(object):
                         # except device 0x010a because Tradfri Outlet don't have level control
                         # but still have endpoint 8...
                         actions[ep_id].append(ACTIONS_LEVEL)
-                    if 0x0101 in endpoint['in_clusters']:
+                    if 0x0101 in endpoint['in_clusters'] and self.receiver_on_when_idle():
+                        # because of xiaomi vibration sensor
                         actions[ep_id].append(ACTIONS_LOCK)
                     if 0x0102 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_COVER)
@@ -3070,8 +3071,14 @@ class Device(object):
             LOGGER.debug('Handle special xiaomi attribute %s', attribute)
             values = attribute['value']
             # Battery voltage
-            self.set_attribute(0x0001, 0x0001, {'attribute': 0x0020, 'data': values[1] / 100.})
+            data_map = [(0x01, 0x0001, 0x0020, values[1] / 100.),]
             # TODO: Handle more special attribute
+            if self.get_type(False) == 'lumi.sensor_motion.aq2':
+                data_map += [(0x01, 0x0406, 0x0000, values[100]),
+                             (0x01, 0x0400, 0x0000, values[11])
+                            ]
+            for endpoint_id, cluster_id, attribute_id, value in data_map:
+                self.set_attribute(endpoint_id, cluster_id, {'attribute': attribute_id, 'data': value})
 
     def _delay_change(self, endpoint_id, cluster_id, data):
         '''
