@@ -3077,6 +3077,19 @@ class Device(object):
                 data_map += [(0x01, 0x0406, 0x0000, values[100]),
                              (0x01, 0x0400, 0x0000, values[11])
                             ]
+            elif self.get_type(False) == 'lumi.sensor_magnet.aq2':
+                data_map += [(0x01, 0x0006, 0x0000, values[100]),
+                            ]
+            elif self.get_type(False) == 'lumi.sensor_ht':
+                data_map += [(0x01, 0x0402, 0x0000, values[100]),
+                             (0x01, 0x0405, 0x0000, values[101]),
+                            ]
+            elif self.get_type(False) == 'lumi.weather':
+                data_map += [(0x01, 0x0402, 0x0000, values[100]),
+                             (0x01, 0x0405, 0x0000, values[101]),
+                             (0x01, 0x0403, 0x0000, int(values[102] / 100)),
+                             (0x01, 0x0403, 0x0010, values[102] / 10),
+                            ]
             for endpoint_id, cluster_id, attribute_id, value in data_map:
                 self.set_attribute(endpoint_id, cluster_id, {'attribute': attribute_id, 'data': value})
 
