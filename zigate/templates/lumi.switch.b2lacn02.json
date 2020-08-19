@@ -1,0 +1,220 @@
+{
+    "endpoints": [
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0,
+                            "name": "zcl_version"
+                        },
+                        {
+                            "attribute": 1,
+                            "name": "application_version"
+                        },
+                        {
+                            "attribute": 2,
+                            "name": "stack_version"
+                        },
+                        {
+                            "attribute": 3,
+                            "name": "hardware_version"
+                        },
+                        {
+                            "attribute": 4,
+                            "data": "LUMI"
+                        },
+                        {
+                            "attribute": 5,
+                            "data": "lumi.switch.b2lacn02"
+                        },
+                        {
+                            "attribute": 6
+                        },
+                        {
+                            "attribute": 7
+                        },
+                        {
+                            "attribute": 65281
+                        },
+                        {
+                            "attribute": 16
+                        }
+                    ],
+                    "cluster": 0
+                },
+                {
+                    "attributes": [
+                        {
+                            "attribute": 32
+                        }
+                    ],
+                    "cluster": 1
+                }
+            ],
+            "device": 6,
+            "endpoint": 1,
+            "in_clusters": [
+                0,
+                3,
+                1,
+                2,
+                25,
+                10
+            ],
+            "out_clusters": [
+                0,
+                10,
+                25
+            ],
+            "profile": 260
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        },
+                        {
+                            "attribute": 61440
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 0,
+            "endpoint": 2,
+            "in_clusters": [
+                6
+            ],
+            "out_clusters": [],
+            "profile": 0
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        },
+                        {
+                            "attribute": 61440
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 0,
+            "endpoint": 3,
+            "in_clusters": [
+                6
+            ],
+            "out_clusters": [],
+            "profile": 0
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 0,
+            "endpoint": 4,
+            "in_clusters": [],
+            "out_clusters": [],
+            "profile": 0
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 0,
+            "endpoint": 5,
+            "in_clusters": [],
+            "out_clusters": [],
+            "profile": 0
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 0
+                        }
+                    ],
+                    "cluster": 6
+                }
+            ],
+            "device": 0,
+            "endpoint": 6,
+            "in_clusters": [],
+            "out_clusters": [],
+            "profile": 0
+        },
+        {
+            "clusters": [
+                {
+                    "attributes": [
+                        {
+                            "attribute": 256
+                        },
+                        {
+                            "attribute": 65
+                        },
+                        {
+                            "attribute": 69
+                        },
+                        {
+                            "attribute": 81
+                        },
+                        {
+                            "attribute": 106
+                        },
+                        {
+                            "attribute": 111
+                        },
+                        {
+                            "attribute": 28
+                        },
+                        {
+                            "attribute": 85
+                        }
+                    ],
+                    "cluster": 12
+                }
+            ],
+            "device": 83,
+            "endpoint": 8,
+            "in_clusters": [
+                12
+            ],
+            "out_clusters": [],
+            "profile": 260
+        }
+    ],
+    "generictype": "switch",
+    "info": {
+        "assumed_state": false,
+        "bit_field": "0100000000000001",
+        "descriptor_capability": "00000000",
+        "mac_capability": "10000100",
+        "manufacturer_code": "1037",
+        "max_buffer": 127,
+        "max_rx": 100,
+        "max_tx": 100,
+        "server_mask": 1
+    }
+}
