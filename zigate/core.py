@@ -1308,14 +1308,19 @@ class ZiGate(object):
         LOGGER.debug('Gathered neighbours table: %s', neighbours)
         return neighbours
 
-    def refresh_device(self, addr, full=False):
+    def refresh_device(self, addr, full=False, force=False):
         '''
         convenient function to refresh device attribute
+        if full is true, try to read all known attributes
+        else only some specific attributes related to known clusters.
+        if force is false, only refresh if the device has not been seen
+        for more than an one hour
+
         '''
         device = self.get_device_from_addr(addr)
         if not device:
-            return
-        device.refresh_device(full)
+            return     
+        device.refresh_device(full, force)
 
     def discover_device(self, addr, force=False):
         '''
@@ -2830,8 +2835,14 @@ class Device(object):
             typ = self.get_value('type')
         return typ
 
-    def refresh_device(self, full=False):
+    def refresh_device(self, full=False, force=False):
         to_read = {}
+        if not force:
+            last_1h = datetime.datetime.now() - datetime.timedelta(hours=1)
+            last_1h = last_1h.strftime('%Y-%m-%d %H:%M:%S')
+            if self.last_seen > last_1h:
+                LOGGER.debug('Last seen less than an hour, ignoring refresh')
+                return
         if full:
             for attribute in self.attributes:
                 k = (attribute['endpoint'], attribute['cluster'])
@@ -3089,6 +3100,13 @@ class Device(object):
                              (0x01, 0x0405, 0x0000, values[101]),
                              (0x01, 0x0403, 0x0000, int(values[102] / 100)),
                              (0x01, 0x0403, 0x0010, values[102] / 10),
+                            ]
+            elif self.get_type(False) == 'lumi.ctrl_neutral1':
+                data_map += [(0x02, 0x0006, 0x0000, values[100]),
+                            ]
+            elif self.get_type(False) == 'lumi.ctrl_neutral2':
+                data_map += [(0x02, 0x0006, 0x0000, values[100]),
+                             (0x03, 0x0006, 0x0000, values[101]),
                             ]
             for endpoint_id, cluster_id, attribute_id, value in data_map:
                 self.set_attribute(endpoint_id, cluster_id, {'attribute': attribute_id, 'data': value})

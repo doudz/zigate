@@ -7,6 +7,7 @@ import unittest
 import os
 import shutil
 import tempfile
+import datetime
 from zigate import responses, transport, core, clusters
 from binascii import hexlify, unhexlify
 import time
@@ -751,13 +752,21 @@ class TestCore(unittest.TestCase):
         device.set_attribute(1, 0x0006, {'attribute': 0, 'lqi': 255, 'data': '0'})
         device.set_attribute(1, 0x0006, {'attribute': 2, 'lqi': 255, 'data': '0'})
         self.zigate._devices['1234'] = device
-        device.refresh_device()
+        device.refresh_device(force=True)
         self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
                          b'0212340101000600000000010000'
                          )
-        device.refresh_device(True)
+        device.refresh_device(full=True, force=True)
         self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
                          b'02123401010006000000000200000002'
+                         )
+        self.zigate.connection.sent = []
+        device.refresh_device()
+        self.assertIsNone(self.zigate.connection.get_last_cmd())
+        device.info['last_seen'] = datetime.datetime(2020, 1 , 1).strftime('%Y-%m-%d %H:%M:%S')
+        device.refresh_device()
+        self.assertEqual(hexlify(self.zigate.connection.get_last_cmd()),
+                         b'0212340101000600000000010000'
                          )
 
     def test_write_attribute(self):
