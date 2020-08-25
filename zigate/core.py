@@ -2852,6 +2852,12 @@ class Device(object):
         else:
             endpoints_list = list(self.endpoints.items())
             for endpoint_id, endpoint in endpoints_list:
+                # tries to read the type as a kind of ping
+                if 0x0000 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0000)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0005)
                 if 0x0006 in endpoint['in_clusters']:
                     k = (endpoint_id, 0x0006)
                     if k not in to_read:
