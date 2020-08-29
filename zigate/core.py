@@ -629,6 +629,8 @@ class ZiGate(object):
                     continue
                 device = Device(dict(d), self)
                 self._set_device(device)
+        elif response.msg == 0x8035:  # PDM event
+            LOGGER.warning('PDM Event : %s %s', response['status'], response.status_text())
         elif response.msg == 0x8042:  # node descriptor
             addr = response['addr']
             d = self.get_device_from_addr(addr)

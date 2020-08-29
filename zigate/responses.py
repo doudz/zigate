@@ -454,6 +454,39 @@ class R8031(R8030):
 
 
 @register_response
+class R8035(Response):
+    msg = 0x8035
+    type = 'PDM Event'
+    s = OrderedDict([('status', 'B'),
+                     ('record', 'I'),
+                     ])
+
+    def status_text(self):
+        status_codes = ['E_PDM_SYSTEM_EVENT_WEAR_COUNT_TRIGGER_VALUE_REACHED',
+                        'E_PDM_SYSTEM_EVENT_DESCRIPTOR_SAVE_FAILED',
+                        'E_PDM_SYSTEM_EVENT_PDM_NOT_ENOUGH_SPACE',
+                        'E_PDM_SYSTEM_EVENT_LARGEST_RECORD_FULL_SAVE_NO_LONGER_POSSIBLE',
+                        'E_PDM_SYSTEM_EVENT_SEGMENT_DATA_CHECKSUM_FAIL',
+                        'E_PDM_SYSTEM_EVENT_SEGMENT_SAVE_OK',
+                        'E_PDM_SYSTEM_EVENT_EEPROM_SEGMENT_HEADER_REPAIRED',
+                        'E_PDM_SYSTEM_EVENT_SYSTEM_INTERNAL_BUFFER_WEAR_COUNT_SWAP',
+                        'E_PDM_SYSTEM_EVENT_SYSTEM_DUPLICATE_FILE_SEGMENT_DETECTED',
+                        'E_PDM_SYSTEM_EVENT_SYSTEM_ERROR',
+                        'E_PDM_SYSTEM_EVENT_SEGMENT_PREWRITE',
+                        'E_PDM_SYSTEM_EVENT_SEGMENT_POSTWRITE',
+                        'E_PDM_SYSTEM_EVENT_SEQUENCE_DUPLICATE_DETECTED',
+                        'E_PDM_SYSTEM_EVENT_SEQUENCE_VERIFY_FAIL',
+                        'E_PDM_SYSTEM_EVENT_PDM_SMART_SAVE',
+                        'E_PDM_SYSTEM_EVENT_PDM_FULL_SAVE',
+                        ]
+        try:
+            return status_codes[self.data.get('status')]
+        except IndexError:
+            return 'Unknown PDM event'
+
+
+
+@register_response
 class R8040(Response):
     msg = 0x8040
     type = 'Network Address response'
