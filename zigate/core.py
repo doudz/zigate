@@ -2842,7 +2842,7 @@ class Device(object):
         if not force:
             last_1h = datetime.datetime.now() - datetime.timedelta(hours=1)
             last_1h = last_1h.strftime('%Y-%m-%d %H:%M:%S')
-            if self.last_seen > last_1h:
+            if self.last_seen and self.last_seen > last_1h:
                 LOGGER.debug('Last seen less than an hour, ignoring refresh')
                 return
         if full:
