@@ -2235,7 +2235,7 @@ class ZiGate(object):
                 'policepanic': '0100', 'firepanic': '0101', 'emergencypanic': '0110'
                 }.get(mode, '0000')
         strobe = '01' if strobe else '00'
-        level = {'low': '00', 'medium': '01', 'high': '10', 'veryhigh': '11'}.get(level, '00')
+        level = {'low': '00', 'medium': '10', 'high': '01', 'veryhigh': '11'}.get(level, '00')
         warning_mode_strobe_level = int(mode + strobe + level, 2)
         strobe_level = {'low': 0, 'medium': 1, 'high': 2, 'veryhigh': 3}.get(strobe_level, 0)
         data = struct.pack('!B' + addr_fmt + 'BBBBHBHBB', addr_mode, addr, 1,
@@ -2259,9 +2259,9 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         manufacturer_specific = manufacturer_code != 0
-        mode = {'armed': '0000', 'disarmed': '1000'}.get(mode, '0000')
+        mode = {'armed': '0000', 'disarmed': '0001'}.get(mode, '0000')
         strobe = '1' if strobe else '0'
-        level = {'low': '00', 'medium': '01', 'high': '10', 'veryhigh': '11'}.get(level, '00')
+        level = {'low': '00', 'medium': '10', 'high': '01', 'veryhigh': '11'}.get(level, '00')
         squawk_mode_strobe_level = int(mode + strobe + '0' + level, 2)
         data = struct.pack('!B' + addr_fmt + 'BBBBHB', addr_mode, addr, 1,
                            endpoint,
