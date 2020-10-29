@@ -289,7 +289,7 @@ Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
 ### Flasher Usage
 
 ```bash
-usage: python3 -m zigate.flasher [-h] -p {/dev/ttyUSB0} [-w WRITE] [-s SAVE] [-e] [--pdm-only]
+usage: python3 -m zigate.flasher [-h] -p {/dev/ttyUSB0} [-w WRITE] [-s SAVE] [-u] [-d] [--gpio] [--din]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -298,6 +298,8 @@ optional arguments:
   -w WRITE, --write WRITE
                         Firmware bin to flash onto the chip
   -s SAVE, --save SAVE  File to save the currently loaded firmware to
+  -u, --upgrade         Download and flash the lastest available firmware
+  -d, --debug           Set log level to DEBUG
   --gpio                Configure GPIO for PiZiGate flash
   --din                 Configure USB for ZiGate DIN flash
 

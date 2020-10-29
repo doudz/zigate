@@ -288,6 +288,28 @@ def select_flash(ser, flash_type):
         raise SystemExit(1)
 
 
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r{0} |{1}| {2}% {3}'.format(prefix, bar, percent, suffix), end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+
+
 def write_flash_to_file(ser, filename):
     # flash_start = cur = ZIGATE_FLASH_START
     cur = ZIGATE_FLASH_START
@@ -308,8 +330,9 @@ def write_flash_to_file(ser, filename):
             if cur == 0:
                 (flash_end,) = struct.unpack('>L', res.data[0x20:0x24])
             fd.write(res.data)
-            print(int(cur*100/flash_end), '%', end='\r')
+            printProgressBar(cur, flash_end, 'Reading')
             cur += read_bytes
+    printProgressBar(flash_end, flash_end, 'Reading')
     logger.info('Backup firmware done')
 
 
@@ -340,8 +363,9 @@ def write_file_to_flash(ser, filename):
             if not res.ok:
                 print('writing failed at 0x%08x, status: 0x%x, data: %s' % (cur, res.status, data.hex()))
                 raise SystemExit(1)
-            print(int(cur*100/flash_end), '%', end='\r')
+            printProgressBar(cur, flash_end, 'Writing')
             cur += read_bytes
+    printProgressBar(flash_end, flash_end, 'Writing')
     logger.info('Writing new firmware done')
 
 
@@ -381,7 +405,8 @@ def flash(serialport='auto', write=None, save=None, erase=False, pdm_only=False)
 
     if erase:
         erase_EEPROM(ser, pdm_only)
-    # change_baudrate(ser, 38400)
+    change_baudrate(ser, 38400)
+    ser.close()
 
 
 def upgrade_firmware(port):
