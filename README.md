@@ -5,6 +5,7 @@
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Percentage of issues still open")
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/sebramage)
+[![Donate with Bitcoin](https://en.cryptobadges.io/badge/small/3DHvPBWyf5Vsp485tGFu7WfYSd6r5qgZdH)](https://en.cryptobadges.io/donate/3DHvPBWyf5Vsp485tGFu7WfYSd6r5qgZdH)
 
 Python library for [ZiGate](http://zigate.fr/).
 This library manage communication between python and zigate key, both USB and WiFi key are supported.
