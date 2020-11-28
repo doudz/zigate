@@ -36,8 +36,15 @@
 <div style="display: inline-block; vertical-align: top;">
 	<h3>Actions</h3>
 	<a class="pure-button" href="{{get_url('api_permit_join')}}">Permit Join</a>
+	<a class="pure-button" href="{{get_url('api_reset')}}">Reset</a>
 	<a class="pure-button" href="{{get_url('api_led', on='true')}}">Led ON</a>
 	<a class="pure-button" href="{{get_url('api_led', on='false')}}">Led OFF</a>
+	<form method="post" action="{{get_url('raw_command')}}">
+	Raw command :
+	<label for="cmd">Cmd : </label><input type="text" name="cmd" placeholder="0x0000">
+	<label for="data">Data : </label><input type="text" name="data" placeholder="optionnal binary payload">
+	<input type="submit" name="Send">
+	</form>
 </div>
 
 <br>
