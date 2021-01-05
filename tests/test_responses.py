@@ -559,6 +559,16 @@ class TestResponses(unittest.TestCase):
                                           ])
                              )
 
+    def test_response_8035(self):
+        msg_data = unhexlify(b'030000f104')
+        r = responses.R8035(msg_data, 255)
+        self.assertDictEqual(r.cleaned_data(),
+                             OrderedDict([('status', 3),
+                                          ('record', 0x0000f104),
+                                          ('lqi', 255),
+                                          ]))
+        self.assertEqual(r.status_text(), 'E_PDM_SYSTEM_EVENT_LARGEST_RECORD_FULL_SAVE_NO_LONGER_POSSIBLE')
+
 
 if __name__ == '__main__':
     unittest.main()

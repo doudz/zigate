@@ -18,7 +18,16 @@ def get_releases():
     r = requests.get(URL)
     if r.status_code == 200:
         for release in r.json():
+            if release.get('draft'):
+                LOGGER.debug('ignoring draft %s', release['name'])
+                continue
+            if release.get('prerelease'):
+                LOGGER.debug('ignoring prerelease %s', release['name'])
+                continue
             for asset in release['assets']:
+                if 'pdmhost' in asset['name'].lower():
+                    LOGGER.debug('ignoring pdm on host firmware %s', release['name'])
+                    continue
                 if asset['name'].endswith('.bin'):
                     LOGGER.info('Found %s', asset['name'])
                     releases[asset['name']] = asset['browser_download_url']
@@ -39,6 +48,7 @@ def download(url, dest='/tmp'):
 def download_latest(dest='/tmp'):
     LOGGER.info('Download latest firmware')
     releases = get_releases()
+    LOGGER.debug('Available firmwares %s', releases)
     if releases:
         latest = list(releases.keys())[0]
         LOGGER.info('Latest is %s', latest)
@@ -46,5 +56,5 @@ def download_latest(dest='/tmp'):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     download_latest()

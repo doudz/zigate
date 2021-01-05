@@ -114,9 +114,22 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
             return redirect('index')
         return {'device': device}
 
+    @app.route('/raw_command', name='raw_command', method=['POST'])
+    def raw_command():
+        cmd = bottle.request.forms.get('cmd')
+        data = bottle.request.forms.get('data')
+        cmd = int(cmd, 16)
+        zigate_instance.send_data(cmd, data)
+        return redirect('index')
+
     @app.route('/api/permit_join', name='api_permit_join')
     def permit_join():
         zigate_instance.permit_join()
+        return redirect('index')
+    
+    @app.route('/api/reset', name='api_reset')
+    def reset():
+        zigate_instance.reset()
         return redirect('index')
 
     @app.route('/api/led', name='api_led')

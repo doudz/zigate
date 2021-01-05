@@ -1,20 +1,16 @@
 # zigate
 
-[![Build Status](https://travis-ci.com/doudz/zigate.svg?branch=master)](https://travis-ci.com/doudz/zigate)
+![Build & Tests](https://github.com/doudz/zigate/workflows/Build%20&%20Tests/badge.svg)
 [![PyPI version](https://badge.fury.io/py/zigate.svg)](https://pypi.python.org/pypi/zigate)
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/doudz/zigate.svg)](http://isitmaintained.com/project/doudz/zigate "Percentage of issues still open")
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/sebramage)
+[![Donate with Bitcoin](https://en.cryptobadges.io/badge/small/3DHvPBWyf5Vsp485tGFu7WfYSd6r5qgZdH)](https://en.cryptobadges.io/donate/3DHvPBWyf5Vsp485tGFu7WfYSd6r5qgZdH)
 
 Python library for [ZiGate](http://zigate.fr/).
 This library manage communication between python and zigate key, both USB and WiFi key are supported.
 
 ZiGate is an universal gateway compatible with a lot of ZigBee device (like Xiaomi, Philipps Hue, Ikea, etc).
-
-Current coverage :
-
-* Commands 69 / 91
-* Responses 48 / 52
 
 ## Getting Started
 
@@ -293,7 +289,7 @@ Thanks to Sander Hoentjen (tjikkun) we now have a flasher !
 ### Flasher Usage
 
 ```bash
-usage: python3 -m zigate.flasher [-h] -p {/dev/ttyUSB0} [-w WRITE] [-s SAVE] [-e] [--pdm-only]
+usage: python3 -m zigate.flasher [-h] -p {/dev/ttyUSB0} [-w WRITE] [-s SAVE] [-u] [-d] [--gpio] [--din]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -302,8 +298,8 @@ optional arguments:
   -w WRITE, --write WRITE
                         Firmware bin to flash onto the chip
   -s SAVE, --save SAVE  File to save the currently loaded firmware to
-  -e, --erase           Erase EEPROM
-  --pdm-only            Erase PDM only, use it with --erase
+  -u, --upgrade         Download and flash the lastest available firmware
+  -d, --debug           Set log level to DEBUG
   --gpio                Configure GPIO for PiZiGate flash
   --din                 Configure USB for ZiGate DIN flash
 

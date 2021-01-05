@@ -35,7 +35,7 @@ except Exception:
 import usb
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('ZiGate Flasher')
 _responses = {}
 
 ZIGATE_CHIP_ID = 0x10408686
@@ -288,12 +288,34 @@ def select_flash(ser, flash_type):
         raise SystemExit(1)
 
 
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r{0} |{1}| {2}% {3}'.format(prefix, bar, percent, suffix), end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+
+
 def write_flash_to_file(ser, filename):
     # flash_start = cur = ZIGATE_FLASH_START
     cur = ZIGATE_FLASH_START
     flash_end = ZIGATE_FLASH_END
 
-    print('reading old flash to %s' % filename)
+    logger.info('Backup firmware to %s', filename)
     with open(filename, 'wb') as fd:
         fd.write(ZIGATE_BINARY_VERSION)
         read_bytes = 128
@@ -308,11 +330,14 @@ def write_flash_to_file(ser, filename):
             if cur == 0:
                 (flash_end,) = struct.unpack('>L', res.data[0x20:0x24])
             fd.write(res.data)
+            printProgressBar(cur, flash_end, 'Reading')
             cur += read_bytes
+    printProgressBar(flash_end, flash_end, 'Reading')
+    logger.info('Backup firmware done')
 
 
 def write_file_to_flash(ser, filename):
-    print('writing new flash from %s' % filename)
+    logger.info('Writing new firmware from %s', filename)
     with open(filename, 'rb') as fd:
         ser.write(req_flash_erase())
         res = read_response(ser)
@@ -338,7 +363,10 @@ def write_file_to_flash(ser, filename):
             if not res.ok:
                 print('writing failed at 0x%08x, status: 0x%x, data: %s' % (cur, res.status, data.hex()))
                 raise SystemExit(1)
+            printProgressBar(cur, flash_end, 'Writing')
             cur += read_bytes
+    printProgressBar(flash_end, flash_end, 'Writing')
+    logger.info('Writing new firmware done')
 
 
 def erase_EEPROM(ser, pdm_only=False):
@@ -365,7 +393,7 @@ def flash(serialport='auto', write=None, save=None, erase=False, pdm_only=False)
     check_chip_id(ser)
     flash_type = get_flash_type(ser)
     mac_address = get_mac(ser)
-    print('Found MAC-address: %s' % mac_address)
+    logger.info('Found MAC-address: %s', mac_address)
     if write or save or erase:
         select_flash(ser, flash_type)
 
@@ -378,6 +406,7 @@ def flash(serialport='auto', write=None, save=None, erase=False, pdm_only=False)
     if erase:
         erase_EEPROM(ser, pdm_only)
     change_baudrate(ser, 38400)
+    ser.close()
 
 
 def upgrade_firmware(port):
@@ -418,6 +447,7 @@ def main():
     parser.add_argument('--gpio', help='Configure GPIO for PiZiGate flash', action='store_true', default=False)
     parser.add_argument('--din', help='Configure USB for ZiGate DIN flash', action='store_true', default=False)
     args = parser.parse_args()
+    logger.setLevel(logging.INFO)
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
@@ -460,13 +490,13 @@ def main():
             logger.exception("Could not open serial device %s", args.serialport)
             raise SystemExit(1)
 
-        atexit.register(change_baudrate, ser, 38400)
+        # atexit.register(change_baudrate, ser, 38400)
 
         change_baudrate(ser, 115200)
         check_chip_id(ser)
         flash_type = get_flash_type(ser)
         mac_address = get_mac(ser)
-        logger.info('Found MAC-address: %s' % mac_address)
+        logger.info('Found MAC-address: %s', mac_address)
         if args.write or args.save:  # or args.erase:
             select_flash(ser, flash_type)
 
@@ -478,6 +508,7 @@ def main():
 
 #         if args.erase:
 #             erase_EEPROM(ser, args.pdm_only)
+
 
     if args.gpio:
         logger.info('Put PiZiGate in running mode')
@@ -495,4 +526,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig()
     main()

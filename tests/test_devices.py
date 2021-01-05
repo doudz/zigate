@@ -49,19 +49,18 @@ class TestCore(unittest.TestCase):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.test'})
         self.assertFalse(device.load_template())
+        self.assertNotEqual(device.discovery, 'templated')
 
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         self.assertFalse(device.load_template())
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.weather'})
 
-        self.assertCountEqual(device.properties,
-                              [{'attribute': 5, 'data': 'lumi.weather',
-                                'name': 'type', 'value': 'lumi.weather', 'type': str}]
-                              )
+        self.assertEqual(device.get_type(), 'lumi.weather')
+
         device.set_attribute(1, 0x0402, {'attribute': 0, 'lqi': 255, 'data': 1200})
         self.assertEqual(device.get_property_value('temperature'), 12.0)
         device.set_attribute(1, 0, {'attribute': 1, 'lqi': 255, 'data': 'test'})
-        self.assertEqual(device.genericType, '')
+        # self.assertEqual(device.genericType, '')
         self.assertTrue(device.load_template())
         self.assertEqual(device.discovery, 'templated')
         self.assertEqual(device.genericType, 'sensor')
@@ -121,7 +120,7 @@ class TestCore(unittest.TestCase):
 
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_cube'})
-        self.assertTrue(device.load_template())
+        self.assertEqual(device.discovery, 'templated')
         self.assertCountEqual(device.attributes,
                               [{'endpoint': 1, 'cluster': 0, 'attribute': 5, 'data': 'lumi.sensor_cube',
                                 'name': 'type', 'value': 'lumi.sensor_cube', 'type': str},
@@ -151,7 +150,6 @@ class TestCore(unittest.TestCase):
 
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.remote.b286acn01'})
-        self.assertTrue(device.load_template())
         self.assertCountEqual(device.attributes,
                               [{'endpoint': 1, 'cluster': 0, 'attribute': 4, 'data': 'LUMI',
                                 'name': 'manufacturer', 'value': 'LUMI'},
@@ -174,10 +172,9 @@ class TestCore(unittest.TestCase):
 
     def test_inverse_bool(self):
         device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
-        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_switch.aq2'})
         device.set_attribute(1, 6, {'attribute': 0, 'lqi': 255, 'data': True})
         self.assertTrue(device.get_property_value('onoff'))
-        device.load_template()
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_switch.aq2'})
         device.set_attribute(1, 6, {'attribute': 0, 'lqi': 255, 'data': True})
         self.assertFalse(device.get_property_value('onoff'))
 
@@ -187,12 +184,12 @@ class TestCore(unittest.TestCase):
         for f in files:
             success = False
             try:
-                print('Test template', f)
+                print('Test template', f, f[:-5])
                 with open(os.path.join(path, f)) as fp:
                     json.load(fp)
                 device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
                 device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': f[:-5]})
-                self.assertTrue(device.load_template())
+                self.assertEqual(device.discovery, 'templated')
                 success = True
             except Exception as e:
                 print(e)
@@ -231,6 +228,25 @@ class TestCore(unittest.TestCase):
             self.assertEqual(device.get_property_value('onoff'), True)
             time.sleep(core.DELAY_FASTCHANGE + 1)
             self.assertEqual(device.get_property_value('onoff'), False)
+
+    def test_quirks(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
+        device.set_attribute(1, 0x0000, {'attribute': 0xff01, 'lqi': 255,
+                             'data': '0121130b0421a84305211300062401000000006429ed0965219513662be18201000a210000'})
+        self.assertEqual(device.get_property_value('xiaomi'), {1: 2835,
+                                                               4: 17320,
+                                                               5: 19,
+                                                               6: '0100000000',
+                                                               100: 2541,
+                                                               101: 5013,
+                                                               102: 99041,
+                                                               10: 0})
+        self.assertEqual(device.get_property_value('battery_voltage'), 2.835)
+    
+    def test_available_actions(self):
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
+        device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.vibration.aq1'})
+        self.assertEqual(device.available_actions(), {1: []})
 
 
 if __name__ == '__main__':

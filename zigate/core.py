@@ -629,6 +629,8 @@ class ZiGate(object):
                     continue
                 device = Device(dict(d), self)
                 self._set_device(device)
+        elif response.msg == 0x8035:  # PDM event
+            LOGGER.warning('PDM Event : %s %s', response['status'], response.status_text())
         elif response.msg == 0x8042:  # node descriptor
             addr = response['addr']
             d = self.get_device_from_addr(addr)
@@ -678,26 +680,9 @@ class ZiGate(object):
                 return
             device = self._get_device(response['addr'])
             device.lqi = response['lqi']
-            r = device.set_attribute(response['endpoint'],
-                                     response['cluster'],
-                                     response.cleaned_data())
-            if r is None:
-                return
-            added, attribute_id = r
-            changed = device.get_attribute(response['endpoint'],
-                                           response['cluster'],
-                                           attribute_id, True)
-            if response['cluster'] == 0 and attribute_id == 5:
-                if not device.discovery:
-                    device.load_template()
-            if added:
-                dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self, **{'zigate': self,
-                                                                 'device': device,
-                                                                 'attribute': changed})
-            else:
-                dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self, **{'zigate': self,
-                                                                   'device': device,
-                                                                   'attribute': changed})
+            device.set_attribute(response['endpoint'],
+                                 response['cluster'],
+                                 response.cleaned_data())
         elif response.msg == 0x004D:  # device announce
             LOGGER.debug('Device Announce %s', response)
             device = Device(response.data, self)
@@ -708,9 +693,9 @@ class ZiGate(object):
                 if response['addr'] == self.addr:
                     return
                 device = self._get_device(response['addr'])
-                r = device.set_attribute(response['endpoint'],
-                                         response['cluster'],
-                                         response.cleaned_data())
+                device.set_attribute(response['endpoint'],
+                                     response['cluster'],
+                                     response.cleaned_data())
         elif response.msg == 0x8501:  # OTA image block request
             LOGGER.debug('Client is requesting ota image data')
             self._ota_send_image_data(response)
@@ -1325,14 +1310,19 @@ class ZiGate(object):
         LOGGER.debug('Gathered neighbours table: %s', neighbours)
         return neighbours
 
-    def refresh_device(self, addr, full=False):
+    def refresh_device(self, addr, full=False, force=False):
         '''
         convenient function to refresh device attribute
+        if full is true, try to read all known attributes
+        else only some specific attributes related to known clusters.
+        if force is false, only refresh if the device has not been seen
+        for more than an one hour
+
         '''
         device = self.get_device_from_addr(addr)
         if not device:
-            return
-        device.refresh_device(full)
+            return     
+        device.refresh_device(full, force)
 
     def discover_device(self, addr, force=False):
         '''
@@ -2241,10 +2231,10 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         manufacturer_specific = manufacturer_code != 0
-        mode = {'stop': '0000', 'burglar': '1000', 'fire': '0100', 'emergency': '1100',
-                'policepanic': '0010', 'firepanic': '1010', 'emergencypanic': '0110'
+        mode = {'stop': '0000', 'burglar': '0001', 'fire': '0010', 'emergency': '0011',
+                'policepanic': '0100', 'firepanic': '0101', 'emergencypanic': '0110'
                 }.get(mode, '0000')
-        strobe = '10' if strobe else '00'
+        strobe = '01' if strobe else '00'
         level = {'low': '00', 'medium': '10', 'high': '01', 'veryhigh': '11'}.get(level, '00')
         warning_mode_strobe_level = int(mode + strobe + level, 2)
         strobe_level = {'low': 0, 'medium': 1, 'high': 2, 'veryhigh': 3}.get(strobe_level, 0)
@@ -2269,7 +2259,7 @@ class ZiGate(object):
         addr_mode, addr_fmt = self._choose_addr_mode(addr)
         addr = self.__addr(addr)
         manufacturer_specific = manufacturer_code != 0
-        mode = {'armed': '0000', 'disarmed': '1000'}.get(mode, '0000')
+        mode = {'armed': '0000', 'disarmed': '0001'}.get(mode, '0000')
         strobe = '1' if strobe else '0'
         level = {'low': '00', 'medium': '10', 'high': '01', 'veryhigh': '11'}.get(level, '00')
         squawk_mode_strobe_level = int(mode + strobe + '0' + level, 2)
@@ -2529,7 +2519,8 @@ class Device(object):
                         # except device 0x010a because Tradfri Outlet don't have level control
                         # but still have endpoint 8...
                         actions[ep_id].append(ACTIONS_LEVEL)
-                    if 0x0101 in endpoint['in_clusters']:
+                    if 0x0101 in endpoint['in_clusters'] and self.receiver_on_when_idle():
+                        # because of xiaomi vibration sensor
                         actions[ep_id].append(ACTIONS_LOCK)
                     if 0x0102 in endpoint['in_clusters']:
                         actions[ep_id].append(ACTIONS_COVER)
@@ -2579,13 +2570,13 @@ class Device(object):
         for endpoint_id, endpoint in endpoints_list:
             # if endpoint['device'] in ACTUATORS:  # light
             LOGGER.debug('Bind and report endpoint %s for device %s', endpoint_id, self)
-#             if 0x0001 in endpoint['in_clusters']:
-#                 LOGGER.debug('bind and report for cluster 0x0001')
-#                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
-#                 self._zigate.reporting_request(self.addr, endpoint_id,
-#                                                0x0001, (0x0020, 0x20))
-#                 self._zigate.reporting_request(self.addr, endpoint_id,
-#                                                0x0001, (0x0021, 0x20))
+            if 0x0001 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0001')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0001, (0x0020, 0x20))
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0001, (0x0021, 0x20))
             if 0x0006 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0006')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0006)
@@ -2596,6 +2587,9 @@ class Device(object):
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0008)
                 self._zigate.reporting_request(self.addr, endpoint_id,
                                                0x0008, (0x0000, 0x20))
+            if 0x0009 in endpoint['in_clusters']:
+                LOGGER.debug('bind and report for cluster 0x0009')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0009)
             if 0x000f in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x000f')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x000f)
@@ -2603,13 +2597,9 @@ class Device(object):
                                                0x000f, (0x0055, 0x10))
             if 0x0101 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0101')
-                self._zigate.bind_addr(self.addr, endpoint_id, 0x0009)
-                self._zigate.bind_addr(self.addr, endpoint_id, 0x0001)
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0101)
                 self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0001, (0x0021, 0x20))
-                self._zigate.reporting_request(self.addr, endpoint_id,
-                                               0x0101, (0x0000, 0x30), 0, 0, 1, 20)
+                                               0x0101, (0x0000, 0x30))
             if 0x0102 in endpoint['in_clusters']:
                 LOGGER.debug('bind and report for cluster 0x0102')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0102)
@@ -2847,8 +2837,14 @@ class Device(object):
             typ = self.get_value('type')
         return typ
 
-    def refresh_device(self, full=False):
+    def refresh_device(self, full=False, force=False):
         to_read = {}
+        if not force:
+            last_1h = datetime.datetime.now() - datetime.timedelta(hours=1)
+            last_1h = last_1h.strftime('%Y-%m-%d %H:%M:%S')
+            if self.last_seen and self.last_seen > last_1h:
+                LOGGER.debug('Last seen less than an hour, ignoring refresh')
+                return
         if full:
             for attribute in self.attributes:
                 k = (attribute['endpoint'], attribute['cluster'])
@@ -2858,6 +2854,12 @@ class Device(object):
         else:
             endpoints_list = list(self.endpoints.items())
             for endpoint_id, endpoint in endpoints_list:
+                # tries to read the type as a kind of ping
+                if 0x0000 in endpoint['in_clusters']:
+                    k = (endpoint_id, 0x0000)
+                    if k not in to_read:
+                        to_read[k] = []
+                    to_read[k].append(0x0005)
                 if 0x0006 in endpoint['in_clusters']:
                     k = (endpoint_id, 0x0006)
                     if k not in to_read:
@@ -3057,7 +3059,65 @@ class Device(object):
         self._lock_release()
         if not r:
             return
+        changed = self.get_attribute(endpoint_id,
+                                     cluster_id,
+                                     attribute['attribute'], True)
+        if cluster_id == 0 and attribute['attribute'] == 5:
+            if not self.discovery:
+                self.load_template()
+        if added:
+            dispatch_signal(ZIGATE_ATTRIBUTE_ADDED, self._zigate,
+                            **{'zigate': self._zigate,
+                               'device': self,
+                               'attribute': changed})
+        else:
+            dispatch_signal(ZIGATE_ATTRIBUTE_UPDATED, self._zigate,
+                            **{'zigate': self._zigate,
+                               'device': self,
+                               'attribute': changed})
+
+        self._handle_quirks(changed)
+
         return added, attribute['attribute']
+
+    def _handle_quirks(self, attribute):
+        """
+        Handle special attributes
+        """
+        if 'name' not in attribute:
+            return
+        if attribute['name'] == 'xiaomi':
+            LOGGER.debug('Handle special xiaomi attribute %s', attribute)
+            values = attribute['value']
+            # Battery voltage
+            data_map = [(0x01, 0x0001, 0x0020, values[1] / 100.),]
+            # TODO: Handle more special attribute
+            if self.get_type(False) == 'lumi.sensor_motion.aq2':
+                data_map += [(0x01, 0x0406, 0x0000, values[100]),
+                             (0x01, 0x0400, 0x0000, values[11])
+                            ]
+            elif self.get_type(False) == 'lumi.sensor_magnet.aq2':
+                data_map += [(0x01, 0x0006, 0x0000, values[100]),
+                            ]
+            elif self.get_type(False) == 'lumi.sensor_ht':
+                data_map += [(0x01, 0x0402, 0x0000, values[100]),
+                             (0x01, 0x0405, 0x0000, values[101]),
+                            ]
+            elif self.get_type(False) == 'lumi.weather':
+                data_map += [(0x01, 0x0402, 0x0000, values[100]),
+                             (0x01, 0x0405, 0x0000, values[101]),
+                             (0x01, 0x0403, 0x0000, int(values[102] / 100)),
+                             (0x01, 0x0403, 0x0010, values[102] / 10),
+                            ]
+            elif self.get_type(False) == 'lumi.ctrl_neutral1':
+                data_map += [(0x02, 0x0006, 0x0000, values[100]),
+                            ]
+            elif self.get_type(False) == 'lumi.ctrl_neutral2':
+                data_map += [(0x02, 0x0006, 0x0000, values[100]),
+                             (0x03, 0x0006, 0x0000, values[101]),
+                            ]
+            for endpoint_id, cluster_id, attribute_id, value in data_map:
+                self.set_attribute(endpoint_id, cluster_id, {'attribute': attribute_id, 'data': value})
 
     def _delay_change(self, endpoint_id, cluster_id, data):
         '''
@@ -3285,6 +3345,7 @@ class Device(object):
             return
         path = os.path.join(BASE_PATH, 'templates', template_filename + '.json')
         success = False
+        LOGGER.debug('Try loading template %s', path)
         if os.path.exists(path):
             try:
                 with open(path) as fp:
