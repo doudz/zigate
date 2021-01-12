@@ -88,5 +88,3 @@ DATA_TYPE = {0x00: None,
 BASE_PATH = os.path.dirname(__file__)
 
 ADMINPANEL_PORT = 9998
-ADMINPANEL_HOST = "0.0.0.0"
-
