@@ -284,13 +284,14 @@ class ZiGate(object):
     def addr(self):
         return self._addr
 
-    def start_adminpanel(self, port=None, mount=None, prefix=None, debug=False):
+    def start_adminpanel(self, host=None, port=None, mount=None, prefix=None, debug=False):
         '''
         Start Admin panel in other thread
         '''
-        from .adminpanel import start_adminpanel, ADMINPANEL_PORT
+        from .adminpanel import start_adminpanel, ADMINPANEL_HOST, ADMINPANEL_PORT
         port = port or ADMINPANEL_PORT
-        self.adminpanel = start_adminpanel(self, port=port, mount=mount, prefix=prefix, quiet=not debug, debug=debug)
+        host = host or ADMINPANEL_HOST
+        self.adminpanel = start_adminpanel(self, host=host, port=port, mount=mount, prefix=prefix, quiet=not debug, debug=debug)
         return self.adminpanel
 
     def _event_loop(self):
@@ -2681,6 +2682,16 @@ class Device(object):
             if 0x0400 in endpoint['in_clusters']:
                 LOGGER.debug('bind for cluster 0x0400')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0400)
+            if 0x0402 in endpoint['in_clusters']:
+                LOGGER.debug('bind for cluster 0x0402')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0402)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0402, (0x0000, 0x29), 0, 0, 30, 3600)
+            if 0x0405 in endpoint['in_clusters']:
+                LOGGER.debug('bind for cluster 0x0405')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0405)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0405, (0x0000, 0x21), 0, 0, 30, 3600)
             if 0xFC00 in endpoint['in_clusters']:
                 LOGGER.debug('bind for cluster 0xFC00')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0xFC00)
@@ -3075,8 +3086,10 @@ class Device(object):
                             **{'zigate': self._zigate,
                                'device': self,
                                'attribute': changed})
-
-        self._handle_quirks(changed)
+        try:
+            self._handle_quirks(changed)
+        except Exception:
+            LOGGER.exception('Failed handling quirks')
 
         return added, attribute['attribute']
 

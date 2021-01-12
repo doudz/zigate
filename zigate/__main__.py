@@ -24,6 +24,7 @@ parser.add_argument('--gpio', help='Enable PiZigate', default=False, action='sto
 parser.add_argument('--channel', help='Zigbee channel', default=None)
 parser.add_argument('--admin_panel', help='Enable Admin panel', default=True, action='store_true')
 parser.add_argument('--admin_panel_port', help='Admin panel url prefix', default=9998)
+parser.add_argument('--admin_panel_host', help='Admin panel url prefix', default="0.0.0.0")
 parser.add_argument('--admin_panel_mount', help='Admin panel url mount point', default=None)
 parser.add_argument('--admin_panel_prefix', help='Admin panel url prefix', default=None)
 args = parser.parse_args()
@@ -31,12 +32,12 @@ if args.debug:
     logging.root.setLevel(logging.DEBUG)
 z = connect(args.port, args.host, args.path, True, True, args.channel, args.gpio)
 if args.admin_panel:
-    logging.root.info('Starting Admin Panel on port %s', args.admin_panel_port)
+    logging.root.info('Starting Admin Panel on %s:%s', args.admin_panel_host, args.admin_panel_port)
     if args.admin_panel_mount:
         logging.root.info('Mount point is %s', args.admin_panel_mount)
     if args.admin_panel_prefix:
         logging.root.info('URL prefix is %s', args.admin_panel_prefix)
-    z.start_adminpanel(port=int(args.admin_panel_port), mount=args.admin_panel_mount, prefix=args.admin_panel_prefix,
+    z.start_adminpanel(port=int(args.admin_panel_port), host=args.admin_panel_host, mount=args.admin_panel_mount, prefix=args.admin_panel_prefix,
                        debug=args.debug)
 print('Press Ctrl+C to quit')
 try:

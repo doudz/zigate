@@ -11,14 +11,14 @@ import bottle
 from json import dumps
 from zigate import version as zigate_version
 from zigate.core import DeviceEncoder
-from zigate.const import ADMINPANEL_PORT
+from zigate.const import ADMINPANEL_PORT, ADMINPANEL_HOST
 import time
 
 
 bottle.TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), 'views/'))
 
 
-def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=None,
+def start_adminpanel(zigate_instance, host=ADMINPANEL_HOST, port=ADMINPANEL_PORT, mount=None, prefix=None,
                      autostart=True, daemon=True, quiet=True, debug=False):
     '''
     mount: url prefix used to mount bottle application
@@ -180,7 +180,7 @@ def start_adminpanel(zigate_instance, port=ADMINPANEL_PORT, mount=None, prefix=N
         force = bottle.request.query.get('force', 'false') == 'true'
         return {'network_table': zigate_instance.build_neighbours_table(force)}
 
-    kwargs = {'host': '0.0.0.0', 'port': port,
+    kwargs = {'host': host, 'port': port,
               'quiet': quiet, 'debug': debug}
 
     if autostart:
