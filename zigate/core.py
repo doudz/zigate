@@ -3085,8 +3085,10 @@ class Device(object):
                             **{'zigate': self._zigate,
                                'device': self,
                                'attribute': changed})
-
-        self._handle_quirks(changed)
+        try:
+            self._handle_quirks(changed)
+        except Exception:
+            LOGGER.exception('Failed handling quirks')
 
         return added, attribute['attribute']
 
