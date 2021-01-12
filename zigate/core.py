@@ -284,14 +284,13 @@ class ZiGate(object):
     def addr(self):
         return self._addr
 
-    def start_adminpanel(self, host=None, port=None, mount=None, prefix=None, debug=False):
+    def start_adminpanel(self, port=None, mount=None, prefix=None, debug=False):
         '''
         Start Admin panel in other thread
         '''
-        from .adminpanel import start_adminpanel, ADMINPANEL_HOST, ADMINPANEL_PORT
+        from .adminpanel import start_adminpanel, ADMINPANEL_PORT
         port = port or ADMINPANEL_PORT
-        host = host or ADMINPANEL_HOST
-        self.adminpanel = start_adminpanel(self, host=host, port=port, mount=mount, prefix=prefix, quiet=not debug, debug=debug)
+        self.adminpanel = start_adminpanel(self, port=port, mount=mount, prefix=prefix, quiet=not debug, debug=debug)
         return self.adminpanel
 
     def _event_loop(self):
