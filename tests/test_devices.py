@@ -46,12 +46,12 @@ class TestCore(unittest.TestCase):
                           '"lqi": 255}, "name": "sample"}'))
 
     def test_template(self):
-        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.test'})
         self.assertFalse(device.load_template())
         self.assertNotEqual(device.discovery, 'templated')
 
-        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
         self.assertFalse(device.load_template())
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.weather'})
 
@@ -106,7 +106,7 @@ class TestCore(unittest.TestCase):
                                'name': ''}
                               )
         # another test
-        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
         self.assertFalse(device.load_template())
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_wleak.aq1'})
         self.assertTrue(device.load_template())
@@ -118,7 +118,7 @@ class TestCore(unittest.TestCase):
                               'test_mode': False, 'battery_defect': False}
                              )
 
-        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.sensor_cube'})
         self.assertEqual(device.discovery, 'templated')
         self.assertCountEqual(device.attributes,
@@ -136,7 +136,7 @@ class TestCore(unittest.TestCase):
                                 'value': 0.0, 'unit': '°', 'expire': 2, 'type': float}]
                               )
 
-        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.remote.b186acn01'})
         self.assertTrue(device.load_template())
         self.assertCountEqual(device.attributes,
@@ -148,7 +148,7 @@ class TestCore(unittest.TestCase):
                                 'value': '', 'expire': 2, 'type': str}]
                               )
 
-        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'})
+        device = core.Device({'addr': '1234', 'ieee': '0123456789abcdef'}, self.zigate)
         device.set_attribute(1, 0, {'attribute': 5, 'lqi': 255, 'data': 'lumi.remote.b286acn01'})
         self.assertCountEqual(device.attributes,
                               [{'endpoint': 1, 'cluster': 0, 'attribute': 4, 'data': 'LUMI',
