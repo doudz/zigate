@@ -2681,6 +2681,16 @@ class Device(object):
             if 0x0400 in endpoint['in_clusters']:
                 LOGGER.debug('bind for cluster 0x0400')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0x0400)
+            if 0x0402 in endpoint['in_clusters']:
+                LOGGER.debug('bind for cluster 0x0402')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0402)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0402, (0x0000, 0x29), 0, 0, 30, 3600)
+            if 0x0405 in endpoint['in_clusters']:
+                LOGGER.debug('bind for cluster 0x0405')
+                self._zigate.bind_addr(self.addr, endpoint_id, 0x0405)
+                self._zigate.reporting_request(self.addr, endpoint_id,
+                                               0x0405, (0x0000, 0x21), 0, 0, 30, 3600)
             if 0xFC00 in endpoint['in_clusters']:
                 LOGGER.debug('bind for cluster 0xFC00')
                 self._zigate.bind_addr(self.addr, endpoint_id, 0xFC00)
