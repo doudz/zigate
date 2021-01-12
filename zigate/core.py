@@ -12,6 +12,7 @@ from time import (sleep, strftime, monotonic)
 import logging
 import json
 import os
+import sqlite3
 from pydispatch import dispatcher
 from .transport import (ThreadSerialConnection,
                         ThreadSocketConnection,
@@ -190,6 +191,7 @@ class ZiGate(object):
         self._autosavetimer = None
         self._closing = False
         self.connection = None
+        self.PDM_ON_HOST = False
 
         self._addr = '0000'
         self._ieee = None
@@ -704,6 +706,16 @@ class ZiGate(object):
             self._ota_handle_upgrade_end_request(response)
         elif response.msg == 0x8702:  # APS Data confirm Fail
             LOGGER.warning(response)
+        elif response.msg == 0x0200:
+            self.vPDMSaveRequest(response)
+        elif response.msg == 0x0201:
+            self.vPDMLoadRequest(response)
+        elif response.msg == 0x0208:
+            self.vPDMExistanceRequest(response)
+        elif response.msg == 0x0300:  # PDM on host available
+            self.vPDMHostAvailableRequest()
+        elif response.msg == 0x0302:
+            LOGGER.info(response)
 #         else:
 #             LOGGER.debug('Do nothing special for response {}'.format(response))
 
@@ -2355,6 +2367,124 @@ class ZiGate(object):
         '''
         for device in self._devices.values():
             device.generate_template(dirname)
+    
+    def vPDMHostAvailableRequest(self):
+        """ Internal function
+        Commande 0x0300
+        """
+        self.PDM_ON_HOST = True
+        status = '00'
+        self.send_data(0x8300, status, wait_status=False)
+    
+    def vPDMGetBitmapRequest(self,sData):
+        """ Internal function
+        Commande 0x0206
+        """
+        RecordId = (''.join(x.encode('hex') for x in sData))
+        status='00'
+        self.oSL.SendMessageNoAck(E_SL_MSG_GET_BITMAP_RECORD_RESPONSE, (status+RecordId+"00000000000000000000000000000000"))
+    
+    def vPDMIncBitmapRequest(self,sData):
+        """ Internal function
+        Commande 0x0207
+        """
+        RecordId = (''.join(x.encode('hex') for x in sData))
+        status='00'
+        self.oSL.SendMessageNoAck(E_SL_MSG_INCREMENT_BITMAP_RECORD_RESPONSE, (status+RecordId+"00000000000000000000000000000000"))
+    
+    def vPDMExistanceRequest(self, response):
+        """ Commande 0x0208
+        """
+        conn = sqlite3.connect(os.path.expanduser('~/pdm.db'))
+        c = conn.cursor()
+        conn.text_factory = str
+        RecordId = response.record
+        c.execute("SELECT COUNT(PdmRecId) FROM PdmData WHERE PdmRecId = ?", (RecordId,))
+        data=c.fetchone() 
+        if (data[0] == 0):
+            data = struct.pack('!HBH', RecordId, 0, 0)
+            self.send_data(0x8208, data, wait_status=False)
+        else:
+            c.execute("SELECT PdmRecSize FROM PdmData WHERE PdmRecId = ?", (RecordId,))
+            data=c.fetchone()
+            data = struct.pack('!HBH', RecordId, 1, int(data[0]))
+            self.send_data(0x8208, data, wait_status=False)
+        conn.close()
+    
+    def vPDMSaveRequest(self, response):
+        """ Commande 0x0200
+        """
+        conn = sqlite3.connect(os.path.expanduser('~/pdm.db'))
+        c = conn.cursor()
+        conn.text_factory = str
+        RecordId = response.record
+        CurrentCount = response.blockWritten
+        u32NumberOfWrites = response.numberOfWrites
+        u32Size = response.dataLength
+        dataReceived = response.size
+        sWriteData= response.buffer
+        c.execute("SELECT * FROM PdmData WHERE PdmRecId = ?", (RecordId,))
+        data=c.fetchone() 
+        if data is None:
+            sql="INSERT INTO PdmData (PdmRecId,PdmRecSize,PersistedData) VALUES (?,?,?)"
+            c.execute(sql, (RecordId,u32Size,sWriteData))
+        else:
+            if(int(u32NumberOfWrites)>0 ):
+                sWriteData = data[2]+sWriteData 
+                c.execute("DELETE from PdmData WHERE PdmRecId = ? ",(RecordId,))
+                c.execute("INSERT INTO PdmData (PdmRecId,PdmRecSize,PersistedData) VALUES (?,?,?)",(RecordId,u32Size,sWriteData))
+            else:
+                c.execute("DELETE from PdmData WHERE PdmRecId = ? ",(RecordId,))
+                c.execute("INSERT INTO PdmData (PdmRecId,PdmRecSize,PersistedData) VALUES (?,?,?)",(RecordId,u32Size,sWriteData))
+        conn.commit()
+        conn.close()
+        # self.send_data(0x8200, "00"+RecordId+u32NumberOfWrites, wait_status=False)
+        status = 0
+        data = struct.pack('!BHH', status, RecordId, u32NumberOfWrites)
+        self.send_data(0x8200, data, wait_status=False)
+
+    def vPDMLoadRequest(self, response):
+        """  Commande 0x0201
+        """
+        conn = sqlite3.connect(os.path.expanduser('~/pdm.db'))
+        c = conn.cursor()
+        conn.text_factory = str
+        RecordId = response.record
+        c.execute("SELECT * FROM PdmData WHERE PdmRecId = ?", (RecordId,))
+        data=c.fetchone() 
+        status='00'
+        if data is None:
+            TotalBlocks = 0
+            BlockId = 0
+            size =0
+            self.oSL.SendMessageNoAck(E_SL_MSG_LOAD_PDM_RECORD_RESPONSE, (status+RecordId+str(size).zfill(8)+str(TotalBlocks).zfill(8)+str(BlockId).zfill(8))+str(size).zfill(8))
+        else:
+            status='02'
+            persistedData = data[2]
+            size = data[1]
+            TotalBlocks = (long(size,16)/128)
+            if((long(size,16)%128)>0):
+                NumberOfWrites = TotalBlocks + 1
+            else:
+                NumberOfWrites = TotalBlocks
+            bMoreData=True
+            count =0
+            lowerbound = 0
+            upperbound = 0
+            while(bMoreData):
+                u32Size = long(size,16) - (count*128)
+                if(u32Size>128):
+                    u32Size = 256
+                else:
+                    bMoreData = False
+                    u32Size = u32Size*2
+
+                upperbound =upperbound + u32Size
+                DataStrip = persistedData[lowerbound:upperbound]
+                count = count+1
+                self.oSL.SendMessageNoAck(E_SL_MSG_LOAD_PDM_RECORD_RESPONSE,(status+RecordId+size+(hex(NumberOfWrites).strip('0x')).strip('L').zfill(8)+(hex(count).strip('0x')).strip('L').zfill(8)+(hex(u32Size/2).strip('0x')).strip('L').zfill(8)+DataStrip)) 
+                lowerbound = lowerbound+u32Size 
+        conn.close()
 
 
 class FakeZiGate(ZiGate):

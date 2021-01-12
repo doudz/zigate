@@ -134,6 +134,49 @@ class Response(object):
 
 
 @register_response
+class R0200(Response):
+    msg = 0x0200
+    type = 'Save record to PDM on Host'
+    s = OrderedDict([('record', 'H'),
+                     ('dataLength', 'H'),
+                     ('numberOfWrites', 'H'),
+                     ('blockWritten', 'H'),
+                     ('size', 'H'),
+                     ('buffer', 'rawend')
+                    ])
+
+
+@register_response
+class R0201(Response):
+    msg = 0x0201
+    type = 'Load record from PDM on Host'
+    s = OrderedDict([('record', 'H')
+                    ])
+
+
+@register_response
+class R0208(Response):
+    msg = 0x0208
+    type = 'Record exist on Host PDM Request'
+    s = OrderedDict([('record', 'H')
+                    ])
+
+
+@register_response
+class R0300(Response):
+    msg = 0x0300
+    type = 'PDM Host Available Request'
+
+
+@register_response
+class R0302(Response):
+    msg = 0x0302
+    type = 'PDM Load Confirmed, Zigate ready'
+    s = OrderedDict([('status', 'B')
+                    ])
+
+
+@register_response
 class R8000(Response):
     msg = 0x8000
     type = 'Status response'
@@ -312,7 +355,7 @@ class R8005(Response):
 @register_response
 class R8006(Response):
     msg = 0x8006
-    type = 'Non “Factory new” Restart'
+    type = 'Non "Factory new" Restart'
     s = OrderedDict([('status', 'B'),
                      ])
 
@@ -320,7 +363,7 @@ class R8006(Response):
 @register_response
 class R8007(Response):
     msg = 0x8007
-    type = '“Factory New” Restart'
+    type = '"Factory New" Restart'
     s = OrderedDict([('status', 'B'),
                      ])
 
