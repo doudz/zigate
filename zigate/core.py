@@ -201,7 +201,7 @@ class ZiGate(object):
 
         self._ota_reset_local_variables()
 
-        if self.model == 'DIN':
+        if self.model in ('DIN', 'v2'):
             self.set_running_mode()
 
         if adminpanel:
@@ -221,14 +221,16 @@ class ZiGate(object):
         if self.connection:
             if self.connection.vid_pid() == (0x0403, 0x6001):
                 self._model = 'DIN'
+            elif self.connection.vid_pid() == (0x0403, 0x6015):
+                self._model = 'v2'
         return self._model
 
     def set_bootloader_mode(self):
         '''
         configure ZiGate DIN in flash mode
         '''
-        if self.model != 'DIN':
-            LOGGER.warning('Method only supported on ZiGate DIN')
+        if self.model not in ('DIN', 'v2'):
+            LOGGER.warning('Method only supported on ZiGate DIN or v2')
             return
         dev = usb.core.find(idVendor=0x0403, idProduct=0x6001)
         if not dev:
@@ -252,8 +254,8 @@ class ZiGate(object):
         '''
         configure ZiGate DIN in running mode
         '''
-        if self.model != 'DIN':
-            LOGGER.warning('Method only supported on ZiGate DIN')
+        if self.model not in ('DIN', 'v2'):
+            LOGGER.warning('Method only supported on ZiGate DIN or v2')
             return
         dev = usb.core.find(idVendor=0x0403, idProduct=0x6001)
         if not dev:
@@ -268,8 +270,8 @@ class ZiGate(object):
         '''
         flash specified firmware
         '''
-        if self.model != 'DIN':
-            LOGGER.warning('Method only supported on ZiGate DIN')
+        if self.model not in ('DIN', 'v2'):
+            LOGGER.warning('Method only supported on ZiGate DIN or v2')
             return
         from .flasher import flash
         self.set_bootloader_mode()
